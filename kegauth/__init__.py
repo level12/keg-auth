@@ -32,6 +32,7 @@ class AuthManager(object):
     def init_config(self, app):
         _cc_kwargs = dict(schemes=['bcrypt', 'pbkdf2_sha256'], deprecated='auto')
         app.config.setdefault('PASSLIB_CRYPTCONTEXT_KWARGS', _cc_kwargs)
+        app.config.setdefault('KEGAUTH_BASE_TEMPLATE', 'base-page.html')
 
     def init_jinja(self, app):
         loader = jinja2.ChoiceLoader([
@@ -45,9 +46,10 @@ class AuthManager(object):
     def init_managers(self, app):
         app.auth_manager = self
 
-        app.login_manager = flask_login.LoginManager()
-        app.login_manager.user_loader = self.user_loader
-        #app.login_view = self.endpoint('login')
+        app.login_manager = login_manager = flask_login.LoginManager()
+        login_manager.user_loader(lambda user_id: self.user_loader(user_id))
+        login_manager.login_view = self.endpoint('login')
+        login_manager.init_app(app)
 
     def endpoint(self, ident):
         return self.endpoints[ident].format(blueprint=self.blueprint_name)

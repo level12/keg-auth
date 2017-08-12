@@ -1,6 +1,10 @@
 from __future__ import absolute_import
 
 from flask_wtf.csrf import CSRFProtect
+try:
+    from flask_bootstrap import Bootstrap
+except ImportError:
+    Bootstrap = None
 from keg.app import Keg
 from kegauth import AuthManager
 
@@ -23,6 +27,9 @@ class KegAuthTestApp(Keg):
 
         auth_manager.init_app(self)
         csrf.init_app(self)
+
+        if Bootstrap is not None:
+            Bootstrap(self)
 
         return self
 

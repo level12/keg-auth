@@ -21,10 +21,11 @@ class PasswordMixin:
 class UserMixin:
     # These two fields are needed by Flask-Login.
     is_anonymous = False
-    is_authenticated = False
+    is_authenticated = True
     # Assume the user will need to verify their email address before they become active.
-    is_verified = sa.Column(sa.Boolean, nullable=False, default=False, server_default=sa.text('f'))
-    is_enabled = sa.Column(sa.Boolean, nullable=False, default=True, server_default=sa.text('t'))
+    is_verified = sa.Column(sa.Boolean, nullable=False, default=False,
+                            server_default=sa.text('false'))
+    is_enabled = sa.Column(sa.Boolean, nullable=False, default=True, server_default=sa.text('true'))
     email = sa.Column(EmailType, nullable=False, unique=True)
 
     def get_id(self):

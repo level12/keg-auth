@@ -40,7 +40,9 @@ setup(
     # for example:
     # $ pip install -e .[dev,test]
     extras_require={
-        # 'dev': ['restview'],
+        'dev': [
+            'flask-bootstrap'
+        ],
         'test': [
             'flake8',
             'flask-webtest',

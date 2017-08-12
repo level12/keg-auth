@@ -4,6 +4,7 @@ import flask_webtest
 
 class AuthTests:
     login_url = '/login'
+    protected_url = '/secret1'
 
     def setup(self):
         self.user_ent.delete_cascaded()
@@ -88,3 +89,21 @@ class AuthTests:
             ' administrators for more information.'
 
         assert resp.flashes == [('error', msg)]
+
+    def test_login_protection(self):
+        self.user_ent.testing_create(email='foo@bar.com', password='pass')
+
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get(self.protected_url, status=302)
+        full_login_url = 'http://keg.example.com{}'.format(self.login_url)
+        assert resp.headers['Location'].startswith(full_login_url)
+
+        resp = resp.follow()
+        resp.form['email'] = 'foo@bar.com'
+        resp.form['password'] = 'pass'
+        resp = resp.form.submit(status=302)
+        assert resp.flashes == [('success', 'Login successful.')]
+
+        # Now that we have logged in, we should be able to get to the page.
+        client.get(self.protected_url, status=200)
+

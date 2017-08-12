@@ -1,3 +1,6 @@
 {% import 'keg_elements/forms/horizontal.html' as horizontal %}
+{% extends config.get('BASE_TEMPLATE') or config['KEGAUTH_BASE_TEMPLATE'] %}
 
+{% block page_content %}
 {{ horizontal.form(form) }}
+{% endblock %}

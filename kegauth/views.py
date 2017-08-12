@@ -45,7 +45,7 @@ class LoginBase(keg.web.BaseView):
                     self.on_invalid_password()
                 else:
                     # User is active and password is verified
-                    return self.on_success()
+                    return self.on_success(user)
             except orm_exc.NoResultFound:
                 self.on_invalid_user(form)
         else:
@@ -83,7 +83,8 @@ class LoginBase(keg.web.BaseView):
         email = form.email.data
         flask.flash(message.format(email), category)
 
-    def on_success(self):
+    def on_success(self, user):
+        flask_login.login_user(user)
         flask.flash(*self.flash_success)
         redirect_to = flask.current_app.auth_manager.url_for('after-login')
         return flask.redirect(redirect_to)
