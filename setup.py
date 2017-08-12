@@ -14,7 +14,7 @@ with open(version_fpath) as fo:
 setup(
     name='Keg Auth',
     version=version_globals['VERSION'],
-    description='<short description>',
+    description='Authentication plugin for Keg',
     long_description='\n\n'.join((README, CHANGELOG)),
     author='Randy Syring',
     author_email='randy.syring@level12.io',
@@ -30,9 +30,10 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        # use this for libraries; or
-        # use requirements folder/files for apps
-        'click',
+        'bcrypt',
+        'Flask-Login',
+        'KegElements',
+        'passlib',
     ],
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
@@ -40,10 +41,12 @@ setup(
     # $ pip install -e .[dev,test]
     extras_require={
         # 'dev': ['restview'],
-        'test': ['pytest'],
-    },
-    entry_points='''
-        [console_scripts]
-        kegauth = kegauth.cli:cli_entry
-    ''',
+        'test': [
+            'flake8',
+            'flask-webtest',
+            'pytest',
+            'pytest-cov',
+            'tox',
+        ],
+    }
 )

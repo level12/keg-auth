@@ -1,0 +1,18 @@
+- circleci
+- keg BaseView could have a .flashes() that saves flashes and makes them easier to work with
+- Document removal of cleanup function for: https://github.com/lepture/flask-wtf/issues/301
+- keg BaseView could be reworked so that we don't need to subclass in make_blueprint()
+- how does keg BaseView let us add multiple entry points?
+- mimic authbwc functionality
+- add signals
+- Evaluate risk of user enumeration:
+    - https://security.stackexchange.com/questions/158075/is-it-unsafe-to-show-message-that-username-account-does-not-exist-at-login
+    - https://blog.codinghorror.com/the-god-login/
+- rate limiting
+- hashing password even for non-users
+- is_active needs to take into account email validation and disabled accounts
+- login by email
+- social account registration and login
+- bcrypt probably doesn't need to be a hardcoded setup.py requirement
+- have another test in tox to run with default crypto to make sure it's setup and working
+  correctly for our non-test defaults
