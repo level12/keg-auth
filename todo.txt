@@ -27,3 +27,14 @@
 - why do the form fields show up not as indented as paragraph and headings?
 - Should AuthFormView be a mixin?
 - Render all messages from templates so language can be easily overridden without subclassing?
+- At one point, I wanted to conditionally render templates but didn't want to figure out how to
+  do that.  Turns out `render_template()` will take a list of templates and render the first that
+  is found.
+- Force login after password change: enforce password just picked, give user explicit confirmation
+  that they are logged in.
+- UserMixin should be generated from a function?
+- 2FA
+- text message to reset password link
+- maybe "kegauth" in templates should be "auth_manager" instead since that is what we use i.e.
+  app.auth_manager
+- invalidate an existing token if the user logs in

@@ -1,10 +1,11 @@
 from __future__ import absolute_import
 
-from flask_wtf.csrf import CSRFProtect
+from flask_mail import Mail
 try:
     from flask_bootstrap import Bootstrap
 except ImportError:
     Bootstrap = None
+from flask_wtf.csrf import CSRFProtect
 from keg.app import Keg
 from kegauth import AuthManager
 
@@ -13,7 +14,8 @@ from kegauth_ta.views import blueprints
 csrf = CSRFProtect()
 
 _endpoints = {'after-login': 'public.home'}
-auth_manager = AuthManager(endpoints=_endpoints)
+mail_ext = Mail()
+auth_manager = AuthManager(mail_ext, endpoints=_endpoints)
 
 
 class KegAuthTestApp(Keg):
@@ -27,6 +29,7 @@ class KegAuthTestApp(Keg):
 
         auth_manager.init_app(self)
         csrf.init_app(self)
+        mail_ext.init_app(self)
 
         if Bootstrap is not None:
             Bootstrap(self)

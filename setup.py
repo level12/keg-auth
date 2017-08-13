@@ -31,9 +31,12 @@ setup(
     zip_safe=False,
     install_requires=[
         'bcrypt',
+        'commonmark',
+        'Flask-Mail',
         'Flask-Login',
         'KegElements',
         'passlib',
+        'shortuuid',
     ],
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
@@ -46,6 +49,8 @@ setup(
         'test': [
             'flake8',
             'flask-webtest',
+            'freezegun',
+            'mock',
             'pyquery',
             'pytest',
             'pytest-cov',

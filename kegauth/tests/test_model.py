@@ -1,4 +1,8 @@
+import arrow
+import flask
+from freezegun import freeze_time
 from kegauth_ta.model import entities as ents
+import mock
 
 
 class TestUser:
@@ -41,3 +45,38 @@ class TestUser:
         assert ents.User.query.filter_by(email='2', is_active=True).one()
         assert ents.User.query.filter_by(email='3', is_active=False).one()
 
+    def test_token_validation(self):
+        user = ents.User.testing_create()
+
+        assert user.token is None
+        assert not user.token_verify(None)
+        assert not user.token_verify('foo')
+
+        token = user.token_generate()
+        assert token
+        assert user.token is not None
+        assert not user.token_verify('foo')
+        assert user.token_verify(token)
+        assert user.token_verify(token)
+
+    def test_token_expiration(self):
+        user = ents.User.add(email='foo', password='bar')
+        assert user.token_created_utc is None
+        token = user.token_generate()
+        now = arrow.get()
+        assert user.token_created_utc <= now
+
+        with mock.patch.dict(flask.current_app.config, KEGAUTH_TOKEN_EXPIRE_MINS=10):
+            plus_9_58 = now.shift(minutes=9, seconds=58).datetime
+            with freeze_time(plus_9_58):
+                assert user.token_verify(token)
+            plus_10 = now.shift(minutes=10).datetime
+            with freeze_time(plus_10):
+                assert not user.token_verify(token)
+
+    def test_change_password(self):
+        user = ents.User.testing_create()
+        token = user.token_generate()
+        user.change_password(token, 'abc123')
+        assert not user.token_verify(token)
+        assert user.password == 'abc123'

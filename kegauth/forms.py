@@ -20,7 +20,7 @@ class Login(Form):
     ])
 
 
-class ResetPassword(Form):
+class ForgotPassword(Form):
     email = StringField(u'Email', validators=[
         validators.DataRequired(),
         validators.Email(),

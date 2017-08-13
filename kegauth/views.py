@@ -3,7 +3,7 @@ import flask_login
 import keg.web
 import sqlalchemy.orm.exc as orm_exc
 
-import kegauth.forms as forms
+from kegauth import forms
 
 
 class AuthBaseView(keg.web.BaseView):
@@ -118,29 +118,41 @@ class Login(AuthFormView):
         return flask.redirect(redirect_to)
 
 
-class ResetPassword(AuthFormView):
-    url = '/reset-password'
-    form_cls = forms.ResetPassword
-    page_title = 'Reset Password'
-    template_name = 'kegauth/reset-password.html'
+class ForgotPassword(AuthFormView):
+    url = '/forgot-password'
+    form_cls = forms.ForgotPassword
+    page_title = 'Initiate Password Reset'
+    template_name = 'kegauth/forgot-password.html'
     flash_success = 'Please check your email for the link to change your password.', 'success'
 
     def on_form_valid(self, form):
         try:
             user = self.get_user(form)
             if self.verify_user_enabled(user):
-                # User is active, take action to reset password
+                # User is active, take action to initiate password reset
                 return self.on_success(user)
         except orm_exc.NoResultFound:
             self.on_invalid_user(form)
 
     def on_success(self, user):
+        self.send_email(user)
         flask.flash(*self.flash_success)
-        redirect_to = flask.current_app.auth_manager.url_for('after-reset')
+        redirect_to = flask.current_app.auth_manager.url_for('after-forgot')
         return flask.redirect(redirect_to)
 
+    def send_email(self, user):
+        user.token_generate()
+        flask.current_app.auth_mail_manager.send_reset_password(user)
 
-def make_blueprint(import_name, bp_name='auth', login_cls=Login, reset_pw_cls=ResetPassword):
+
+class ResetPassword(AuthFormView):
+    url = '/reset-password/<int:user_id>/<token>'
+
+
+
+def make_blueprint(import_name, bp_name='auth', login_cls=Login, forgot_cls=ForgotPassword,
+                   reset_cls=ResetPassword):
+
     _blueprint = flask.Blueprint(bp_name, import_name)
 
     # It's not ideal we have to redefine the classes, but it's needed because of how
@@ -149,7 +161,10 @@ def make_blueprint(import_name, bp_name='auth', login_cls=Login, reset_pw_cls=Re
     class Login(login_cls):
         blueprint = _blueprint
 
-    class ResetPassword(reset_pw_cls):
+    class ForgotPassword(forgot_cls):
+        blueprint = _blueprint
+
+    class ResetPassword(reset_cls):
         blueprint = _blueprint
 
     return _blueprint

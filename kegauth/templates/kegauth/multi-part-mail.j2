@@ -1,0 +1,8 @@
+{% block full_subject %}
+    {% if config.KEGAUTH_EMAIL_SITE_ABBR %}
+        [{{ config.KEGAUTH_EMAIL_SITE_ABBR }}]
+    {% endif %}
+    {% block subject %}{% endblock %}
+{% endblock %}
+---multi-part:xFE+Ab7j+w,mdIL%---
+{% block markdown %}{% endblock %}

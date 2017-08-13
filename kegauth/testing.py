@@ -3,9 +3,16 @@ import flask_webtest
 
 
 class AuthTests:
+    """
+        These tests are designed so they can can be imported into an application's tests
+        and ran to ensure customization of KegAuth hasn't broken basic functionality.
+
+        TODO: the messages we test for need to be configurable on the class in case the app
+        customizes then.
+    """
     login_url = '/login'
     protected_url = '/secret1'
-    reset_password_url = '/reset-password'
+    forgot_password_url = '/forgot-password'
 
     def setup(self):
         self.user_ent.delete_cascaded()
@@ -108,27 +115,27 @@ class AuthTests:
         # Now that we have logged in, we should be able to get to the page.
         client.get(self.protected_url, status=200)
 
-    def test_reset_pw_form_error(self):
+    def test_forgot_pw_form_error(self):
         client = flask_webtest.TestApp(flask.current_app)
-        resp = client.get(self.reset_password_url)
+        resp = client.get(self.forgot_password_url)
         resp = resp.form.submit(status=200)
 
         assert resp.flashes == [('error', 'The form has errors, please see below.')]
 
-    def test_reset_pw_invalid_user(self):
+    def test_forgot_pw_invalid_user(self):
         client = flask_webtest.TestApp(flask.current_app)
-        resp = client.get(self.reset_password_url)
+        resp = client.get(self.forgot_password_url)
 
         resp.form['email'] = 'foo@bar.com'
         resp = resp.form.submit(status=200)
 
         assert resp.flashes == [('error', 'No user account matches: foo@bar.com')]
 
-    def test_reset_pw_user_disabled(self):
+    def test_forgot_pw_user_disabled(self):
         self.user_ent.testing_create(email='foo@bar.com', password='pass', is_enabled=False)
 
         client = flask_webtest.TestApp(flask.current_app)
-        resp = client.get(self.reset_password_url)
+        resp = client.get(self.forgot_password_url)
 
         resp.form['email'] = 'foo@bar.com'
         resp = resp.form.submit(status=200)
@@ -138,11 +145,11 @@ class AuthTests:
 
         assert resp.flashes == [('error', msg)]
 
-    def test_reset_pw_success(self):
+    def test_forgot_pw_success(self):
         self.user_ent.testing_create(email='foo@bar.com')
 
         client = flask_webtest.TestApp(flask.current_app)
-        resp = client.get(self.reset_password_url)
+        resp = client.get(self.forgot_password_url)
 
         resp.form['email'] = 'foo@bar.com'
         resp = resp.form.submit(status=302)

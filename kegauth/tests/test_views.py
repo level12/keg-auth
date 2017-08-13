@@ -1,6 +1,7 @@
 import flask
 import flask_webtest
 from kegauth.testing import AuthTests
+import mock
 
 from kegauth_ta.model import entities as ents
 
@@ -10,6 +11,11 @@ class TestAuthIntegration(AuthTests):
 
 
 class TestViews:
+    """
+        Basic functionality is tested through AuthTests.  The tests in this class cover
+        functionality that is specific to the default implementation but might fail depending on
+        what customization is made.
+    """
 
     @classmethod
     def setup_class(cls):
@@ -46,13 +52,24 @@ class TestViews:
         assert doc('h1').text() == 'Log In'
         assert doc('button').text() == 'Log In'
         assert doc('a').text() == 'I forgot my password'
-        assert doc('a').attr('href') == '/reset-password'
+        assert doc('a').attr('href') == '/forgot-password'
 
-    def test_reset_template(self):
-        resp = self.ta.get('/reset-password')
+    def test_forgot_pw_template(self):
+        resp = self.ta.get('/forgot-password')
         doc = resp.pyquery
-        assert doc('title').text() == 'Reset Password | Keg Auth Demo'
-        assert doc('h1').text() == 'Reset Password'
-        assert doc('button').text() == 'Reset Password'
+        assert doc('title').text() == 'Initiate Password Reset | Keg Auth Demo'
+        assert doc('h1').text() == 'Initiate Password Reset'
+        assert doc('button').text() == 'Send Reset Email'
         assert doc('a').text() == 'Cancel'
         assert doc('a').attr('href') == '/login'
+
+    @mock.patch('kegauth.views.flask.current_app.auth_mail_manager.send_reset_password',
+                autospec=True, spec_set=True)
+    def test_reset_email(self, m_send_reset_password):
+        user = ents.User.testing_create(email='foo@bar.com')
+
+        resp = self.ta.get('/forgot-password')
+        resp.form['email'] = 'foo@bar.com'
+        resp = resp.form.submit(status=302)
+
+        m_send_reset_password.assert_called_once_with(user)
