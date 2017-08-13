@@ -35,6 +35,5 @@
 - UserMixin should be generated from a function?
 - 2FA
 - text message to reset password link
-- maybe "kegauth" in templates should be "auth_manager" instead since that is what we use i.e.
-  app.auth_manager
-- invalidate an existing token if the user logs in
+- invalidate an existing token if the user logs in?
+- csrf cleanup should go in keg_elements?

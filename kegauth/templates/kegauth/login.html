@@ -3,5 +3,5 @@
 
 {% block form %}
 {{ horizontal.form(form, action_text=page_title) }}
-<p><a href="{{kegauth.url_for('forgot-password')}}">I forgot my password</a>.</p>
+<p><a href="{{auth_manager.url_for('forgot-password')}}">I forgot my password</a>.</p>
 {% endblock %}

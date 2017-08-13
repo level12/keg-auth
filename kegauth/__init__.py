@@ -51,10 +51,11 @@ class AuthManager(object):
         loader = jinja2.ChoiceLoader([
             app.jinja_loader,
             jinja2.PackageLoader('kegauth', 'templates'),
+            # Get access to form generation templates from Keg Elements.
             jinja2.PackageLoader('keg_elements', 'templates'),
         ])
         app.jinja_loader = loader
-        app.context_processor(lambda: {'kegauth': self})
+        app.context_processor(lambda: {'auth_manager': self})
 
     def init_managers(self, app):
         app.auth_manager = self
