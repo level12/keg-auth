@@ -16,9 +16,14 @@
 - bcrypt probably doesn't need to be a hardcoded setup.py requirement
 - have another test in tox to run with default crypto to make sure it's setup and working
   correctly for our non-test defaults
-- test next value put into form
+- test Login form next redirection, make sure it's secure
 - Flask login has some options when logging a user in for "remember" and "fresh" should we use them?
 - Flask login has some enhanced security for preventing session hijacking, use it?
 - document testing and development
 - CI should test PostgreSQL instead of SQLite?
-- cli command to add user
+- cli command to add user, how does this integrate as an extension?
+- email support
+- invalid data in the password field will throw an exception.  Catch this?
+- why do the form fields show up not as indented as paragraph and headings?
+- Should AuthFormView be a mixin?
+- Render all messages from templates so language can be easily overridden without subclassing?

@@ -8,7 +8,7 @@ from wtforms.fields import (
 from wtforms import validators
 
 
-class LoginForm(Form):
+class Login(Form):
     next = HiddenField()
 
     email = StringField(u'Email', validators=[
@@ -17,4 +17,11 @@ class LoginForm(Form):
     ])
     password = PasswordField('Password', validators=[
         validators.DataRequired(),
+    ])
+
+
+class ResetPassword(Form):
+    email = StringField(u'Email', validators=[
+        validators.DataRequired(),
+        validators.Email(),
     ])

@@ -1,0 +1,8 @@
+{% extends config.get('BASE_TEMPLATE') or config['KEGAUTH_BASE_TEMPLATE'] %}
+
+{% block title %}{{ page_title }} | {{ super() }}{% endblock %}
+
+{% block page_content %}
+<h1>{{ page_heading }}</h1>
+{% block form %}{% endblock %}
+{% endblock %}

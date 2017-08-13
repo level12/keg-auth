@@ -16,48 +16,43 @@ class AuthBaseView(keg.web.BaseView):
         flask.abort(redirect_resp)
 
 
-class LoginBase(keg.web.BaseView):
-    url = '/login'
-    template_name = 'kegauth/login.html'
-    form_cls = forms.LoginForm
+class AuthFormView(keg.web.BaseView):
     flash_form_error = 'The form has errors, please see below.', 'error'
-    flash_success = 'Login successful.', 'success'
-    flash_invalid_password = 'Invalid password.', 'error'
     flash_invalid_user = 'No user account matches: {}', 'error'
-    flash_unverified_user = 'The user account "{}" has an unverified email addres.  Please check' \
-        ' your email for a verification link from this website.  Or, use the "forgot' \
-        ' password" link to verify the account.', 'error'
     flash_disabled_user = 'The user account "{}" has been disabled.  Please contact this' \
         ' site\'s administrators for more information.', 'error'
 
+    @property
+    def form_action_text(self):
+        return self.page_title
+
+    @property
+    def page_heading(self):
+        return self.page_title
+
     def get(self):
         form = self.make_form()
-        self.assign('form', form)
+        self.assign_template_vars(form)
 
     def post(self):
         form = self.make_form()
         if form.validate():
-            try:
-                user = self.get_user(form)
-                if not user.is_active:
-                    self.on_inactive_user(user)
-                elif not self.verify_password(user, form):
-                    self.on_invalid_password()
-                else:
-                    # User is active and password is verified
-                    return self.on_success(user)
-            except orm_exc.NoResultFound:
-                self.on_invalid_user(form)
+            resp = self.on_form_valid(form)
+            if resp is not None:
+                return resp
         else:
             self.on_form_error(form)
 
+        self.assign_template_vars(form)
+
+    def assign_template_vars(self, form):
         self.assign('form', form)
+        self.assign('form_action_text', self.form_action_text)
+        self.assign('page_title', self.page_title)
+        self.assign('page_heading', self.page_heading)
 
     def make_form(self):
         return self.form_cls()
-
-    def verify_password(self, user, form):
-        return user.password == form.password.data
 
     def get_user(self, form):
         email = form.email.data
@@ -67,6 +62,46 @@ class LoginBase(keg.web.BaseView):
     def on_form_error(self, form):
         flask.flash(*self.flash_form_error)
 
+    def on_invalid_user(self, form):
+        message, category = self.flash_invalid_user
+        email = form.email.data
+        flask.flash(message.format(email), category)
+
+    def verify_user_enabled(self, user):
+        if not user.is_enabled:
+            message, category = self.flash_disabled_user
+            flask.flash(message.format(user.email), category)
+            return False
+        return True
+
+
+class Login(AuthFormView):
+    url = '/login'
+    template_name = 'kegauth/login.html'
+    form_cls = forms.Login
+    page_title = 'Log In'
+    flash_success = 'Login successful.', 'success'
+    flash_invalid_password = 'Invalid password.', 'error'
+    flash_unverified_user = 'The user account "{}" has an unverified email addres.  Please check' \
+        ' your email for a verification link from this website.  Or, use the "forgot' \
+        ' password" link to verify the account.', 'error'
+
+    def on_form_valid(self, form):
+        try:
+            user = self.get_user(form)
+            if not user.is_active:
+                self.on_inactive_user(user)
+            elif not self.verify_password(user, form):
+                self.on_invalid_password()
+            else:
+                # User is active and password is verified
+                return self.on_success(user)
+        except orm_exc.NoResultFound:
+            self.on_invalid_user(form)
+
+    def verify_password(self, user, form):
+        return user.password == form.password.data
+
     def on_invalid_password(self):
         flask.flash(*self.flash_invalid_password)
 
@@ -74,14 +109,7 @@ class LoginBase(keg.web.BaseView):
         if not user.is_verified:
             message, category = self.flash_unverified_user
             flask.flash(message.format(user.email), category)
-        if not user.is_enabled:
-            message, category = self.flash_disabled_user
-            flask.flash(message.format(user.email), category)
-
-    def on_invalid_user(self, form):
-        message, category = self.flash_invalid_user
-        email = form.email.data
-        flask.flash(message.format(email), category)
+        self.verify_user_enabled(user)
 
     def on_success(self, user):
         flask_login.login_user(user)
@@ -90,10 +118,38 @@ class LoginBase(keg.web.BaseView):
         return flask.redirect(redirect_to)
 
 
-def make_blueprint(import_name, bp_name='auth', login_cls=LoginBase):
+class ResetPassword(AuthFormView):
+    url = '/reset-password'
+    form_cls = forms.ResetPassword
+    page_title = 'Reset Password'
+    template_name = 'kegauth/reset-password.html'
+    flash_success = 'Please check your email for the link to change your password.', 'success'
+
+    def on_form_valid(self, form):
+        try:
+            user = self.get_user(form)
+            if self.verify_user_enabled(user):
+                # User is active, take action to reset password
+                return self.on_success(user)
+        except orm_exc.NoResultFound:
+            self.on_invalid_user(form)
+
+    def on_success(self, user):
+        flask.flash(*self.flash_success)
+        redirect_to = flask.current_app.auth_manager.url_for('after-reset')
+        return flask.redirect(redirect_to)
+
+
+def make_blueprint(import_name, bp_name='auth', login_cls=Login, reset_pw_cls=ResetPassword):
     _blueprint = flask.Blueprint(bp_name, import_name)
 
+    # It's not ideal we have to redefine the classes, but it's needed because of how
+    # Keg.web.BaseView does it's meta programming.  If we don't redefine the class, then
+    # the view doesn't actually get created on blueprint.
     class Login(login_cls):
+        blueprint = _blueprint
+
+    class ResetPassword(reset_pw_cls):
         blueprint = _blueprint
 
     return _blueprint

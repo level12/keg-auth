@@ -46,6 +46,7 @@ setup(
         'test': [
             'flake8',
             'flask-webtest',
+            'pyquery',
             'pytest',
             'pytest-cov',
             'tox',

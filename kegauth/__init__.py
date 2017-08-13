@@ -6,9 +6,10 @@ import jinja2
 
 class AuthManager(object):
     endpoints = {
-        'forgot-password': '{blueprint}.forgot-password',
+        'reset-password': '{blueprint}.reset-password',
         'login': '{blueprint}.login',
         'after-login': '{blueprint}.after-login',
+        'after-reset': '{blueprint}.login',
     }
 
     def __init__(self, blueprint='auth', user_entity='User', endpoints=None):
