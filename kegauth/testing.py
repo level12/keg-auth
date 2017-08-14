@@ -13,6 +13,7 @@ class AuthTests:
     login_url = '/login'
     protected_url = '/secret1'
     forgot_password_url = '/forgot-password'
+    reset_password_url = '/reset-password'
 
     def setup(self):
         self.user_ent.delete_cascaded()
@@ -159,4 +160,52 @@ class AuthTests:
         assert resp.flashes == [('success', msg)]
 
         full_login_url = 'http://keg.example.com{}'.format(self.login_url)
+        assert resp.headers['Location'] == full_login_url
+
+    def test_reset_pw_success(self):
+        user = self.user_ent.testing_create()
+        token = user.token_generate()
+        url = '/{}/{}/{}'.format(self.reset_password_url, user.id, token)
+
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get(url, status=200)
+
+        resp.form['password'] = 'foo'
+        resp.form['confirm'] = 'foo'
+        resp = resp.form.submit(status=302)
+
+        msg = 'Password changed.  Please use the new password to login below.'
+        assert resp.flashes == [('success', msg)]
+
+        full_login_url = 'http://keg.example.com{}'.format(self.login_url)
+        assert resp.headers['Location'] == full_login_url
+
+    def test_reset_pw_form_error(self):
+        user = self.user_ent.testing_create()
+        token = user.token_generate()
+        url = '/{}/{}/{}'.format(self.reset_password_url, user.id, token)
+
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get(url, status=200)
+        resp = resp.form.submit(status=200)
+
+        assert resp.flashes == [('error', 'The form has errors, please see below.')]
+
+    def test_reset_pw_missing_user(self):
+        url = '/{}/99999999/123'.format(self.reset_password_url)
+
+        client = flask_webtest.TestApp(flask.current_app)
+        client.get(url, status=404)
+
+    def test_reset_pw_bad_token(self):
+        user = self.user_ent.testing_create()
+        url = '/{}/{}/abc'.format(self.reset_password_url, user.id)
+
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get(url, status=302)
+
+        msg = 'Password reset token was invalid or expired.  Please try again.'
+        assert resp.flashes == [('error', msg)]
+
+        full_login_url = 'http://keg.example.com{}'.format(self.forgot_password_url)
         assert resp.headers['Location'] == full_login_url

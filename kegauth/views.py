@@ -1,5 +1,6 @@
 import flask
 import flask_login
+from keg.db import db
 import keg.web
 import sqlalchemy.orm.exc as orm_exc
 
@@ -34,10 +35,15 @@ class AuthFormView(keg.web.BaseView):
         form = self.make_form()
         self.assign_template_vars(form)
 
-    def post(self):
+    def post(self, user=None, token=None):
         form = self.make_form()
         if form.validate():
-            resp = self.on_form_valid(form)
+            kwargs = {}
+            if user:
+                kwargs['user'] = user
+            if token:
+                kwargs['token'] = token
+            resp = self.on_form_valid(form, **kwargs)
             if resp is not None:
                 return resp
         else:
@@ -73,6 +79,11 @@ class AuthFormView(keg.web.BaseView):
             flask.flash(message.format(user.email), category)
             return False
         return True
+
+    def flash_and_redirect(self, flash_parts, auth_ident):
+        flask.flash(*flash_parts)
+        redirect_to = flask.current_app.auth_manager.url_for(auth_ident)
+        flask.abort(flask.redirect(redirect_to))
 
 
 class Login(AuthFormView):
@@ -147,7 +158,35 @@ class ForgotPassword(AuthFormView):
 
 class ResetPassword(AuthFormView):
     url = '/reset-password/<int:user_id>/<token>'
+    form_cls = forms.ResetPassword
+    page_title = 'Complete Password Reset'
+    template_name = 'kegauth/reset-password.html'
+    flash_success = 'Password changed.  Please use the new password to login below.', 'success'
+    flash_invalid_token = 'Password reset token was invalid or expired.  Please try again.', 'error'
 
+    def user_loader(self, user_id):
+        user_ent = flask.current_app.auth_manager.get_user_entity()
+        return user_ent.query.get(user_id)
+
+    def pre_method(self, user, token):
+        if not user.token_verify(token):
+            resp = self.on_invalid_token()
+            # In case on_invalid_token() is replaced and it accidently fails to return a value
+            # make sure we change that to a generic 400.
+            flask.abort(resp or 400)
+
+    def on_form_valid(self, form, user=None, token=None):
+        assert user is not None
+        assert token is not None
+        return self.on_success(form, user, token)
+
+    def on_success(self, form, user, token):
+        new_password = form.password.data
+        user.change_password(token, new_password)
+        self.flash_and_redirect(self.flash_success, 'after-reset')
+
+    def on_invalid_token(self):
+        self.flash_and_redirect(self.flash_invalid_token, 'forgot-password')
 
 
 def make_blueprint(import_name, bp_name='auth', login_cls=Login, forgot_cls=ForgotPassword,

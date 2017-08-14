@@ -1,6 +1,7 @@
 import arrow
 from blazeutils.strings import randchars
 import flask
+from keg_elements.db.mixins import might_commit
 import shortuuid
 import sqlalchemy as sa
 import sqlalchemy.sql as sa_sql
@@ -68,6 +69,7 @@ class UserMixin:
 
         return self.token == token
 
+    @might_commit
     def token_generate(self):
         token = shortuuid.uuid()
         self.token = token
@@ -79,6 +81,7 @@ class UserMixin:
 
         return token
 
+    @might_commit
     def change_password(self, token, new_password):
         # May want to throw a custom exception here eventually.  Right now, assume calling code
         # will have verified the token before calling change_password()

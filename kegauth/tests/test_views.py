@@ -1,5 +1,6 @@
 import flask
 import flask_webtest
+from keg.db import db
 from kegauth.testing import AuthTests
 import mock
 
@@ -65,11 +66,30 @@ class TestViews:
 
     @mock.patch('kegauth.views.flask.current_app.auth_mail_manager.send_reset_password',
                 autospec=True, spec_set=True)
-    def test_reset_email(self, m_send_reset_password):
+    def test_forget_pw_actions(self, m_send_reset_password):
         user = ents.User.testing_create(email='foo@bar.com')
 
         resp = self.ta.get('/forgot-password')
         resp.form['email'] = 'foo@bar.com'
         resp = resp.form.submit(status=302)
 
+        # email should be sent
         m_send_reset_password.assert_called_once_with(user)
+
+        # Make sure db updates got committed
+        db.session.expire(user)
+        assert user.token is not None
+        assert user.token_created_utc is not None
+
+    def test_reset_pw_actions(self):
+        user = ents.User.testing_create()
+        token = user.token_generate()
+
+        resp = self.ta.get('/reset-password/{}/{}'.format(user.id, token))
+        resp.form['password'] = resp.form['confirm'] = 'foobar'
+        resp = resp.form.submit(status=302)
+
+        # Make sure db updates got committed
+        db.session.expire(user)
+        assert user.token is None
+        assert user.password == 'foobar'
