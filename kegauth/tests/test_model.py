@@ -45,12 +45,16 @@ class TestUser:
         assert ents.User.query.filter_by(email='2', is_active=True).one()
         assert ents.User.query.filter_by(email='3', is_active=False).one()
 
+    def test_token_validation_null_fields(self):
+        # Make sure verification doesn't fail when both token related fields are NULL.
+        user = ents.User.add(email='f', password='p')
+        assert not user.token_verify('foo')
+
     def test_token_validation(self):
-        user = ents.User.testing_create()
+        user = ents.User.testing_create(token_created_utc=None)
 
         assert user.token is None
         assert not user.token_verify(None)
-        assert not user.token_verify('foo')
 
         token = user.token_generate()
         assert token

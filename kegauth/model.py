@@ -57,7 +57,7 @@ class UserMixin:
 
     def token_verify(self, token):
         # If a token isn't set, it's can't be verified.
-        if token is None:
+        if token is None or self.token is None or self.token_created_utc is None:
             return False
 
         # The token is invalid if it has expired.
