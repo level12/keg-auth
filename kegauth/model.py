@@ -19,7 +19,7 @@ def _create_cryptcontext_kwargs(**column_kwargs):
     return retval
 
 
-class UserMixin:
+class UserMixin(object):
     # These two fields are needed by Flask-Login.
     is_anonymous = False
     is_authenticated = True

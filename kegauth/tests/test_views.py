@@ -1,3 +1,6 @@
+# Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
+from __future__ import unicode_literals
+
 import flask
 import flask_webtest
 from keg.db import db
@@ -11,7 +14,7 @@ class TestAuthIntegration(AuthTests):
     user_ent = ents.User
 
 
-class TestViews:
+class TestViews(object):
     """
         Basic functionality is tested through AuthTests.  The tests in this class cover
         functionality that is specific to the default implementation but might fail depending on

@@ -1,8 +1,11 @@
+# Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
+from __future__ import unicode_literals
+
 import flask
 import flask_webtest
 
 
-class AuthTests:
+class AuthTests(object):
     """
         These tests are designed so they can can be imported into an application's tests
         and ran to ensure customization of KegAuth hasn't broken basic functionality.

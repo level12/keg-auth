@@ -20,7 +20,7 @@ def mail_template(template_name_or_list, **kwargs):
     )
 
 
-class MailManager:
+class MailManager(object):
     reset_password_templates = ('mail/reset-password.j2', 'kegauth/reset-password-mail.j2')
 
     def __init__(self, mail_ext):

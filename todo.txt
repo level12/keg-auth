@@ -23,6 +23,7 @@ For Agari
 
 Backlog
 -------
+- use recreate in Keg?  Maybe in dev but not in CI?
 - review authbwc functionality and duplicate good parts
 - rate limiting and audit trail
 - test Login form next redirection, make sure it's secure

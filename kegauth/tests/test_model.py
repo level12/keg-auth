@@ -1,3 +1,6 @@
+# Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
+from __future__ import unicode_literals
+
 import arrow
 import flask
 from freezegun import freeze_time
@@ -5,7 +8,7 @@ from kegauth_ta.model import entities as ents
 import mock
 
 
-class TestUser:
+class TestUser(object):
     def setup(self):
         ents.User.delete_cascaded()
 

@@ -1,3 +1,6 @@
+# Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
+from __future__ import unicode_literals
+
 import flask
 from kegauth import mail
 import mock
@@ -6,7 +9,7 @@ from kegauth_ta.app import mail_ext
 from kegauth_ta.model import entities as ents
 
 
-class TestMailTemplate:
+class TestMailTemplate(object):
 
     def test_normal(self):
         email = mail.mail_template('email.j2', name='foo')
@@ -20,7 +23,7 @@ class TestMailTemplate:
         assert email.subject == 'Example Subject'
 
 
-class TestMailManager:
+class TestMailManager(object):
     @classmethod
     def setup_class(cls):
         cls.mb = mail.MailManager(mail_ext)

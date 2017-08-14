@@ -1,7 +1,7 @@
 from blazeutils.strings import randchars
 
 
-class DefaultProfile:
+class DefaultProfile(object):
     SECRET_KEY = randchars()
 
     # These three just get rid of warnings on the console.
@@ -13,7 +13,7 @@ class DefaultProfile:
     SITE_ABBR = 'KA Demo'
 
 
-class TestProfile:
+class TestProfile(object):
     # Make tests faster
     PASSLIB_CRYPTCONTEXT_KWARGS = dict(schemes=['plaintext'])
 

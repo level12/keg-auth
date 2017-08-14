@@ -3,3 +3,6 @@
 .tox
 .vscode
 tags
+/.coverage
+/coverage.xml
+.cache
