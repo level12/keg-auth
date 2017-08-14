@@ -7,7 +7,7 @@ import sqlalchemy.orm.exc as orm_exc
 from kegauth import forms
 
 
-class AuthBaseView(keg.web.BaseView):
+class AuthenticatedView(keg.web.BaseView):
     def check_auth(self):
         if not flask_login.current_user.is_authenticated:
             self.handle_unauthenticated()

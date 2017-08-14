@@ -3,7 +3,7 @@ import logging
 import flask
 import flask_login
 import keg.web
-from kegauth.views import AuthBaseView, make_blueprint
+from kegauth.views import AuthenticatedView, make_blueprint
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def secret1():
     return 'secret1'
 
 
-class Secret2(AuthBaseView):
+class Secret2(AuthenticatedView):
     blueprint = private_bp
 
     def get(self):
