@@ -6,3 +6,4 @@ tags
 /.coverage
 /coverage.xml
 .cache
+/kegauth_ta-config.py
