@@ -43,14 +43,13 @@ setup(
     # for example:
     # $ pip install -e .[dev,test]
     extras_require={
-        'dev': [
-            'flask-bootstrap'
-        ],
         'test': [
             'flake8',
             'flask-webtest',
+            'flask-bootstrap',
             'freezegun',
             'mock',
+            'psycopg2',
             'pyquery',
             'pytest',
             'pytest-cov',

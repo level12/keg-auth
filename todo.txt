@@ -18,6 +18,7 @@ For Agari
 - support password complexity?
 - Login page: redirect if user is logged in?
 - Add token expiration time to reset email.
+- Should we be using the check-manifest command in tox.ini?
 
 
 Backlog
