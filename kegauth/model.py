@@ -83,10 +83,15 @@ class UserMixin:
 
     @might_commit
     def change_password(self, token, new_password):
+        """
+            Change a password based on token authorization.
+        """
         # May want to throw a custom exception here eventually.  Right now, assume calling code
-        # will have verified the token before calling change_password()
+        # will have verified the token before calling change_password() to provide a better UX
+        # if the token is invalid.
         assert self.token_verify(token)
 
         self.token = None
+        self.token_created_utc = None
         self.password = new_password
-
+        self.is_verified = True

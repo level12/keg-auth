@@ -79,8 +79,9 @@ class TestUser:
                 assert not user.token_verify(token)
 
     def test_change_password(self):
-        user = ents.User.testing_create()
+        user = ents.User.testing_create(is_verified=False)
         token = user.token_generate()
         user.change_password(token, 'abc123')
         assert not user.token_verify(token)
         assert user.password == 'abc123'
+        assert user.is_verified
