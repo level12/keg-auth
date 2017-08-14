@@ -1,39 +1,61 @@
+Triage
+------
+
+Initial Release
+---------------
 - circleci
-- keg BaseView could have a .flashes() that saves flashes and makes them easier to work with
+- CI should test PostgreSQL instead of SQLite?
 - Document removal of cleanup function for: https://github.com/lepture/flask-wtf/issues/301
+- Need user CRUD workflow.
+  - When new user is created, we need them to verify their account.  This could be how we get
+  their password too, use a rebranded password view.
+
+
+For Agari
+---------
+- invalidate an existing token if the user logs in?
+- document testing and development options, readme
+- support password complexity?
+- Login page: redirect if user is logged in?
+- Add token expiration time to reset email.
+
+
+Backlog
+-------
+- review authbwc functionality and duplicate good parts
+- rate limiting and audit trail
+- test Login form next redirection, make sure it's secure
+- Flask login has some options when logging a user in for "remember" and "fresh" should we use them?
+- Flask login has some enhanced security for preventing session hijacking, use it?
+- cli command to add user, how does this integrate as an extension?
+- csrf cleanup should go in keg_elements?
+
+
+Icebox
+-------
+- keg BaseView could have a .flashes() that saves flashes and makes them easier to work with
 - keg BaseView could be reworked so that we don't need to subclass in make_blueprint()
-- how does keg BaseView let us add multiple entry points?
-- mimic authbwc functionality
+- how does keg BaseView let us add multiple entry points to a single view?
 - add signals
-- Evaluate risk of user enumeration:
+- Consider config setting to prevent user enumeration:
     - https://security.stackexchange.com/questions/158075/is-it-unsafe-to-show-message-that-username-account-does-not-exist-at-login
     - https://blog.codinghorror.com/the-god-login/
-- rate limiting
-- hashing password even for non-users
-- is_active needs to take into account email validation and disabled accounts
-- login by email
+    - hashing password even for non-users
+- login by email, send easy-login link like Slack
 - social account registration and login
 - bcrypt probably doesn't need to be a hardcoded setup.py requirement
 - have another test in tox to run with default crypto to make sure it's setup and working
   correctly for our non-test defaults
-- test Login form next redirection, make sure it's secure
-- Flask login has some options when logging a user in for "remember" and "fresh" should we use them?
-- Flask login has some enhanced security for preventing session hijacking, use it?
-- document testing and development
-- CI should test PostgreSQL instead of SQLite?
-- cli command to add user, how does this integrate as an extension?
-- email support
 - invalid data in the password field will throw an exception.  Catch this?
-- why do the form fields show up not as indented as paragraph and headings?
-- Should AuthFormView be a mixin?
-- Render all messages from templates so language can be easily overridden without subclassing?
-- At one point, I wanted to conditionally render templates but didn't want to figure out how to
-  do that.  Turns out `render_template()` will take a list of templates and render the first that
-  is found.
-- Force login after password change: enforce password just picked, give user explicit confirmation
-  that they are logged in.
+- bootstrap tamplate: why do the form fields show up not as indented as paragraph and headings?
+- Render all view messages from templates so language can be easily overridden without subclassing?
 - UserMixin should be generated from a function?
 - 2FA
 - text message to reset password link
-- invalidate an existing token if the user logs in?
-- csrf cleanup should go in keg_elements?
+- Where should reset-password.html cancel link go?  Is Login right?
+- forms aren't tested thoroughly/separately, e.g. field validations
+- When token is invalid, we redirect to forgot-password with a flash.  That's a little jaring from
+  a UX perspective.
+- If a token exists and is not expired, don't generate a new one, as a malicious user could keep
+  requesting token resets.  Maybe a mute point of we get rate limiting setup.
+
