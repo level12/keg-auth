@@ -2,7 +2,7 @@ import flask
 from kegauth import mail
 import mock
 
-from kegauth_ta.app import auth_manager, mail_ext
+from kegauth_ta.app import mail_ext
 from kegauth_ta.model import entities as ents
 
 

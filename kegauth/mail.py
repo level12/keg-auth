@@ -4,7 +4,6 @@ from blazeutils.strings import normalizews
 import CommonMark as commonmark
 import flask
 import flask_mail
-import markupsafe
 
 MailParts = namedtuple('MailParts', 'subject text html')
 

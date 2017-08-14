@@ -1,6 +1,5 @@
 import flask
 import flask_login
-from keg.db import db
 import keg.web
 import sqlalchemy.orm.exc as orm_exc
 

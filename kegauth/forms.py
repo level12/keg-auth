@@ -1,6 +1,5 @@
-from keg_elements.forms import Form, form_validator
+from keg_elements.forms import Form
 from wtforms.fields import (
-    BooleanField,
     HiddenField,
     PasswordField,
     StringField,
