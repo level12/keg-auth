@@ -2,7 +2,7 @@ version: 2
 jobs:
     build:
         docker:
-            - image: circleci/python:3.5
+            - image: level12/python-test-multi
             - image: postgres:9.6
               environment:
                   POSTGRES_USER: postgres
@@ -22,8 +22,8 @@ jobs:
                 name: version checks
                 command: |
                     python --version
-                    python -m pip --version
-                    python -m virtualenv --version
+                    pip --version
+                    virtualenv --version
                     tox --version
 
             - run:

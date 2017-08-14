@@ -3,13 +3,11 @@ Triage
 
 Initial Release
 ---------------
-- circleci
-- CI should test PostgreSQL instead of SQLite?
 - Document removal of cleanup function for: https://github.com/lepture/flask-wtf/issues/301
 - Need user CRUD workflow.
   - When new user is created, we need them to verify their account.  This could be how we get
   their password too, use a rebranded password view.
-
+- circle.yml version checks aren't working as expected
 
 For Agari
 ---------
