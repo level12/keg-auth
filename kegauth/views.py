@@ -17,7 +17,15 @@ class AuthBaseView(keg.web.BaseView):
         flask.abort(redirect_resp)
 
 
-class AuthFormView(keg.web.BaseView):
+class _BaseView(keg.web.BaseView):
+
+    def flash_and_redirect(self, flash_parts, auth_ident):
+        flask.flash(*flash_parts)
+        redirect_to = flask.current_app.auth_manager.url_for(auth_ident)
+        flask.abort(flask.redirect(redirect_to))
+
+
+class AuthFormView(_BaseView):
     flash_form_error = 'The form has errors, please see below.', 'error'
     flash_invalid_user = 'No user account matches: {}', 'error'
     flash_disabled_user = 'The user account "{}" has been disabled.  Please contact this' \
@@ -79,11 +87,6 @@ class AuthFormView(keg.web.BaseView):
             flask.flash(message.format(user.email), category)
             return False
         return True
-
-    def flash_and_redirect(self, flash_parts, auth_ident):
-        flask.flash(*flash_parts)
-        redirect_to = flask.current_app.auth_manager.url_for(auth_ident)
-        flask.abort(flask.redirect(redirect_to))
 
 
 class Login(AuthFormView):
@@ -189,8 +192,17 @@ class ResetPassword(AuthFormView):
         self.flash_and_redirect(self.flash_invalid_token, 'forgot-password')
 
 
+class Logout(_BaseView):
+    url = '/logout'
+    flash_success = 'You have been logged out.', 'success'
+
+    def get(self):
+        flask_login.logout_user()
+        self.flash_and_redirect(self.flash_success, 'after-logout')
+
+
 def make_blueprint(import_name, bp_name='auth', login_cls=Login, forgot_cls=ForgotPassword,
-                   reset_cls=ResetPassword):
+                   reset_cls=ResetPassword, logout_cls=Logout):
 
     _blueprint = flask.Blueprint(bp_name, import_name)
 
@@ -204,6 +216,9 @@ def make_blueprint(import_name, bp_name='auth', login_cls=Login, forgot_cls=Forg
         blueprint = _blueprint
 
     class ResetPassword(reset_cls):
+        blueprint = _blueprint
+
+    class Logout(logout_cls):
         blueprint = _blueprint
 
     return _blueprint

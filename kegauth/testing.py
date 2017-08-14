@@ -8,12 +8,14 @@ class AuthTests:
         and ran to ensure customization of KegAuth hasn't broken basic functionality.
 
         TODO: the messages we test for need to be configurable on the class in case the app
-        customizes then.
+        customizes then.  Ditto some of the redirect logic.
     """
     login_url = '/login'
     protected_url = '/secret1'
     forgot_password_url = '/forgot-password'
     reset_password_url = '/reset-password'
+    logout_url = '/logout'
+    after_logout_url = '/login'
 
     def setup(self):
         self.user_ent.delete_cascaded()
@@ -183,7 +185,7 @@ class AuthTests:
     def test_reset_pw_form_error(self):
         user = self.user_ent.testing_create()
         token = user.token_generate()
-        url = '/{}/{}/{}'.format(self.reset_password_url, user.id, token)
+        url = '{}/{}/{}'.format(self.reset_password_url, user.id, token)
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(url, status=200)
@@ -192,14 +194,14 @@ class AuthTests:
         assert resp.flashes == [('error', 'The form has errors, please see below.')]
 
     def test_reset_pw_missing_user(self):
-        url = '/{}/99999999/123'.format(self.reset_password_url)
+        url = '{}/99999999/123'.format(self.reset_password_url)
 
         client = flask_webtest.TestApp(flask.current_app)
         client.get(url, status=404)
 
     def test_reset_pw_bad_token(self):
         user = self.user_ent.testing_create()
-        url = '/{}/{}/abc'.format(self.reset_password_url, user.id)
+        url = '{}/{}/abc'.format(self.reset_password_url, user.id)
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(url, status=302)
@@ -209,3 +211,23 @@ class AuthTests:
 
         full_login_url = 'http://keg.example.com{}'.format(self.forgot_password_url)
         assert resp.headers['Location'] == full_login_url
+
+    def test_logout(self):
+        user = self.user_ent.testing_create()
+        client = flask_webtest.TestApp(flask.current_app)
+        with client.session_transaction() as sess:
+            sess['user_id'] = user.id
+
+        # Make sure our client is actually logged in
+        client.get(self.protected_url, status=200)
+
+        # logout
+        resp = client.get(self.logout_url, status=302)
+        assert resp.flashes == [('success', 'You have been logged out.')]
+
+        # Check redirect location
+        full_login_url = 'http://keg.example.com{}'.format(self.after_logout_url)
+        assert resp.headers['Location'] == full_login_url
+
+        # Confirm logout occured
+        client.get(self.protected_url, status=302)

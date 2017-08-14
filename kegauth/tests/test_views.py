@@ -18,17 +18,23 @@ class TestViews:
         what customization is made.
     """
 
-    @classmethod
-    def setup_class(cls):
-        cls.ta = flask_webtest.TestApp(flask.current_app)
-
     def setup(self):
         ents.User.delete_cascaded()
 
     def test_home(self):
-        resp = self.ta.get('/')
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('/')
         assert 'Keg Auth Demo' in resp
         assert '/login' in resp
+        assert '/logout' not in resp
+
+        user = ents.User.testing_create()
+        with client.session_transaction() as sess:
+            sess['user_id'] = user.id
+
+        resp = client.get('/')
+        assert '/login' not in resp
+        assert '/logout' in resp
 
     def test_auth_base_view(self):
         ents.User.testing_create(email='foo@bar.com', password='pass')
@@ -47,7 +53,8 @@ class TestViews:
         assert resp.text == 'secret2'
 
     def test_login_template(self):
-        resp = self.ta.get('/login')
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('/login')
         doc = resp.pyquery
         assert doc('title').text() == 'Log In | Keg Auth Demo'
         assert doc('h1').text() == 'Log In'
@@ -56,7 +63,8 @@ class TestViews:
         assert doc('a').attr('href') == '/forgot-password'
 
     def test_forgot_pw_template(self):
-        resp = self.ta.get('/forgot-password')
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('/forgot-password')
         doc = resp.pyquery
         assert doc('title').text() == 'Initiate Password Reset | Keg Auth Demo'
         assert doc('h1').text() == 'Initiate Password Reset'
@@ -69,7 +77,8 @@ class TestViews:
     def test_forget_pw_actions(self, m_send_reset_password):
         user = ents.User.testing_create(email='foo@bar.com')
 
-        resp = self.ta.get('/forgot-password')
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('/forgot-password')
         resp.form['email'] = 'foo@bar.com'
         resp = resp.form.submit(status=302)
 
@@ -85,7 +94,8 @@ class TestViews:
         user = ents.User.testing_create()
         token = user.token_generate()
 
-        resp = self.ta.get('/reset-password/{}/{}'.format(user.id, token))
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('/reset-password/{}/{}'.format(user.id, token))
         resp.form['password'] = resp.form['confirm'] = 'foobar'
         resp = resp.form.submit(status=302)
 

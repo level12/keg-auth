@@ -12,7 +12,9 @@ class AuthManager(object):
         'reset-password': '{blueprint}.reset-password',
         'change-password': '{blueprint}.change-password',
         'login': '{blueprint}.login',
+        'logout': '{blueprint}.logout',
         'after-login': '{blueprint}.after-login',
+        'after-logout': '{blueprint}.login',
         'after-forgot': '{blueprint}.login',
         'after-reset': '{blueprint}.login',
     }
