@@ -18,3 +18,7 @@ class TestProfile(object):
     PASSLIB_CRYPTCONTEXT_KWARGS = dict(schemes=['plaintext'])
 
     MAIL_DEFAULT_SENDER = 'sender@example.com'
+
+    # These settings reflect what is needed in CI.  For local development, use
+    # kegauth_ta-config.py to override.
+    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:password@localhost/postgres'

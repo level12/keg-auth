@@ -1,0 +1,38 @@
+version: 2
+jobs:
+    build:
+        docker:
+            - image: circleci/python:3.5
+            - image: postgres:9.6
+              environment:
+                  POSTGRES_USER: postgres
+                  POSTGRES_PASSWORD: password
+        steps:
+            - checkout
+
+            - run:
+                name: folder listing for debugging
+                command: ls -al
+
+            - run:
+                name: install tox
+                command: sudo pip install tox
+
+            - run:
+                name: version checks
+                command: |
+                    python --version
+                    python -m pip --version
+                    python -m virtualenv --version
+                    tox --version
+
+            - run:
+                name: run tox
+                command: tox
+
+            - store_test_results:
+                path: .circleci/test-reports/
+
+            - run:
+                name: push code coverage
+                command: bash <(curl -s https://codecov.io/bash) -X coveragepy -t 949f0bab-d58d-4b87-b398-6d0851c8814f
