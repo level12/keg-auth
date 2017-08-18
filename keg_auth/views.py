@@ -90,7 +90,7 @@ class AuthFormView(_BaseView):
 
 class Login(AuthFormView):
     url = '/login'
-    template_name = 'kegauth/login.html'
+    template_name = 'keg_auth/login.html'
     form_cls = forms.Login
     page_title = 'Log In'
     flash_success = 'Login successful.', 'success'
@@ -135,7 +135,7 @@ class ForgotPassword(AuthFormView):
     url = '/forgot-password'
     form_cls = forms.ForgotPassword
     page_title = 'Initiate Password Reset'
-    template_name = 'kegauth/forgot-password.html'
+    template_name = 'keg_auth/forgot-password.html'
     flash_success = 'Please check your email for the link to change your password.', 'success'
 
     def on_form_valid(self, form):
@@ -160,7 +160,7 @@ class ForgotPassword(AuthFormView):
 
 class SetPasswordBaseView(AuthFormView):
     form_cls = forms.SetPassword
-    template_name = 'kegauth/set-password.html'
+    template_name = 'keg_auth/set-password.html'
     flash_invalid_token = 'Authentication token was invalid or expired.  Please fill out the' \
         ' form below to get a new token.', 'error'
 
