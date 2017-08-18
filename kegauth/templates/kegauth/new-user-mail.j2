@@ -1,0 +1,15 @@
+{% extends 'kegauth/multi-part-mail.j2' %}
+
+{% block subject %}
+    User Welcome & Verification
+{% endblock %}
+
+{% block markdown %}
+
+A user account has been created for you on {{ config.KEGAUTH_EMAIL_SITE_NAME }}.
+
+Please use the following link to verify your email address and set a password:
+
+<{{ auth_manager.url_for('verify-account', user_id=user.id, token=user._token_plain, _external=True) }}>
+
+{% endblock %}

@@ -22,6 +22,7 @@ def mail_template(template_name_or_list, **kwargs):
 
 class MailManager(object):
     reset_password_templates = ('mail/reset-password.j2', 'kegauth/reset-password-mail.j2')
+    new_user_templates = ('mail/new-user.j2', 'kegauth/new-user-mail.j2')
 
     def __init__(self, mail_ext):
         self.mail_ext = mail_ext
@@ -33,4 +34,13 @@ class MailManager(object):
 
     def send_reset_password(self, user):
         msg = self.reset_password_message(user)
+        self.mail_ext.send(msg)
+
+    def new_user_message(self, user):
+        parts = mail_template(self.new_user_templates, user=user)
+
+        return flask_mail.Message(parts.subject, [user.email], parts.text, parts.html)
+
+    def send_new_user(self, user):
+        msg = self.new_user_message(user)
         self.mail_ext.send(msg)

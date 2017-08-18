@@ -26,7 +26,7 @@ class ForgotPassword(Form):
     ])
 
 
-class ResetPassword(Form):
+class SetPassword(Form):
     password = PasswordField('New Password', validators=[
         validators.DataRequired(),
         validators.EqualTo('confirm', message='Passwords must match')

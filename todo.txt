@@ -1,13 +1,13 @@
 Triage
 ------
+- Send email when password or email is changed
+
 
 Initial Release
 ---------------
-- Document removal of cleanup function for: https://github.com/lepture/flask-wtf/issues/301
-- Need user CRUD workflow.
-  - When new user is created, we need them to verify their account.  This could be how we get
-  their password too, use a rebranded password view.
+- Need user CRUD.
 - circle.yml version checks aren't working as expected
+- remove CSRF cleanup which is in Keg now
 
 For Agari
 ---------
@@ -21,6 +21,10 @@ For Agari
 
 Backlog
 -------
+- Create user CLI needs to handle errors
+- Is there some confusion in the extension about whether or not KegAuth is application specific or
+  application neutral?  We store stuff on self, specific to the app's configuration, but then use
+  flask.current_app in some of the methods.
 - use recreate in Keg?  Maybe in dev but not in CI?
 - review authbwc functionality and duplicate good parts
 - rate limiting and audit trail
@@ -33,9 +37,7 @@ Backlog
 
 Icebox
 -------
-- keg BaseView could have a .flashes() that saves flashes and makes them easier to work with
-- keg BaseView could be reworked so that we don't need to subclass in make_blueprint()
-- how does keg BaseView let us add multiple entry points to a single view?
+- Email or password change done by user should be authorized through the token system.
 - add signals
 - Consider config setting to prevent user enumeration:
     - https://security.stackexchange.com/questions/158075/is-it-unsafe-to-show-message-that-username-account-does-not-exist-at-login
@@ -58,4 +60,6 @@ Icebox
   a UX perspective.
 - If a token exists and is not expired, don't generate a new one, as a malicious user could keep
   requesting token resets.  Maybe a mute point of we get rate limiting setup.
-
+- use CircleCI "workflows" for parallel testing of different python versions
+- find a "common passwords" library and make sure passwords aren't in it as part of complexity
+  requirements

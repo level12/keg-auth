@@ -93,6 +93,20 @@ class TestViews(object):
         assert user.token is not None
         assert user.token_created_utc is not None
 
+    def test_reset_pw_template(self):
+        user = ents.User.testing_create()
+        user.token_generate()
+        url = flask.current_app.auth_manager.reset_password_url(user)
+
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get(url)
+        doc = resp.pyquery
+        assert doc('title').text() == 'Complete Password Reset | Keg Auth Demo'
+        assert doc('h1').text() == 'Complete Password Reset'
+        assert doc('button').text() == 'Change Password'
+        assert doc('a').text() == 'Cancel'
+        assert doc('a').attr('href') == '/login'
+
     def test_reset_pw_actions(self):
         user = ents.User.testing_create()
         token = user.token_generate()
@@ -106,3 +120,17 @@ class TestViews(object):
         db.session.expire(user)
         assert user.token is None
         assert user.password == 'foobar'
+
+    def test_verify_account_template(self):
+        user = ents.User.testing_create()
+        user.token_generate()
+        url = flask.current_app.auth_manager.verify_account_url(user)
+
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get(url)
+        doc = resp.pyquery
+        assert doc('title').text() == 'Verify Account & Set Password | Keg Auth Demo'
+        assert doc('h1').text() == 'Verify Account & Set Password'
+        assert doc('button').text() == 'Verify & Set Password'
+        assert doc('a').text() == 'Cancel'
+        assert doc('a').attr('href') == '/login'

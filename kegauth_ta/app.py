@@ -24,9 +24,7 @@ class KegAuthTestApp(Keg):
     use_blueprints = blueprints
     keyring_enable = False
 
-    def init(self, *args, **kwargs):
-        super(KegAuthTestApp, self).init(*args, **kwargs)
-
+    def on_init_complete(self):
         auth_manager.init_app(self)
         csrf.init_app(self)
         mail_ext.init_app(self)
@@ -38,4 +36,5 @@ class KegAuthTestApp(Keg):
 
 
 if __name__ == '__main__':
-    KegAuthTestApp.cli_run()
+    from kegauth_ta import app
+    app.KegAuthTestApp.cli.main()

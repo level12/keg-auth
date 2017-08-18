@@ -34,6 +34,7 @@ setup(
         'commonmark',
         'Flask-Mail',
         'Flask-Login',
+        'Keg>=0.6.0',
         'KegElements',
         'passlib',
         'shortuuid',
@@ -45,8 +46,8 @@ setup(
     extras_require={
         'test': [
             'flake8',
-            'flask-webtest',
             'flask-bootstrap',
+            'flask-webtest',
             'freezegun',
             'mock',
             'psycopg2',

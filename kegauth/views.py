@@ -158,13 +158,11 @@ class ForgotPassword(AuthFormView):
         flask.current_app.auth_mail_manager.send_reset_password(user)
 
 
-class ResetPassword(AuthFormView):
-    url = '/reset-password/<int:user_id>/<token>'
-    form_cls = forms.ResetPassword
-    page_title = 'Complete Password Reset'
-    template_name = 'kegauth/reset-password.html'
-    flash_success = 'Password changed.  Please use the new password to login below.', 'success'
-    flash_invalid_token = 'Password reset token was invalid or expired.  Please try again.', 'error'
+class SetPasswordBaseView(AuthFormView):
+    form_cls = forms.SetPassword
+    template_name = 'kegauth/set-password.html'
+    flash_invalid_token = 'Authentication token was invalid or expired.  Please fill out the' \
+        ' form below to get a new token.', 'error'
 
     def user_loader(self, user_id):
         user_ent = flask.current_app.auth_manager.get_user_entity()
@@ -185,10 +183,31 @@ class ResetPassword(AuthFormView):
     def on_success(self, form, user, token):
         new_password = form.password.data
         user.change_password(token, new_password)
-        self.flash_and_redirect(self.flash_success, 'after-reset')
+        self.flash_and_redirect(self.flash_success, self.on_success_endpoint)
 
     def on_invalid_token(self):
         self.flash_and_redirect(self.flash_invalid_token, 'forgot-password')
+
+    def assign_template_vars(self, form):
+        super(SetPasswordBaseView, self).assign_template_vars(form)
+        self.assign('submit_button_text', self.submit_button_text)
+
+
+class ResetPassword(SetPasswordBaseView):
+    url = '/reset-password/<int:user_id>/<token>'
+    page_title = 'Complete Password Reset'
+    submit_button_text = 'Change Password'
+    flash_success = 'Password changed.  Please use the new password to login below.', 'success'
+    on_success_endpoint = 'after-reset'
+
+
+class VerifyAccount(SetPasswordBaseView):
+    url = '/verify-account/<int:user_id>/<token>'
+    page_title = 'Verify Account & Set Password'
+    submit_button_text = 'Verify & Set Password'
+    flash_success = 'Account verified & password set.  Please use the new password to login' \
+        ' below.', 'success'
+    on_success_endpoint = 'after-verify-account'
 
 
 class Logout(_BaseView):
@@ -201,7 +220,7 @@ class Logout(_BaseView):
 
 
 def make_blueprint(import_name, bp_name='auth', login_cls=Login, forgot_cls=ForgotPassword,
-                   reset_cls=ResetPassword, logout_cls=Logout):
+                   reset_cls=ResetPassword, logout_cls=Logout, verify_cls=VerifyAccount):
 
     _blueprint = flask.Blueprint(bp_name, import_name)
 
@@ -218,6 +237,9 @@ def make_blueprint(import_name, bp_name='auth', login_cls=Login, forgot_cls=Forg
         blueprint = _blueprint
 
     class Logout(logout_cls):
+        blueprint = _blueprint
+
+    class VerifyAccount(verify_cls):
         blueprint = _blueprint
 
     return _blueprint

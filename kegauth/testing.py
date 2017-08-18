@@ -1,6 +1,7 @@
 # Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
 from __future__ import unicode_literals
 
+from blazeutils.containers import LazyDict
 import flask
 import flask_webtest
 
@@ -209,7 +210,63 @@ class AuthTests(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(url, status=302)
 
-        msg = 'Password reset token was invalid or expired.  Please try again.'
+        msg = 'Authentication token was invalid or expired.  Please fill out the form below to' \
+            ' get a new token.'
+        assert resp.flashes == [('error', msg)]
+
+        full_login_url = 'http://keg.example.com{}'.format(self.forgot_password_url)
+        assert resp.headers['Location'] == full_login_url
+
+    def test_verify_account_success(self):
+        user = self.user_ent.testing_create(is_verified=False)
+        assert not user.is_verified
+
+        user.token_generate()
+        url = flask.current_app.auth_manager.verify_account_url(user)
+
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get(url, status=200)
+
+        resp.form['password'] = 'foo'
+        resp.form['confirm'] = 'foo'
+        resp = resp.form.submit(status=302)
+
+        msg = 'Account verified & password set.  Please use the new password to login below.'
+        assert resp.flashes == [('success', msg)]
+
+        full_login_url = 'http://keg.example.com{}'.format(self.login_url)
+        assert resp.headers['Location'] == full_login_url
+
+        assert user.is_verified
+
+    def test_verify_account_form_error(self):
+        user = self.user_ent.testing_create()
+        user.token_generate()
+        url = flask.current_app.auth_manager.verify_account_url(user)
+
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get(url, status=200)
+        resp = resp.form.submit(status=200)
+
+        assert resp.flashes == [('error', 'The form has errors, please see below.')]
+
+    def test_verify_account_missing_user(self):
+        user = LazyDict(id=9999999, _token_plain='123')
+        url = flask.current_app.auth_manager.verify_account_url(user)
+
+        client = flask_webtest.TestApp(flask.current_app)
+        client.get(url, status=404)
+
+    def test_verify_account_bad_token(self):
+        user = self.user_ent.testing_create()
+        user._token_plain = 'abc'
+        url = flask.current_app.auth_manager.verify_account_url(user)
+
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get(url, status=302)
+
+        msg = 'Authentication token was invalid or expired.  Please fill out the form below to' \
+            ' get a new token.'
         assert resp.flashes == [('error', msg)]
 
         full_login_url = 'http://keg.example.com{}'.format(self.forgot_password_url)
