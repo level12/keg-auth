@@ -7,9 +7,9 @@ except ImportError:
     Bootstrap = None
 from flask_wtf.csrf import CSRFProtect
 from keg.app import Keg
-from kegauth import AuthManager
+from keg_auth import AuthManager
 
-from kegauth_ta.views import blueprints
+from keg_auth_ta.views import blueprints
 
 csrf = CSRFProtect()
 
@@ -19,7 +19,7 @@ auth_manager = AuthManager(mail_ext, endpoints=_endpoints)
 
 
 class KegAuthTestApp(Keg):
-    import_name = 'kegauth_ta'
+    import_name = 'keg_auth_ta'
     db_enabled = True
     use_blueprints = blueprints
     keyring_enable = False
@@ -36,5 +36,5 @@ class KegAuthTestApp(Keg):
 
 
 if __name__ == '__main__':
-    from kegauth_ta import app
+    from keg_auth_ta import app
     app.KegAuthTestApp.cli.main()

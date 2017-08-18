@@ -2,7 +2,7 @@ from blazeutils.containers import LazyDict
 from keg.testing import CLIBase
 import mock
 
-from kegauth_ta.model import entities as ents
+from keg_auth_ta.model import entities as ents
 
 
 class TestCLI(CLIBase):

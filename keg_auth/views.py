@@ -3,7 +3,7 @@ import flask_login
 import keg.web
 import sqlalchemy.orm.exc as orm_exc
 
-from kegauth import forms
+from keg_auth import forms
 
 
 class AuthenticatedView(keg.web.BaseView):

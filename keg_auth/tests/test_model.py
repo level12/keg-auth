@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 import arrow
 import flask
 from freezegun import freeze_time
-from kegauth_ta.model import entities as ents
+from keg_auth_ta.model import entities as ents
 import mock
 
 

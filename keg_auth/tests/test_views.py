@@ -4,10 +4,10 @@ from __future__ import unicode_literals
 import flask
 import flask_webtest
 from keg.db import db
-from kegauth.testing import AuthTests
+from keg_auth.testing import AuthTests
 import mock
 
-from kegauth_ta.model import entities as ents
+from keg_auth_ta.model import entities as ents
 
 
 class TestAuthIntegration(AuthTests):
@@ -75,7 +75,7 @@ class TestViews(object):
         assert doc('a').text() == 'Cancel'
         assert doc('a').attr('href') == '/login'
 
-    @mock.patch('kegauth.views.flask.current_app.auth_mail_manager.send_reset_password',
+    @mock.patch('keg_auth.views.flask.current_app.auth_mail_manager.send_reset_password',
                 autospec=True, spec_set=True)
     def test_forget_pw_actions(self, m_send_reset_password):
         user = ents.User.testing_create(email='foo@bar.com')

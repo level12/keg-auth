@@ -1,7 +1,7 @@
 import flask
 
-from kegauth_ta.app import mail_ext
-from kegauth_ta.model import entities as ents
+from keg_auth_ta.app import mail_ext
+from keg_auth_ta.model import entities as ents
 
 
 class TestAuthManager(object):

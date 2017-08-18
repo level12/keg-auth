@@ -4,8 +4,8 @@ import flask_login
 from keg.db import db
 import jinja2
 
-import kegauth.cli
-from kegauth.mail import MailManager
+import keg_auth.cli
+from keg_auth.mail import MailManager
 
 
 class AuthManager(object):
@@ -55,12 +55,12 @@ class AuthManager(object):
         app.config.setdefault('KEGAUTH_TOKEN_EXPIRE_MINS', 60 * 4)
 
     def init_cli(self, app):
-        kegauth.cli.add_cli_to_app(app, self.cli_group_name)
+        keg_auth.cli.add_cli_to_app(app, self.cli_group_name)
 
     def init_jinja(self, app):
         loader = jinja2.ChoiceLoader([
             app.jinja_loader,
-            jinja2.PackageLoader('kegauth', 'templates'),
+            jinja2.PackageLoader('keg_auth', 'templates'),
             # Get access to form generation templates from Keg Elements.
             jinja2.PackageLoader('keg_elements', 'templates'),
         ])

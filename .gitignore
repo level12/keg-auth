@@ -6,4 +6,4 @@ tags
 /.coverage
 /coverage.xml
 .cache
-/kegauth_ta-config.py
+/keg_auth_ta-config.py

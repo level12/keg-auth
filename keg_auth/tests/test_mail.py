@@ -2,11 +2,11 @@
 from __future__ import unicode_literals
 
 import flask
-from kegauth import mail
+from keg_auth import mail
 import mock
 
-from kegauth_ta.app import mail_ext
-from kegauth_ta.model import entities as ents
+from keg_auth_ta.app import mail_ext
+from keg_auth_ta.model import entities as ents
 
 
 class TestMailTemplate(object):

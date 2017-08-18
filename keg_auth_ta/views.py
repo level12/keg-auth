@@ -3,7 +3,7 @@ import logging
 import flask
 import flask_login
 import keg.web
-from kegauth.views import AuthenticatedView, make_blueprint
+from keg_auth import AuthenticatedView, make_blueprint
 
 log = logging.getLogger(__name__)
 
