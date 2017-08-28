@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 import flask
 import flask_webtest
 from keg.db import db
-from keg_auth.testing import AuthTests
+from keg_auth.testing import AuthTests, AuthTestApp
 import mock
 
 from keg_auth_ta.model import entities as ents
@@ -54,6 +54,34 @@ class TestViews(object):
         # Now that we have logged in, we should be able to get to the page.
         resp = client.get('/secret2', status=200)
         assert resp.text == 'secret2'
+
+    def test_authenticated_client(self):
+        user = ents.User.testing_create()
+        client = AuthTestApp(flask.current_app, user=user)
+        resp = client.get('/secret2', status=200)
+        assert resp.text == 'secret2'
+
+    def test_authenticated_request(self):
+        user = ents.User.testing_create()
+        client = AuthTestApp(flask.current_app)
+
+        resp = client.get('/secret2', status=200, user=user)
+        assert resp.text == 'secret2'
+
+        # User should only stick around for a single request
+        client.get('/secret2', status=302)
+
+        # test all HTTP methods
+        assert client.post('/secret2', status=200, user=user).text == 'secret2 post'
+        assert client.put('/secret2', status=200, user=user).text == 'secret2 put'
+        assert client.patch('/secret2', status=200, user=user).text == 'secret2 patch'
+        assert client.delete('/secret2', status=200, user=user).text == 'secret2 delete'
+        assert client.options('/secret2', status=200, user=user).text == 'secret2 options'
+        assert client.head('/secret2', status=200, user=user)
+        assert client.post_json('/secret2', status=200, user=user).text == 'secret2 post'
+        assert client.put_json('/secret2', status=200, user=user).text == 'secret2 put'
+        assert client.patch_json('/secret2', status=200, user=user).text == 'secret2 patch'
+        assert client.delete_json('/secret2', status=200, user=user).text == 'secret2 delete'
 
     def test_login_template(self):
         client = flask_webtest.TestApp(flask.current_app)

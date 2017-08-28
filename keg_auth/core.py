@@ -72,7 +72,9 @@ class AuthManager(object):
         app.auth_mail_manager = self.mail_manager_cls(self.mail_ext)
 
         app.login_manager = login_manager = flask_login.LoginManager()
-        login_manager.user_loader(lambda user_id: self.user_loader(user_id))
+        login_manager.user_loader(self.user_loader)
+        if app.testing:
+            login_manager.request_loader(self.request_loader)
         login_manager.login_view = self.endpoint('login')
         login_manager.init_app(app)
 
@@ -88,6 +90,16 @@ class AuthManager(object):
     def user_loader(self, user_id):
         user_class = self.get_user_entity()
         return user_class.query.get(user_id)
+
+    def request_loader(self, request):
+        """ Load a user from a request when testing. This gives a nice API for test clients to
+            be logged in:
+
+        """
+        user_id = request.environ.get('TEST_USER_ID')
+        if user_id is None:
+            return
+        return self.user_loader(user_id)
 
     def create_user_cli(self, email, extra_args):
         """ A thin layer between the cli and `create_user()` to transform the cli args

@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from blazeutils.containers import LazyDict
 import flask
 import flask_webtest
+import wrapt
 
 
 class AuthTests(object):
@@ -291,3 +292,66 @@ class AuthTests(object):
 
         # Confirm logout occured
         client.get(self.protected_url, status=302)
+
+
+@wrapt.decorator
+def user_request(wrapped, instance, args, kwargs):
+    new_kwargs = kwargs.copy()
+    user = new_kwargs.pop('user', None)
+    extra_environ = new_kwargs.setdefault('extra_environ', {})
+    if user is not None:
+        extra_environ['TEST_USER_ID'] = str(user.id)
+    return wrapped(*args, **new_kwargs)
+
+
+class AuthTestApp(flask_webtest.TestApp):
+    def __init__(self, app, **kwargs):
+        user = kwargs.pop('user', None)
+        extra_environ = kwargs.pop('extra_environ', {})
+        if user is not None:
+            extra_environ['TEST_USER_ID'] = str(user.id)
+        super(AuthTestApp, self).__init__(app, extra_environ=extra_environ, **kwargs)
+
+    @user_request
+    def get(self, *args, **kwargs):
+        return super(AuthTestApp, self).get(*args, **kwargs)
+
+    @user_request
+    def post(self, *args, **kwargs):
+        return super(AuthTestApp, self).post(*args, **kwargs)
+
+    @user_request
+    def put(self, *args, **kwargs):
+        return super(AuthTestApp, self).put(*args, **kwargs)
+
+    @user_request
+    def patch(self, *args, **kwargs):
+        return super(AuthTestApp, self).patch(*args, **kwargs)
+
+    @user_request
+    def delete(self, *args, **kwargs):
+        return super(AuthTestApp, self).delete(*args, **kwargs)
+
+    @user_request
+    def options(self, *args, **kwargs):
+        return super(AuthTestApp, self).options(*args, **kwargs)
+
+    @user_request
+    def head(self, *args, **kwargs):
+        return super(AuthTestApp, self).head(*args, **kwargs)
+
+    @user_request
+    def post_json(self, *args, **kwargs):
+        return super(AuthTestApp, self).post_json(*args, **kwargs)
+
+    @user_request
+    def put_json(self, *args, **kwargs):
+        return super(AuthTestApp, self).put_json(*args, **kwargs)
+
+    @user_request
+    def patch_json(self, *args, **kwargs):
+        return super(AuthTestApp, self).patch_json(*args, **kwargs)
+
+    @user_request
+    def delete_json(self, *args, **kwargs):
+        return super(AuthTestApp, self).delete_json(*args, **kwargs)
