@@ -11,7 +11,7 @@ class TestAuthManager(object):
 
     def test_create_user(self):
         with mail_ext.record_messages() as outbox:
-            user = self.am.create_user(dict(email='foo@bar.com'))
+            user = self.am.create_user(dict(email=u'foo@bar.com'))
 
         assert len(outbox) == 1
         assert outbox[0].subject == '[KA Demo] User Welcome & Verification'
