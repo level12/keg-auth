@@ -6,6 +6,9 @@ import flask
 from freezegun import freeze_time
 from keg_auth_ta.model import entities as ents
 import mock
+import pytest
+
+pytestmark = pytest.mark.usefixtures("appctx")
 
 
 class TestUser(object):

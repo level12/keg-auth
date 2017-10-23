@@ -4,9 +4,13 @@ from __future__ import unicode_literals
 import flask
 from keg_auth import mail
 import mock
+import pytest
 
 from keg_auth_ta.app import mail_ext
 from keg_auth_ta.model import entities as ents
+
+
+pytestmark = pytest.mark.usefixtures("appctx")
 
 
 class TestMailTemplate(object):

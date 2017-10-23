@@ -16,3 +16,14 @@ warnings.filterwarnings(
 
 def pytest_configure(config):
     KegAuthTestApp.testing_prep()
+
+
+@pytest.fixture(scope="session")
+def app():
+    return KegAuthTestApp.testing_prep()
+
+
+@pytest.fixture
+def appctx(app):
+    with app.app_context() as ctx:
+        yield ctx

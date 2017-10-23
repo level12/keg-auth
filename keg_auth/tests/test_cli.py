@@ -1,13 +1,15 @@
 from blazeutils.containers import LazyDict
 from keg.testing import CLIBase
 import mock
+import pytest
 
 from keg_auth_ta.model import entities as ents
 
 
 class TestCLI(CLIBase):
 
-    def setup(self):
+    @pytest.fixture(autouse=True)
+    def setup(self, appctx):
         ents.User.delete_cascaded()
 
     def test_help_options(self):

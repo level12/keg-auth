@@ -6,14 +6,17 @@ import flask_webtest
 from keg.db import db
 from keg_auth.testing import AuthTests, AuthTestApp
 import mock
+import pytest
 
 from keg_auth_ta.model import entities as ents
 
 
+@pytest.mark.usefixtures("appctx")
 class TestAuthIntegration(AuthTests):
     user_ent = ents.User
 
 
+@pytest.mark.usefixtures("appctx")
 class TestViews(object):
     """
         Basic functionality is tested through AuthTests.  The tests in this class cover

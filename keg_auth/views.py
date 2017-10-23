@@ -95,7 +95,7 @@ class Login(AuthFormView):
     page_title = 'Log In'
     flash_success = 'Login successful.', 'success'
     flash_invalid_password = 'Invalid password.', 'error'
-    flash_unverified_user = 'The user account "{}" has an unverified email addres.  Please check' \
+    flash_unverified_user = 'The user account "{}" has an unverified email address.  Please check' \
         ' your email for a verification link from this website.  Or, use the "forgot' \
         ' password" link to verify the account.', 'error'
 

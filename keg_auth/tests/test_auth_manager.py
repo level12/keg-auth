@@ -1,11 +1,14 @@
 import flask
+import pytest
 
 from keg_auth_ta.app import mail_ext
 from keg_auth_ta.model import entities as ents
 
 
 class TestAuthManager(object):
-    def setup(self):
+
+    @pytest.fixture(autouse=True)
+    def setup(self, appctx):
         ents.User.delete_cascaded()
         self.am = flask.current_app.auth_manager
 
