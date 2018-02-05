@@ -3,7 +3,11 @@ from __future__ import unicode_literals
 
 import arrow
 import flask
+import pytest
 from freezegun import freeze_time
+import sqlalchemy as sa
+
+from keg_auth.model import entity_registry
 from keg_auth_ta.model import entities as ents
 import mock
 
@@ -88,3 +92,231 @@ class TestUser(object):
         assert not user.token_verify(token)
         assert user.password == 'abc123'
         assert user.is_verified
+
+    def test_permissions_mapping(self):
+        perm1 = ents.Permission.testing_create()
+        perm2 = ents.Permission.testing_create()
+        perm3 = ents.Permission.testing_create()
+        perm4 = ents.Permission.testing_create()
+        perm5 = ents.Permission.testing_create()
+
+        bundle1 = ents.Bundle.testing_create()
+        bundle2 = ents.Bundle.testing_create()
+        bundle3 = ents.Bundle.testing_create()
+
+        group1 = ents.Group.testing_create()
+        group2 = ents.Group.testing_create()
+        group3 = ents.Group.testing_create()
+
+        user1 = ents.User.testing_create()
+        user2 = ents.User.testing_create()
+
+        # Directly assigned
+        user1.permissions = [perm1]
+
+        # Assigned via user bundle
+        bundle1.permissions = [perm2]
+        user1.bundles = [bundle1]
+
+        # Assigned via group
+        group1.permissions = [perm3]
+
+        # Assigned via group bundle
+        bundle2.permissions = [perm4]
+        group1.bundles = [bundle2]
+        user1.groups = [group1, group2]
+
+        assert user1.get_all_permissions() == {perm1, perm2, perm3, perm4}
+        assert user2.get_all_permissions() == set()
+
+        user2.permissions = [perm1, perm2]
+        group3.permissions = [perm2, perm3]
+        bundle3.permissions = [perm1, perm5]
+        group3.bundles = [bundle3]
+        user2.groups = [group3]
+
+        assert user1.get_all_permissions() == {perm1, perm2, perm3, perm4}
+        assert user2.get_all_permissions() == {perm1, perm2, perm3, perm5}
+
+        user1.is_superuser = True
+        assert user1.get_all_permissions() == {perm1, perm2, perm3, perm4, perm5}
+
+    def test_get_all_permission_tokens(self):
+        ents.Permission.delete_cascaded()
+        perm1 = ents.Permission.testing_create(token='perm-1')
+        perm2 = ents.Permission.testing_create(token='perm-2')
+        perm3 = ents.Permission.testing_create(token='perm-3')
+
+        user = ents.User.testing_create(permissions=[perm1, perm2, perm3])
+
+        assert user.get_all_permission_tokens() == {'perm-1', 'perm-2', 'perm-3'}
+
+    def test_has_all_permissions(self):
+        ents.Permission.delete_cascaded()
+        perm1 = ents.Permission.testing_create(token='perm-1')
+        perm2 = ents.Permission.testing_create(token='perm-2')
+        ents.Permission.testing_create(token='perm-3')
+
+        user = ents.User.testing_create(permissions=[perm1, perm2])
+
+        assert user.has_all_permissions('perm-1', 'perm-2') is True
+        assert user.has_all_permissions('perm-1', 'perm-3') is False
+        assert user.has_all_permissions('perm-1') is True
+        assert user.has_all_permissions('perm-3') is False
+
+    def test_has_any_permission(self):
+        ents.Permission.delete_cascaded()
+        perm1 = ents.Permission.testing_create(token='perm-1')
+        perm2 = ents.Permission.testing_create(token='perm-2')
+        ents.Permission.testing_create(token='perm-3')
+
+        user = ents.User.testing_create(permissions=[perm1, perm2])
+
+        assert user.has_any_permission('perm-1', 'perm-2') is True
+        assert user.has_any_permission('perm-1', 'perm-3') is True
+        assert user.has_any_permission('perm-1') is True
+        assert user.has_any_permission('perm-3') is False
+
+
+class TestPermission(object):
+    def setup(self):
+        ents.Permission.delete_cascaded()
+
+    def test_token_unique(self):
+        ents.Permission.testing_create(token='some-permission')
+        with pytest.raises(sa.exc.IntegrityError) as exc:
+            ents.Permission.testing_create(token='some-permission')
+
+        assert 'unique' in str(exc.value).lower()
+
+
+class TestBundle(object):
+    def setup(self):
+        ents.Bundle.delete_cascaded()
+
+    def test_name_unique(self):
+        ents.Bundle.testing_create(name='Bundle 1')
+        with pytest.raises(sa.exc.IntegrityError) as exc:
+            ents.Bundle.testing_create(name='Bundle 1')
+
+        assert 'unique' in str(exc.value).lower()
+
+
+class TestGroup(object):
+    def setup(self):
+        ents.Group.delete_cascaded()
+
+    def test_name_unique(self):
+        ents.Group.testing_create(name='Group 1')
+        with pytest.raises(sa.exc.IntegrityError) as exc:
+            ents.Group.testing_create(name='Group 1')
+
+        assert 'unique' in str(exc.value).lower()
+
+    def test_get_all_permissions(self):
+        perm1 = ents.Permission.testing_create()
+        perm2 = ents.Permission.testing_create()
+        perm3 = ents.Permission.testing_create()
+
+        bundle = ents.Bundle.testing_create()
+
+        group1 = ents.Group.testing_create()
+        group2 = ents.Group.testing_create()
+
+        # Assigned directly
+        group1.permissions = [perm1]
+
+        # Assigned via bundle
+        bundle.permissions = [perm2]
+        group1.bundles = [bundle]
+
+        assert group1.get_all_permissions() == {perm1, perm2}
+        assert group2.get_all_permissions() == set()
+
+        group2.bundles = [bundle]
+        group2.permissions = [perm2, perm3]
+
+        assert group1.get_all_permissions() == {perm1, perm2}
+        assert group2.get_all_permissions() == {perm2, perm3}
+
+
+class TestEntityRegistry(object):
+    def test_register_entities(self):
+        registry = entity_registry.EntityRegistry()
+
+        @registry.register_user
+        class TestingUser(object):
+            pass
+
+        @registry.register_permission
+        class TestingPermission(object):
+            pass
+
+        @registry.register_bundle
+        class TestingBundle(object):
+            pass
+
+        @registry.register_group
+        class TestingGroup(object):
+            pass
+
+        assert registry.user_cls is TestingUser
+        assert registry.permission_cls is TestingPermission
+        assert registry.bundle_cls is TestingBundle
+        assert registry.group_cls is TestingGroup
+
+    def test_duplicate_registration(self):
+        registry = entity_registry.EntityRegistry()
+
+        @registry.register_user
+        class TestingUser1(object):
+            pass
+
+        with pytest.raises(entity_registry.RegistryError) as exc:
+            @registry.register_user
+            class TestingUser2(object):
+                pass
+
+        assert str(exc.value) == 'Entity class already registered for user'
+
+    def test_register_unknown_type(self):
+        registry = entity_registry.EntityRegistry()
+
+        class Foo(object):
+            pass
+
+        with pytest.raises(entity_registry.RegistryError) as exc:
+            registry.register_entity('foo', Foo)
+
+        assert str(exc.value) == 'Attempting to register unknown type foo'
+
+    def test_register_nonclass(self):
+        registry = entity_registry.EntityRegistry()
+
+        with pytest.raises(entity_registry.RegistryError) as exc:
+            @registry.register_user
+            def testing_user():
+                pass
+
+        assert str(exc.value) == 'Entity must be a class'
+
+        with pytest.raises(entity_registry.RegistryError) as exc:
+            registry.register_user(ents.User.testing_create())
+
+        assert str(exc.value) == 'Entity must be a class'
+
+    def test_is_registered(self):
+        registry = entity_registry.EntityRegistry()
+
+        @registry.register_user
+        class TestingUser(object):
+            pass
+
+        @registry.register_permission
+        class TestingPermission(object):
+            pass
+
+        assert registry.is_registered('user') is True
+        assert registry.is_registered('permission') is True
+        assert registry.is_registered('bundle') is False
+        assert registry.is_registered('group') is False

@@ -1,4 +1,5 @@
 import flask
+import mock
 
 from keg_auth_ta.app import mail_ext
 from keg_auth_ta.model import entities as ents
@@ -20,3 +21,8 @@ class TestAuthManager(object):
         assert user.token
         assert user._token_plain
         assert ents.User.query.count() == 1
+
+    @mock.patch('keg_auth.core.model.initialize_mappings')
+    def test_model_initialized_only_once(self, m_init):
+        self.am.init_app(flask.current_app)
+        assert not m_init.called

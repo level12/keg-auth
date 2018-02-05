@@ -5,6 +5,7 @@ from keg.db import db
 import jinja2
 
 import keg_auth.cli
+from keg_auth import model
 from keg_auth.mail import MailManager
 
 
@@ -29,13 +30,15 @@ class AuthManager(object):
                  cli_group_name=None):
         self.mail_ext = mail_ext
         self.blueprint_name = blueprint
-        self.user_entity = 'User'
+        self.user_entity = user_entity
         self.endpoints = self.endpoints.copy()
         if endpoints:
             self.endpoints.update(endpoints)
         self.cli_group_name = cli_group_name or self.cli_group_name
+        self._model_initialized = False
 
     def init_app(self, app):
+        self.init_model(app)
         self.init_config(app)
         self.init_managers(app)
         self.init_cli(app)
@@ -66,6 +69,11 @@ class AuthManager(object):
         ])
         app.jinja_loader = loader
         app.context_processor(lambda: {'auth_manager': self})
+
+    def init_model(self, app):
+        if not self._model_initialized:
+            model.initialize_mappings()
+            self._model_initialized = True
 
     def init_managers(self, app):
         app.auth_manager = self
