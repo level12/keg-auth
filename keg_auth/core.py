@@ -1,4 +1,3 @@
-from blazeutils.strings import randchars
 import flask
 import flask_login
 from keg.db import db
@@ -129,7 +128,8 @@ class AuthManager(object):
         return self.create_user(user_kwargs)
 
     def create_user(self, user_kwargs):
-        user_kwargs.setdefault('password', randchars(30))
+        from passlib.pwd import genword
+        user_kwargs.setdefault('password', genword(entropy='secure'))
         user_class = self.get_user_entity()
         user = user_class(**user_kwargs)
         user.token_generate()
