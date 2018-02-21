@@ -3,7 +3,10 @@ from __future__ import unicode_literals
 
 import flask
 import flask_webtest
+import keg_elements
 from keg.db import db
+
+from keg_auth.model import entity_registry
 from keg_auth.testing import AuthTests, AuthTestApp
 import mock
 
@@ -162,3 +165,46 @@ class TestViews(object):
         assert doc('button').text() == 'Verify & Set Password'
         assert doc('a').text() == 'Cancel'
         assert doc('a').attr('href') == '/login'
+
+
+class CrudBase:
+    def setup(self):
+        ents.User.delete_cascaded()
+
+        user_ent = entity_registry.registry.user_cls
+
+        user = user_ent.testing_create(email='foo@bar.com', password='pass')
+
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('/login')
+
+        resp.form['email'] = 'foo@bar.com'
+        resp.form['password'] = 'pass'
+        resp = resp.form.submit()
+
+        assert resp.status_code == 302, resp.html
+        assert resp.headers['Location'] == 'http://keg.example.com/'
+        assert resp.flashes == [('success', 'Login successful.')]
+
+        self.client = client
+        self.current_user = user
+
+
+class TestUserCrud(CrudBase):
+    def test_add(self):
+        resp = self.client.get('/users/add')
+
+        assert resp.form['email'].value == ''
+        assert resp.form['is_enabled'].value is True
+        assert 'is_superuser' not in resp.form
+
+        resp.form['email'] = 'abc@example.com'
+        resp = resp.form.submit()
+        assert resp.status_code == 302
+        assert resp.location == '/users'
+        assert resp.flashes == [('success', 'fdafda')]
+
+        user_ent = entity_registry.registry.user_cls
+        user = user_ent.get_by(email='abc@example.com')
+        assert user.is_enabled is True
+        assert user.is_superuser is False

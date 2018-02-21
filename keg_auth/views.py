@@ -1,9 +1,13 @@
 import flask
 import flask_login
+import inflect
 import keg.web
 import sqlalchemy.orm.exc as orm_exc
+from blazeutils.strings import case_cw2dash
+from keg.db import db
 
-from keg_auth import forms
+from keg_auth import forms, grids
+from keg_auth.model import entity_registry
 
 
 class AuthenticatedView(keg.web.BaseView):
@@ -86,6 +90,147 @@ class AuthFormView(_BaseView):
             flask.flash(message.format(user.email), category)
             return False
         return True
+
+
+class CrudView(AuthenticatedView):
+    grid_cls = None
+    form_cls = None
+    orm_cls = None
+    form_template = None
+    grid_template = None
+    object_name = None
+    _inflect = inflect.engine()
+    permissions = {
+        'add': None,
+        'edit': None,
+        'delete': None,
+        'view': None
+    }
+
+    @classmethod
+    def init_routes(cls):
+        super().init_routes()
+
+        def map_method_route(method_name, route, methods):
+            method_route = keg.web.MethodRoute(method_name, route, {'methods': methods},
+                                               cls.calc_url(), cls.calc_endpoint())
+            mr_options = method_route.options()
+            view_func = cls.as_view(method_route.view_func_name,
+                                    method_route.sanitized_method_name('_'))
+            cls.view_funcs[method_route.endpoint] = view_func
+            mr_options['view_func'] = cls.view_funcs[method_route.endpoint]
+            cls.blueprint.add_url_rule(method_route.rule(), **mr_options)
+
+        map_method_route('add', '{}/add'.format(cls.calc_url()), ('GET', 'POST'))
+        map_method_route('edit', '{}/<int:objid>'.format(cls.calc_url()), ('GET', 'POST'))
+        map_method_route('delete', '{}/<int:objid>/delete'.format(cls.calc_url()), ('GET', 'POST'))
+        map_method_route('manage', '{}'.format(cls.calc_url()), ('GET', 'POST'))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.objinst = None
+
+    @property
+    def object_name_plural(self):
+        return self._inflect.plural(self.object_name)
+
+    def create_form(self, obj):
+        return self.form_cls(obj=obj)
+
+    def render_form(self, obj, action, form, action_button_text='Save Changes'):
+        default_template_args = {
+            'action': action,
+            'action_button_text': action_button_text,
+            'cancel_url': self.cancel_url(),
+            'form': form,
+            'obj_inst': obj,
+        }
+        return flask.render_template(self.form_template, **default_template_args)
+
+    def add_orm_obj(self):
+        o = self.orm_cls()
+        db.session.add(o)
+        return o
+
+    def update_obj(self, obj, form):
+        obj = obj or self.add_orm_obj()
+        form.populate_obj(obj)
+        return obj
+
+    def add_edit(self, meth, obj=None):
+        form = self.create_form(obj)
+        if meth == 'POST':
+            if form.validate():
+                result = self.update_obj(obj, form)
+                if result:
+                    return self.on_add_edit_success(result, obj is not None)
+            else:
+                self.on_add_edit_failure(obj, obj is not None)
+
+        return self.render_form(
+            obj=obj,
+            action='Edit' if obj else 'Create',
+            action_button_text='Save Changes' if obj else 'Create ' + self.object_name,
+            form=form
+        )
+
+    def init_object(self, obj_id):
+        if obj_id is None:
+            flask.abort(400)
+        self.objinst = self.orm_cls.query.get(obj_id)
+        if not self.objinst:
+            flask.abort(404)
+        return self.objinst
+
+    def add(self):
+        return self.add_edit(flask.request.method)
+
+    def edit(self, objid):
+        obj = self.init_object(objid)
+        return self.add_edit(flask.request.method, obj)
+
+    def manage(self):
+        return self.render_grid()
+
+    def flash_success(self, verb):
+        flask.flash('Successfully {verb} {object}'.format(verb=verb, object=self.object_name),
+                    'success')
+
+    def on_add_edit_success(self, entity, is_edit):
+        self.flash_success('modified' if is_edit else 'created')
+        return flask.redirect(self.endpoint_for_action('manage'))
+
+    def on_add_edit_failure(self, entity, is_edit):
+        flask.flash('Form errors detected.  Please see below for details.', 'error')
+
+    @classmethod
+    def endpoint_for_action(cls, action):
+        if action == 'manage':
+            return '.{}'.format(cls.calc_endpoint())
+        return '.{}:{}'.format(cls.calc_endpoint(), case_cw2dash(action))
+
+    def make_grid(self):
+        grid = self.grid_cls()
+        grid.apply_qs_args()
+        return grid
+
+    def render_grid_xls(self, grid):
+        grid.xls.as_response()
+
+    def render_grid(self, xls_sheet_name=None):
+        grid = self.make_grid()
+
+        if grid.export_to == 'xls':
+            self.render_grid_xls(grid)
+
+        return flask.render_template(
+            self.form_template,
+            add_url=self.endpoint_for_action('add'),
+            grid=grid
+        )
+
+    def cancel_url(self):
+        return flask.url_for(self.endpoint_for_action('manage'))
 
 
 class Login(AuthFormView):
@@ -219,8 +364,95 @@ class Logout(_BaseView):
         self.flash_and_redirect(self.flash_success, 'after-logout')
 
 
+class User(CrudView):
+    url = '/users'
+    object_name = 'User'
+
+    def create_form(self, obj):
+        form_cls = forms.user_form(allow_superuser=flask_login.current_user.is_superuser,
+                                   endpoint=self.endpoint_for_action('edit'))
+        return form_cls(obj=obj)
+
+    @property
+    def orm_cls(self):
+        return entity_registry.registry.user_cls
+
+    @property
+    def grid_cls(self):
+        return grids.make_user_grid(
+            edit_endpoint=self.endpoint_for_action('edit'),
+            edit_permission=self.permissions['edit'],
+            delete_endpoint=self.endpoint_for_action('delete'),
+            delete_permission=self.permissions['delete']
+        )
+
+    def update_obj(self, obj, form):
+        obj = obj or self.add_orm_obj()
+        form.populate_obj(obj)
+        obj.permissions = form.get_selected_permissions()
+        obj.bundles = form.get_selected_bundles()
+        obj.groups = form.get_selected_groups()
+        return obj
+
+
+class Group(CrudView):
+    url = '/groups'
+    object_name = 'Group'
+
+    def create_form(self, obj):
+        return forms.group_form()
+
+    @property
+    def orm_cls(self):
+        return entity_registry.registry.group_cls
+
+    @property
+    def grid_cls(self):
+        return grids.make_group_grid(
+            edit_endpoint=self.endpoint_for_action('edit'),
+            edit_permission=self.permissions['edit'],
+            delete_endpoint=self.endpoint_for_action('delete'),
+            delete_permission=self.permissions['delete']
+        )
+
+    def update_obj(self, obj, form):
+        obj = obj or self.add_orm_obj()
+        form.populate_obj(obj)
+        obj.permissions = form.get_selected_permissions()
+        obj.bundles = form.get_selected_bundles()
+        return obj
+
+
+class Bundle(CrudView):
+    url = '/bundles'
+    object_name = 'Bundle'
+
+    def create_form(self, obj):
+        return forms.group_form()
+
+    @property
+    def orm_cls(self):
+        return entity_registry.registry.group_cls
+
+    @property
+    def grid_cls(self):
+        return grids.make_group_grid(
+            edit_endpoint=self.endpoint_for_action('edit'),
+            edit_permission=self.permissions['edit'],
+            delete_endpoint=self.endpoint_for_action('delete'),
+            delete_permission=self.permissions['delete']
+        )
+
+    def update_obj(self, obj, form):
+        obj = obj or self.add_orm_obj()
+        form.populate_obj(obj)
+        obj.permissions = form.get_selected_permissions()
+        return obj
+
+
 def make_blueprint(import_name, bp_name='auth', login_cls=Login, forgot_cls=ForgotPassword,
-                   reset_cls=ResetPassword, logout_cls=Logout, verify_cls=VerifyAccount):
+                   reset_cls=ResetPassword, logout_cls=Logout, verify_cls=VerifyAccount,
+                   user_crud_cls=User, group_crud_cls=Group, bundle_crud_cls=Bundle):
 
     _blueprint = flask.Blueprint(bp_name, import_name)
 
@@ -240,6 +472,15 @@ def make_blueprint(import_name, bp_name='auth', login_cls=Login, forgot_cls=Forg
         blueprint = _blueprint
 
     class VerifyAccount(verify_cls):
+        blueprint = _blueprint
+
+    class User(user_crud_cls):
+        blueprint = _blueprint
+
+    class Group(group_crud_cls):
+        blueprint = _blueprint
+
+    class Bundle(bundle_crud_cls):
         blueprint = _blueprint
 
     return _blueprint

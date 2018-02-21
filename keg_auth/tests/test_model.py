@@ -15,6 +15,7 @@ import mock
 class TestUser(object):
     def setup(self):
         ents.User.delete_cascaded()
+        ents.Permission.delete_cascaded()
 
     def test_email_case_insensitive(self):
         ents.User.testing_create(email='foo@BAR.com')
