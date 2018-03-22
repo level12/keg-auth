@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 
 import flask
 import flask_webtest
-import keg_elements
 from keg.db import db
 
 from keg_auth.model import entity_registry
@@ -24,6 +23,12 @@ class TestViews(object):
         what customization is made.
     """
 
+    @classmethod
+    def setup_class(cls):
+        ents.Permission.delete_cascaded()
+        cls.perm1 = ents.Permission.testing_create(token='permission1')
+        cls.perm2 = ents.Permission.testing_create(token='permission2')
+
     def setup(self):
         ents.User.delete_cascaded()
 
@@ -43,7 +48,8 @@ class TestViews(object):
         assert '/logout' in resp
 
     def test_auth_base_view(self):
-        ents.User.testing_create(email='foo@bar.com', password='pass')
+        ents.User.testing_create(email='foo@bar.com', password='pass',
+                                 permissions=[self.perm1, self.perm2])
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get('/secret2', status=302)
@@ -59,13 +65,13 @@ class TestViews(object):
         assert resp.text == 'secret2'
 
     def test_authenticated_client(self):
-        user = ents.User.testing_create()
+        user = ents.User.testing_create(permissions=[self.perm1, self.perm2])
         client = AuthTestApp(flask.current_app, user=user)
-        resp = client.get('/secret2', status=200)
-        assert resp.text == 'secret2'
+        resp = client.get('/secret1', status=200)
+        assert resp.text == 'secret1'
 
     def test_authenticated_request(self):
-        user = ents.User.testing_create()
+        user = ents.User.testing_create(permissions=[self.perm1, self.perm2])
         client = AuthTestApp(flask.current_app)
 
         resp = client.get('/secret2', status=200, user=user)
@@ -165,6 +171,36 @@ class TestViews(object):
         assert doc('button').text() == 'Verify & Set Password'
         assert doc('a').text() == 'Cancel'
         assert doc('a').attr('href') == '/login'
+
+
+class TestPermissionsRequired:
+    @classmethod
+    def setup_class(cls):
+        ents.Permission.delete_cascaded()
+        cls.perm1 = ents.Permission.testing_create(token='permission1')
+        cls.perm2 = ents.Permission.testing_create(token='permission2')
+
+    def test_method_level(self):
+        allowed = ents.User.testing_create(permissions=[self.perm1, self.perm2])
+        disallowed = ents.User.testing_create(permissions=[self.perm1])
+
+        client = AuthTestApp(flask.current_app, user=allowed)
+        resp = client.get('/secret2', status=200)
+        assert resp.text == 'secret2'
+
+        client = AuthTestApp(flask.current_app, user=disallowed)
+        client.post('/secret2', {}, status=403)
+
+    def test_class_level(self):
+        allowed = ents.User.testing_create(permissions=[self.perm1, self.perm2])
+        disallowed = ents.User.testing_create(permissions=[self.perm1])
+
+        client = AuthTestApp(flask.current_app, user=allowed)
+        resp = client.get('/secret3', status=200)
+        assert resp.text == 'secret3'
+
+        client = AuthTestApp(flask.current_app, user=disallowed)
+        client.get('/secret3', {}, status=403)
 
 
 class CrudBase:

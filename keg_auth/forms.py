@@ -1,6 +1,5 @@
 from keg_elements.forms import Form, ModelForm, FieldMeta
 from keg_elements.forms.validators import ValidateUnique
-from webhelpers2.html import HTML
 from webhelpers2.html.tags import link_to
 from wtforms.fields import (
     HiddenField,

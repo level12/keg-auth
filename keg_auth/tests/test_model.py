@@ -7,7 +7,7 @@ import pytest
 from freezegun import freeze_time
 import sqlalchemy as sa
 
-from keg_auth.model import entity_registry
+from keg_auth.model import entity_registry, utils
 from keg_auth_ta.model import entities as ents
 import mock
 
@@ -321,3 +321,90 @@ class TestEntityRegistry(object):
         assert registry.is_registered('permission') is True
         assert registry.is_registered('bundle') is False
         assert registry.is_registered('group') is False
+
+
+class TestPermissionsConditions:
+    def setup(self):
+        ents.Permission.delete_cascaded()
+        ents.User.delete_cascaded()
+
+    def test_simple_string(self):
+        user = ents.User.testing_create(
+            permissions=[ents.Permission.testing_create(token='perm1')]
+        )
+        ents.Permission.testing_create(token='perm2')
+
+        assert utils.has_any('perm1').check(user) is True
+        assert utils.has_all('perm1').check(user) is True
+
+        assert utils.has_any('perm2').check(user) is False
+        assert utils.has_all('perm2').check(user) is False
+
+    def test_callable(self):
+        user1 = ents.User.testing_create(email='foo@bar.com')
+        user2 = ents.User.testing_create(email='abc@123.com')
+
+        def func(usr):
+            return usr.email.endswith('@bar.com')
+
+        assert utils.has_any(func).check(user1) is True
+        assert utils.has_all(func).check(user1) is True
+
+        assert utils.has_any(func).check(user2) is False
+        assert utils.has_all(func).check(user2) is False
+
+    def test_all(self):
+        user = ents.User.testing_create(
+            permissions=[
+                ents.Permission.testing_create(token='perm1'),
+                ents.Permission.testing_create(token='perm2'),
+                ents.Permission.testing_create(token='perm3'),
+            ]
+        )
+        ents.Permission.testing_create(token='perm4')
+
+        assert utils.has_all('perm1').check(user) is True
+        assert utils.has_all('perm1', 'perm2').check(user) is True
+        assert utils.has_all('perm1', 'perm2', 'perm3').check(user) is True
+
+        assert utils.has_all('perm4').check(user) is False
+        assert utils.has_all('perm1', 'perm4').check(user) is False
+        assert utils.has_all('perm1', 'perm2', 'perm4').check(user) is False
+
+    def test_any(self):
+        user = ents.User.testing_create(
+            permissions=[ents.Permission.testing_create(token='perm1')]
+        )
+        ents.Permission.testing_create(token='perm2'),
+        ents.Permission.testing_create(token='perm3'),
+        ents.Permission.testing_create(token='perm4')
+
+        assert utils.has_any('perm1').check(user) is True
+        assert utils.has_any('perm1', 'perm2').check(user) is True
+        assert utils.has_any('perm1', 'perm2', 'perm3').check(user) is True
+
+        assert utils.has_any('perm2').check(user) is False
+        assert utils.has_any('perm2', 'perm3').check(user) is False
+        assert utils.has_any('perm2', 'perm3', 'perm4').check(user) is False
+
+    def test_nested(self):
+        user = ents.User.testing_create(
+            permissions=[
+                ents.Permission.testing_create(token='perm1'),
+                ents.Permission.testing_create(token='perm2'),
+                ents.Permission.testing_create(token='perm3'),
+            ]
+        )
+        ents.Permission.testing_create(token='perm4')
+
+        condition = utils.has_any('perm4', utils.has_all('perm1', 'perm2'))
+        assert condition.check(user) is True
+
+        condition = utils.has_all(utils.has_any('perm1', 'perm2'), 'perm4')
+        assert condition.check(user) is False
+
+        condition = utils.has_all(utils.has_any('perm4', lambda _: True), 'perm1')
+        assert condition.check(user) is True
+
+        condition = utils.has_all(utils.has_any('perm4', lambda _: False), 'perm1')
+        assert condition.check(user) is False

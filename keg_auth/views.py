@@ -1,3 +1,5 @@
+import inspect
+
 import flask
 import flask_login
 import inflect
@@ -7,17 +9,55 @@ from blazeutils.strings import case_cw2dash
 from keg.db import db
 
 from keg_auth import forms, grids
-from keg_auth.model import entity_registry
+from keg_auth.model import entity_registry, utils as model_utils
 
 
-class AuthenticatedView(keg.web.BaseView):
-    def check_auth(self):
-        if not flask_login.current_user.is_authenticated:
-            self.handle_unauthenticated()
+class RequiresPermissions:
+    def __init__(self, condition, on_authentication_failure=None, on_authorization_failure=None):
+        self.condition = condition
+        self._on_authentication_failure = on_authentication_failure
+        self._on_authorization_failure = on_authorization_failure
 
-    def handle_unauthenticated(self):
+    def __call__(self, class_or_function):
+        if inspect.isclass(class_or_function):
+            return self.decorate_class(class_or_function)
+        return self.decorate_function(class_or_function)
+
+    def decorate_class(self, cls):
+        old_check_auth = getattr(cls, 'check_auth', lambda: None)
+
+        def new_check_auth(*args, **kwargs):
+            self.check_auth()
+            return old_check_auth(*args, **kwargs)
+        cls.check_auth = new_check_auth
+
+    def decorate_function(self, func):
+        def wrapper(*args, **kwargs):
+            self.check_auth()
+            return func(*args, **kwargs)
+        return wrapper
+
+    def on_authentication_failure(self):
+        if self._on_authentication_failure:
+            self._on_authentication_failure()
         redirect_resp = flask.current_app.login_manager.unauthorized()
         flask.abort(redirect_resp)
+
+    def on_authorization_failure(self):
+        if self._on_authorization_failure:
+            self._on_authorization_failure()
+        flask.abort(403)
+
+    def check_auth(self):
+        user = flask_login.current_user
+        if not user or not user.is_authenticated:
+            self.on_authentication_failure()
+
+        if not model_utils.has_permissions(self.condition, user):
+            self.on_authorization_failure()
+
+
+requires_permissions = RequiresPermissions
 
 
 class _BaseView(keg.web.BaseView):
@@ -92,7 +132,7 @@ class AuthFormView(_BaseView):
         return True
 
 
-class CrudView(AuthenticatedView):
+class CrudView(keg.web.BaseView):
     grid_cls = None
     form_cls = None
     orm_cls = None
@@ -183,14 +223,15 @@ class CrudView(AuthenticatedView):
         return self.objinst
 
     def add(self):
-        return self.add_edit(flask.request.method)
+        return requires_permissions(self.permissions['add'])(self.add_edit)(flask.request.method)
 
     def edit(self, objid):
         obj = self.init_object(objid)
-        return self.add_edit(flask.request.method, obj)
+        return requires_permissions(self.permissions['edit'])(self.add_edit)(
+            flask.request.method, obj)
 
     def manage(self):
-        return self.render_grid()
+        return requires_permissions(self.permissions['view'])(self.render_grid)()
 
     def flash_success(self, verb):
         flask.flash('Successfully {verb} {object}'.format(verb=verb, object=self.object_name),

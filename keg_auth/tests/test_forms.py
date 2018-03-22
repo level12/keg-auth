@@ -160,8 +160,6 @@ class TestUser(FormBase):
         self.assert_valid(obj=usr)
 
 
-
-
 @mock.patch.dict(current_app.config, WTF_CSRF_ENABLED=False)
 class TestGroup(FormBase):
     form_cls = forms.group_form(endpoint='auth.group:edit')
@@ -223,4 +221,3 @@ class TestBundle(FormBase):
 
         form = self.assert_valid(permission_ids=[])
         assert form.get_selected_permissions() == []
-

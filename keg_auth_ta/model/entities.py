@@ -3,7 +3,7 @@ import logging
 from keg.db import db
 from keg_elements.db.mixins import DefaultColsMixin, MethodsMixin
 from keg_auth.model.entity_registry import registry
-from keg_auth import UserMixin, PermissionMixin, BundleMixin, GroupMixin, initialize_mappings
+from keg_auth import UserMixin, PermissionMixin, BundleMixin, GroupMixin
 
 log = logging.getLogger(__name__)
 

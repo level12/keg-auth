@@ -7,8 +7,13 @@ from keg_auth.model import (
     BundleMixin,
     initialize_mappings
 )
+from keg_auth.model.utils import (
+    has_permissions,
+    has_all,
+    has_any,
+)
 from keg_auth.views import (
-    AuthenticatedView,
     make_blueprint,
+    requires_permissions,
 )
 from keg_auth.version import VERSION as __VERSION__
