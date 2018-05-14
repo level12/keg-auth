@@ -6,6 +6,7 @@ import sqlalchemy as sa
 import sqlalchemy.orm.exc as orm_exc
 from blazeutils.strings import case_cw2dash
 from keg.db import db
+from six.moves import urllib
 
 from keg_auth import forms, grids, requires_permissions
 from keg_auth.model import entity_registry
@@ -58,6 +59,17 @@ class AuthFormView(_BaseView):
         self.assign('form_action_text', self.form_action_text)
         self.assign('page_title', self.page_title)
         self.assign('page_heading', self.page_heading)
+
+    @staticmethod
+    def is_safe_url(target):
+        """Returns `True` if the target is a valid URL for redirect"""
+        # from http://flask.pocoo.org/snippets/62/
+        ref_url = urllib.parse.urlparse(flask.request.host_url)
+        test_url = urllib.parse.urlparse(urllib.parse.urljoin(flask.request.host_url, target))
+        return (
+            test_url.scheme in ('http', 'https') and
+            ref_url.netloc == test_url.netloc
+        )
 
     def make_form(self):
         return self.form_cls()
@@ -286,7 +298,16 @@ class Login(AuthFormView):
     def on_success(self, user):
         flask_login.login_user(user)
         flask.flash(*self.flash_success)
-        redirect_to = flask.current_app.auth_manager.url_for('after-login')
+
+        # support Flask-Login "next" parameter
+        next_parameter = flask.request.values.get('next')
+        if flask.current_app.config.get('USE_SESSION_FOR_NEXT'):
+            next_parameter = flask.session.get('next')
+        if next_parameter and self.is_safe_url(next_parameter):
+            redirect_to = next_parameter
+        else:
+            redirect_to = flask.current_app.auth_manager.url_for('after-login')
+
         return flask.redirect(redirect_to)
 
 

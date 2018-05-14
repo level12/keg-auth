@@ -81,6 +81,35 @@ class TestViews(object):
         resp = client.get('/secret1-class', status=302)
         assert '/login' in resp.location
 
+    def test_login_field_success_next_parameter(self):
+        ents.User.testing_create(email='foo@bar.com', password='pass')
+
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('/secret1', status=302).follow()
+
+        resp.form['email'] = 'foo@bar.com'
+        resp.form['password'] = 'pass'
+        resp = resp.form.submit()
+
+        assert resp.status_code == 302, resp.html
+        assert resp.headers['Location'] == 'http://keg.example.com/secret1'
+        assert resp.flashes == [('success', 'Login successful.')]
+
+    def test_login_field_success_next_session(self):
+        ents.User.testing_create(email='foo@bar.com', password='pass')
+
+        with mock.patch.dict(flask.current_app.config, {'USE_SESSION_FOR_NEXT': True}):
+            client = flask_webtest.TestApp(flask.current_app)
+            resp = client.get('/secret1', status=302).follow()
+
+            resp.form['email'] = 'foo@bar.com'
+            resp.form['password'] = 'pass'
+            resp = resp.form.submit()
+
+        assert resp.status_code == 302, resp.html
+        assert resp.headers['Location'] == 'http://keg.example.com/secret1'
+        assert resp.flashes == [('success', 'Login successful.')]
+
     def test_authenticated_request(self):
         user = ents.User.testing_create(permissions=[self.perm1, self.perm2])
         client = AuthTestApp(flask.current_app)

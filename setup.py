@@ -32,13 +32,18 @@ setup(
     install_requires=[
         'bcrypt',
         'commonmark',
+
+        # this can be removed once level12/keg#100 has been resolved
+        'Flask<1.*',
+
         'Flask-Mail',
         'Flask-Login',
         'Keg>=0.6.0',
         'KegElements',
+        'inflect',
         'passlib',
         'shortuuid',
-        'inflect',
+        'six',
         'webgrid',
     ],
     # List additional groups of dependencies here (e.g. development
