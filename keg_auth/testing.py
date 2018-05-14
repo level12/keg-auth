@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 from blazeutils.containers import LazyDict
+from six.moves import urllib
 import flask
 import flask_webtest
 import wrapt
@@ -51,6 +52,52 @@ class AuthTests(object):
         resp = resp.form.submit()
 
         assert resp.status_code == 302, resp.html
+        assert resp.headers['Location'] == 'http://keg.example.com/'
+        assert resp.flashes == [('success', 'Login successful.')]
+
+    def test_login_field_success_next_parameter(self):
+        self.user_ent.testing_create(email='foo@bar.com', password='pass')
+
+        next = '/foo'
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('{}?next={}'.format(self.login_url, next))
+
+        resp.form['email'] = 'foo@bar.com'
+        resp.form['password'] = 'pass'
+        resp = resp.form.submit()
+
+        assert resp.status_code == 302, resp.html
+        assert resp.headers['Location'] == 'http://keg.example.com{}'.format(next)
+        assert resp.flashes == [('success', 'Login successful.')]
+
+    def test_next_parameter_not_open_redirect(self):
+        """ensure following the "next" parameter doesn't allow for an open redirect"""
+        self.user_ent.testing_create(email='foo@bar.com', password='pass')
+
+        # unquoted next parameter
+        next = 'http://www.example.com'
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('{}?next={}'.format(self.login_url, next))
+
+        resp.form['email'] = 'foo@bar.com'
+        resp.form['password'] = 'pass'
+        resp = resp.form.submit()
+
+        assert resp.status_code == 302, resp.html
+        # verify the 'next' parameter was ignored
+        assert resp.headers['Location'] == 'http://keg.example.com/'
+        assert resp.flashes == [('success', 'Login successful.')]
+
+        # quoted next parameter
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('{}?next={}'.format(self.login_url, urllib.parse.quote(next)))
+
+        resp.form['email'] = 'foo@bar.com'
+        resp.form['password'] = 'pass'
+        resp = resp.form.submit()
+
+        assert resp.status_code == 302, resp.html
+        # verify the 'next' parameter was ignored
         assert resp.headers['Location'] == 'http://keg.example.com/'
         assert resp.flashes == [('success', 'Login successful.')]
 
