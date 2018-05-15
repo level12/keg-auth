@@ -32,12 +32,17 @@ setup(
     install_requires=[
         'bcrypt',
         'commonmark',
+
+        # this can be removed once level12/keg#100 has been resolved
+        'Flask<1.*',
+
         'Flask-Mail',
         'Flask-Login',
         'Keg>=0.6.0',
         'KegElements',
         'passlib',
         'shortuuid',
+        'six',
     ],
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
