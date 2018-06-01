@@ -5,8 +5,7 @@ import flask
 import flask_webtest
 from keg.db import db
 
-from keg_auth.model import entity_registry
-from keg_auth.testing import AuthTests, AuthTestApp
+from keg_auth.testing import AuthTests, AuthTestApp, ViewTestBase
 import mock
 
 from keg_auth_ta.model import entities as ents
@@ -65,10 +64,20 @@ class TestViews(object):
         assert resp.text == 'secret2'
 
     def test_authenticated_client(self):
-        user = ents.User.testing_create(permissions=[self.perm1, self.perm2])
+        user = ents.User.testing_create()
         client = AuthTestApp(flask.current_app, user=user)
         resp = client.get('/secret1', status=200)
         assert resp.text == 'secret1'
+
+        resp = client.get('/secret1-class', status=200)
+        assert resp.text == 'secret1-class'
+
+    def test_unauthenticated_client(self):
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('/secret1', status=302)
+        assert '/login' in resp.location
+        resp = client.get('/secret1-class', status=302)
+        assert '/login' in resp.location
 
     def test_authenticated_request(self):
         user = ents.User.testing_create(permissions=[self.perm1, self.perm2])
@@ -179,6 +188,7 @@ class TestPermissionsRequired:
         ents.Permission.delete_cascaded()
         cls.perm1 = ents.Permission.testing_create(token='permission1')
         cls.perm2 = ents.Permission.testing_create(token='permission2')
+        cls.perm3 = ents.Permission.testing_create(token='permission3')
 
     def test_method_level(self):
         allowed = ents.User.testing_create(permissions=[self.perm1, self.perm2])
@@ -202,45 +212,82 @@ class TestPermissionsRequired:
         client = AuthTestApp(flask.current_app, user=disallowed)
         client.get('/secret3', {}, status=403)
 
-
-class CrudBase:
-    def setup(self):
-        ents.User.delete_cascaded()
-
-        user_ent = entity_registry.registry.user_cls
-
-        user = user_ent.testing_create(email='foo@bar.com', password='pass')
-
         client = flask_webtest.TestApp(flask.current_app)
-        resp = client.get('/login')
+        client.get('/secret3', status=302)
 
-        resp.form['email'] = 'foo@bar.com'
-        resp.form['password'] = 'pass'
-        resp = resp.form.submit()
+    def test_nested_conditions(self):
+        def check(perms, allowed):
+            print(perms, allowed)
+            target_status = 200 if allowed else 403
+            user = ents.User.testing_create(permissions=perms)
 
-        assert resp.status_code == 302, resp.html
-        assert resp.headers['Location'] == 'http://keg.example.com/'
-        assert resp.flashes == [('success', 'Login successful.')]
+            client = AuthTestApp(flask.current_app, user=user)
+            resp = client.get('/secret-nested', status=target_status)
+            if allowed:
+                assert resp.text == 'secret_nested'
 
-        self.client = client
-        self.current_user = user
+        for perms, allowed in (
+            ((self.perm1, self.perm2), True),
+            ((self.perm3,), True),
+            ((self.perm1,), False),
+            ((self.perm2,), False),
+            ((self.perm1, self.perm2, self.perm3), True),
+        ):
+            check(perms, allowed)
+
+    def test_nested_callable_conditions(self):
+        def check(perms, email, allowed):
+            print(perms, email, allowed)
+            ents.User.delete_cascaded()
+            target_status = 200 if allowed else 403
+            user = ents.User.testing_create(permissions=perms, email=email)
+
+            client = AuthTestApp(flask.current_app, user=user)
+            resp = client.get('/secret-nested-callable', status=target_status)
+            if allowed:
+                assert resp.text == 'secret_nested_callable'
+
+        for perms, email, allowed in (
+            ((self.perm1,), 'snoopy@peanuts.com', True),
+            ((self.perm2,), 'snoopy@peanuts.com', False),
+            ((self.perm2,), 'foo@bar.baz', True),
+        ):
+            check(perms, email, allowed)
+
+    def test_callable_conditions(self):
+        def check(email, allowed):
+            print(email, allowed)
+            ents.User.delete_cascaded()
+            target_status = 200 if allowed else 403
+            user = ents.User.testing_create(email=email)
+
+            client = AuthTestApp(flask.current_app, user=user)
+            resp = client.get('/secret-callable', status=target_status)
+            if allowed:
+                assert resp.text == 'secret_callable'
+
+        for email, allowed in (
+            ('snoopy@peanuts.com', False),
+            ('foo@bar.baz', True),
+        ):
+            check(email, allowed)
 
 
-class TestUserCrud(CrudBase):
+class TestUserCrud(ViewTestBase):
+    permissions = 'auth-manage'
+
     def test_add(self):
         resp = self.client.get('/users/add')
 
         assert resp.form['email'].value == ''
-        assert resp.form['is_enabled'].value is True
-        assert 'is_superuser' not in resp.form
+        assert 'is_superuser' not in resp.form.fields
 
         resp.form['email'] = 'abc@example.com'
         resp = resp.form.submit()
         assert resp.status_code == 302
-        assert resp.location == '/users'
-        assert resp.flashes == [('success', 'fdafda')]
+        assert resp.location.endswith('/users')
+        assert resp.flashes == [('success', 'Successfully created User')]
 
-        user_ent = entity_registry.registry.user_cls
-        user = user_ent.get_by(email='abc@example.com')
+        user = self.user_ent.get_by(email='abc@example.com')
         assert user.is_enabled is True
         assert user.is_superuser is False

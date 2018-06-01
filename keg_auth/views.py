@@ -1,5 +1,3 @@
-import inspect
-
 import flask
 import flask_login
 import inflect
@@ -8,56 +6,8 @@ import sqlalchemy.orm.exc as orm_exc
 from blazeutils.strings import case_cw2dash
 from keg.db import db
 
-from keg_auth import forms, grids
-from keg_auth.model import entity_registry, utils as model_utils
-
-
-class RequiresPermissions:
-    def __init__(self, condition, on_authentication_failure=None, on_authorization_failure=None):
-        self.condition = condition
-        self._on_authentication_failure = on_authentication_failure
-        self._on_authorization_failure = on_authorization_failure
-
-    def __call__(self, class_or_function):
-        if inspect.isclass(class_or_function):
-            return self.decorate_class(class_or_function)
-        return self.decorate_function(class_or_function)
-
-    def decorate_class(self, cls):
-        old_check_auth = getattr(cls, 'check_auth', lambda: None)
-
-        def new_check_auth(*args, **kwargs):
-            self.check_auth()
-            return old_check_auth(*args, **kwargs)
-        cls.check_auth = new_check_auth
-
-    def decorate_function(self, func):
-        def wrapper(*args, **kwargs):
-            self.check_auth()
-            return func(*args, **kwargs)
-        return wrapper
-
-    def on_authentication_failure(self):
-        if self._on_authentication_failure:
-            self._on_authentication_failure()
-        redirect_resp = flask.current_app.login_manager.unauthorized()
-        flask.abort(redirect_resp)
-
-    def on_authorization_failure(self):
-        if self._on_authorization_failure:
-            self._on_authorization_failure()
-        flask.abort(403)
-
-    def check_auth(self):
-        user = flask_login.current_user
-        if not user or not user.is_authenticated:
-            self.on_authentication_failure()
-
-        if not model_utils.has_permissions(self.condition, user):
-            self.on_authorization_failure()
-
-
-requires_permissions = RequiresPermissions
+from keg_auth import forms, grids, requires_permissions
+from keg_auth.model import entity_registry
 
 
 class _BaseView(keg.web.BaseView):
@@ -136,8 +86,8 @@ class CrudView(keg.web.BaseView):
     grid_cls = None
     form_cls = None
     orm_cls = None
-    form_template = None
-    grid_template = None
+    form_template = 'keg_auth/crud-addedit.html'
+    grid_template = 'keg_auth/crud-manage.html'
     object_name = None
     _inflect = inflect.engine()
     permissions = {
@@ -239,16 +189,14 @@ class CrudView(keg.web.BaseView):
 
     def on_add_edit_success(self, entity, is_edit):
         self.flash_success('modified' if is_edit else 'created')
-        return flask.redirect(self.endpoint_for_action('manage'))
+        return flask.redirect(flask.url_for(self.endpoint_for_action('manage')))
 
     def on_add_edit_failure(self, entity, is_edit):
         flask.flash('Form errors detected.  Please see below for details.', 'error')
 
     @classmethod
     def endpoint_for_action(cls, action):
-        if action == 'manage':
-            return '.{}'.format(cls.calc_endpoint())
-        return '.{}:{}'.format(cls.calc_endpoint(), case_cw2dash(action))
+        return '{}.{}:{}'.format(cls.blueprint.name, cls.calc_endpoint(), case_cw2dash(action))
 
     def make_grid(self):
         grid = self.grid_cls()
@@ -265,8 +213,8 @@ class CrudView(keg.web.BaseView):
             self.render_grid_xls(grid)
 
         return flask.render_template(
-            self.form_template,
-            add_url=self.endpoint_for_action('add'),
+            self.grid_template,
+            add_url=flask.url_for(self.endpoint_for_action('add')),
             grid=grid
         )
 
@@ -409,6 +357,13 @@ class User(CrudView):
     url = '/users'
     object_name = 'User'
 
+    permissions = {
+        'add': 'auth-manage',
+        'edit': 'auth-manage',
+        'delete': 'auth-manage',
+        'view': 'auth-manage'
+    }
+
     def create_form(self, obj):
         form_cls = forms.user_form(allow_superuser=flask_login.current_user.is_superuser,
                                    endpoint=self.endpoint_for_action('edit'))
@@ -440,6 +395,13 @@ class Group(CrudView):
     url = '/groups'
     object_name = 'Group'
 
+    permissions = {
+        'add': 'auth-manage',
+        'edit': 'auth-manage',
+        'delete': 'auth-manage',
+        'view': 'auth-manage'
+    }
+
     def create_form(self, obj):
         return forms.group_form()
 
@@ -467,6 +429,13 @@ class Group(CrudView):
 class Bundle(CrudView):
     url = '/bundles'
     object_name = 'Bundle'
+
+    permissions = {
+        'add': 'auth-manage',
+        'edit': 'auth-manage',
+        'delete': 'auth-manage',
+        'view': 'auth-manage'
+    }
 
     def create_form(self, obj):
         return forms.group_form()

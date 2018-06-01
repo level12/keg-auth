@@ -1,10 +1,9 @@
 import logging
 
 import flask
-import flask_login
 import keg.web
 
-from keg_auth import make_blueprint, requires_permissions, has_any, has_all
+from keg_auth import make_blueprint, requires_permissions, requires_user, has_any, has_all
 from keg_auth_ta.extensions import csrf
 
 log = logging.getLogger(__name__)
@@ -29,9 +28,20 @@ class Home(keg.web.BaseView):
 
 
 @private_bp.route('/secret1')
-@flask_login.login_required
+@requires_user
 def secret1():
     return 'secret1'
+
+
+@requires_user()
+class Secret1Class(keg.web.BaseView):
+    """ Show class decorator usage of requires_user, and also that the decorator works with or
+        without ()
+    """
+    blueprint = private_bp
+
+    def get(self):
+        return 'secret1-class'
 
 
 class Secret2(keg.web.BaseView):
@@ -68,3 +78,22 @@ class Secret3(keg.web.BaseView):
 
     def get(self):
         return 'secret3'
+
+
+@private_bp.route('/secret-nested')
+@requires_permissions(has_any(has_all('permission1', 'permission2'), 'permission3'))
+def secret_nested():
+    return 'secret_nested'
+
+
+@private_bp.route('/secret-callable')
+@requires_permissions(lambda user: user.email == 'foo@bar.baz')
+def secret_callable():
+    return 'secret_callable'
+
+
+@private_bp.route('/secret-nested-callable')
+@requires_permissions(has_any('permission1',
+                              lambda user: user.email == 'foo@bar.baz'))
+def secret_nested_callable():
+    return 'secret_nested_callable'

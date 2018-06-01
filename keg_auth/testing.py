@@ -1,10 +1,14 @@
 # Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
 from __future__ import unicode_literals
 
+from blazeutils import tolist
 from blazeutils.containers import LazyDict
 import flask
 import flask_webtest
+import sqlalchemy as sa
 import wrapt
+
+from keg_auth.model import entity_registry
 
 
 class AuthTests(object):
@@ -355,3 +359,50 @@ class AuthTestApp(flask_webtest.TestApp):
     @user_request
     def delete_json(self, *args, **kwargs):
         return super(AuthTestApp, self).delete_json(*args, **kwargs)
+
+
+def login_client_with_permissions(*permissions):
+    """ Get an AuthTestApp instance and a User instance having the specified permissions
+
+        Usage: permissions can be scalar or list, giving either tokens or Permission instances
+        Returns: (AuthTestApp, User) tuple
+    """
+    perm_cls = entity_registry.registry.permission_cls
+    perm_ents = [
+        perm_cls.get_by_token(perm)
+        if not isinstance(perm, perm_cls) else perm
+        for perm in tolist(permissions)
+    ]
+    current_user = entity_registry.registry.user_cls.testing_create(permissions=perm_ents)
+    client = AuthTestApp(flask.current_app, user=current_user)
+    return client, current_user
+
+
+class ViewTestBase:
+    """ Simple helper class that will set up Permission tokens as specified, log in a user, and
+        provide the test app client on the class for use in tests.
+
+        Usage: `permissions` class attribute can be scalar or list, giving either tokens or
+        Permission instances
+
+        Tests:
+        - `self.current_user`: User instance that is logged in
+        - `self.client`: AuthTestApp instance
+    """
+    permissions = tuple()
+
+    @classmethod
+    def setup_class(cls):
+        cls.user_ent = entity_registry.registry.user_cls
+        cls.permission_ent = entity_registry.registry.permission_cls
+        cls.user_ent.delete_cascaded()
+
+        # ensure all of the tokens exists
+        for perm in tolist(cls.permissions):
+            if not isinstance(perm, cls.permission_ent):
+                try:
+                    cls.permission_ent.testing_create(token=perm)
+                except sa.exc.IntegrityError:
+                    pass
+
+        cls.client, cls.current_user = login_client_with_permissions(*tolist(cls.permissions))

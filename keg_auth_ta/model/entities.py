@@ -21,6 +21,9 @@ class User(db.Model, UserMixin, EntityMixin):
 class Permission(db.Model, PermissionMixin, EntityMixin):
     __tablename__ = 'permissions'
 
+    def __repr__(self):
+        return '<Permission id={} token={}>'.format(self.id, self.token)
+
 
 @registry.register_bundle
 class Bundle(db.Model, BundleMixin, EntityMixin):

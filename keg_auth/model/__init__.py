@@ -23,16 +23,17 @@ def _create_cryptcontext_kwargs(**column_kwargs):
 
 
 class UserMixin(object):
-    # These two fields are needed by Flask-Login.
+    # These two attributes are needed by Flask-Login.
     is_anonymous = False
     is_authenticated = True
+
     # Assume the user will need to verify their email address before they become active.
     is_verified = sa.Column(sa.Boolean, nullable=False, default=False,
                             server_default=sa.text('false'))
     is_enabled = sa.Column(sa.Boolean, nullable=False, default=True, server_default=sa.true())
     is_superuser = sa.Column(sa.Boolean, nullable=False, default=False, server_default=sa.false())
     email = sa.Column(EmailType, nullable=False, unique=True)
-    password = sa.Column(PasswordType(onload=_create_cryptcontext_kwargs), nullable=False)
+    password = sa.Column(PasswordType(onload=_create_cryptcontext_kwargs))
     token = sa.Column(PasswordType(onload=_create_cryptcontext_kwargs))
     token_created_utc = sa.Column(ArrowType)
 
@@ -184,6 +185,10 @@ class UserMixin(object):
 class PermissionMixin(object):
     token = sa.Column(sa.Unicode, nullable=False, unique=True)
     description = sa.Column(sa.Unicode)
+
+    @classmethod
+    def get_by_token(cls, token):
+        return cls.get_by(token=token)
 
 
 class BundleMixin(object):

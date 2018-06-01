@@ -6,7 +6,8 @@ class PermissionCondition(abc.ABC):
         assert len(conditions) >= 1, 'At least one permission or condition is required'
         self.conditions = conditions
 
-    def _check_condition(self, user, condition):
+    @staticmethod
+    def _check_condition(condition, user):
         if isinstance(condition, PermissionCondition):
             return condition.check(user)
         if callable(condition):
@@ -21,7 +22,7 @@ class PermissionCondition(abc.ABC):
 class AllCondition(PermissionCondition):
     def check(self, user):
         for cond in self.conditions:
-            if not self._check_condition(user, cond):
+            if not self._check_condition(cond, user):
                 return False
         return True
 
@@ -29,15 +30,13 @@ class AllCondition(PermissionCondition):
 class AnyCondition(PermissionCondition):
     def check(self, user):
         for cond in self.conditions:
-            if self._check_condition(user, cond):
+            if self._check_condition(cond, user):
                 return True
         return False
 
 
 def has_permissions(condition, user):
-    if isinstance(condition, PermissionCondition):
-        return condition.check(user)
-    return user.has_all_permissions(condition)
+    return PermissionCondition._check_condition(condition, user)
 
 
 has_all = AllCondition

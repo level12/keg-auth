@@ -1,5 +1,6 @@
 # flake8: noqa
 from keg_auth.core import AuthManager
+from keg_auth.libs.decorators import requires_permissions, requires_user
 from keg_auth.model import (
     UserMixin,
     PermissionMixin,
@@ -14,6 +15,5 @@ from keg_auth.model.utils import (
 )
 from keg_auth.views import (
     make_blueprint,
-    requires_permissions,
 )
 from keg_auth.version import VERSION as __VERSION__
