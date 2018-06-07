@@ -80,6 +80,15 @@ class Secret3(keg.web.BaseView):
         return 'secret3'
 
 
+@requires_permissions('permission1')
+class Secret4(keg.web.BaseView):
+    blueprint = private_bp
+
+    @requires_permissions('permission2')
+    def get(self):
+        return 'secret4'
+
+
 @private_bp.route('/secret-nested')
 @requires_permissions(has_any(has_all('permission1', 'permission2'), 'permission3'))
 def secret_nested():
@@ -97,3 +106,12 @@ def secret_callable():
                               lambda user: user.email == 'foo@bar.baz'))
 def secret_nested_callable():
     return 'secret_nested_callable'
+
+
+class SecretRouteOnClass(keg.web.BaseView):
+    blueprint = private_bp
+
+    @private_bp.route('/secret-route-on-class')
+    @requires_permissions('permission1')
+    def someroute(self):
+        return 'secret-route-on-class'

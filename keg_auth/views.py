@@ -353,6 +353,7 @@ class Logout(_BaseView):
         self.flash_and_redirect(self.flash_success, 'after-logout')
 
 
+@requires_permissions('auth-manage')
 class User(CrudView):
     url = '/users'
     object_name = 'User'

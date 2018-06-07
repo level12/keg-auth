@@ -12,6 +12,9 @@ class PermissionCondition(abc.ABC):
             return condition.check(user)
         if callable(condition):
             return condition(user)
+        if not hasattr(user, 'has_all_permissions'):
+            # probably an anonymous user in the session after logout
+            return False
         return user.has_all_permissions(condition)
 
     @abc.abstractmethod

@@ -3,7 +3,7 @@ import os.path as osp
 from setuptools import setup, find_packages
 
 cdir = osp.abspath(osp.dirname(__file__))
-README = open(osp.join(cdir, 'readme.rst')).read()
+README = open(osp.join(cdir, 'readme.md')).read()
 CHANGELOG = open(osp.join(cdir, 'changelog.rst')).read()
 
 version_fpath = osp.join(cdir, 'keg_auth', 'version.py')

@@ -215,6 +215,24 @@ class TestPermissionsRequired:
         client = flask_webtest.TestApp(flask.current_app)
         client.get('/secret3', status=302)
 
+    def test_class_and_method_level_combined(self):
+        allowed = ents.User.testing_create(permissions=[self.perm1, self.perm2])
+        disallowed1 = ents.User.testing_create(permissions=[self.perm1])
+        disallowed2 = ents.User.testing_create(permissions=[self.perm2])
+
+        client = AuthTestApp(flask.current_app, user=allowed)
+        resp = client.get('/secret4', status=200)
+        assert resp.text == 'secret4'
+
+        client = AuthTestApp(flask.current_app, user=disallowed1)
+        client.get('/secret4', {}, status=403)
+
+        client = AuthTestApp(flask.current_app, user=disallowed2)
+        client.get('/secret4', {}, status=403)
+
+        client = flask_webtest.TestApp(flask.current_app)
+        client.get('/secret4', status=302)
+
     def test_nested_conditions(self):
         def check(perms, allowed):
             print(perms, allowed)

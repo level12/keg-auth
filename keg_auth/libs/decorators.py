@@ -8,15 +8,23 @@ from keg_auth.model import utils as model_utils
 
 class RequiresUser:
     def __init__(self, on_authentication_failure=None, on_authorization_failure=None):
+        # defaults for these handlers are provided, but may be overridden here
         self._on_authentication_failure = on_authentication_failure
         self._on_authorization_failure = on_authorization_failure
 
     def __call__(self, class_or_function):
+        # decorator may be applied to a class or a function, but the effect is different
         if inspect.isclass(class_or_function):
             return self.decorate_class(class_or_function)
         return self.decorate_function(class_or_function)
 
+    def store_auth_info(self, obj):
+        obj.__keg_auth_requires_user__ = True
+
     def decorate_class(self, cls):
+        # when decorating a view class, all of the class's route methods will submit to the given
+        #   auth. The view may already have check_auth defined, though, so make sure we still call
+        #   it.
         old_check_auth = getattr(cls, 'check_auth', lambda: None)
 
         def new_check_auth(*args, **kwargs):
@@ -24,11 +32,22 @@ class RequiresUser:
             return old_check_auth(*args, **kwargs)
         cls.check_auth = new_check_auth
 
+        # store auth info on the class itself
+        self.store_auth_info(cls)
+        return cls
+
     def decorate_function(self, func):
+        # when decorating a function, we wrap it to check the auth first, then call the original
+        #   function. Set the name on the wrapper for it to be available when assigning a route
         def wrapper(*args, **kwargs):
             self.check_auth()
             return func(*args, **kwargs)
         wrapper.__name__ = getattr(func, '__name__', 'wrapper')
+        wrapper.__keg_auth_original_function__ = func
+
+        # store auth info on the wrapper, as it is now the view method that will get stored for
+        #   the app's routes
+        self.store_auth_info(wrapper)
         return wrapper
 
     def on_authentication_failure(self):
@@ -70,6 +89,10 @@ class RequiresPermissions(RequiresUser):
             on_authorization_failure=on_authorization_failure,
         )
         self.condition = condition
+
+    def store_auth_info(self, obj):
+        super(RequiresPermissions, self).store_auth_info(obj)
+        obj.__keg_auth_requires_permissions__ = self.condition
 
     def check_auth(self):
         super(RequiresPermissions, self).check_auth()
