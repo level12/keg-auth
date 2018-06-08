@@ -1,10 +1,16 @@
 import flask_login
 import webgrid
 from webgrid import filters
+from webgrid.flask import WebGrid as GridManager
 from webhelpers2.html import literal
 from webhelpers2.html.tags import link_to
 
 from keg_auth.model import entity_registry
+
+
+class Grid(webgrid.BaseGrid):
+    manager = GridManager()
+    session_on = True
 
 
 class ActionColumn(webgrid.Column):
@@ -104,10 +110,11 @@ class ActionColumn(webgrid.Column):
             raise AttributeError('This column type must reside in an AppGrid')
 
 
-def make_user_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permission):
+def make_user_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permission,
+                   grid_cls=Grid):
     user_cls = entity_registry.registry.user_cls
 
-    class User(webgrid.BaseGrid):
+    class User(grid_cls):
         ActionColumn(
             '',
             user_cls.id,
@@ -127,10 +134,11 @@ def make_user_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permi
     return User
 
 
-def make_group_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permission):
+def make_group_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permission,
+                    grid_cls=Grid):
     group_cls = entity_registry.registry.group_cls
 
-    class Group(webgrid.BaseGrid):
+    class Group(grid_cls):
         ActionColumn(
             '',
             group_cls.id,
@@ -148,10 +156,11 @@ def make_group_grid(edit_endpoint, edit_permission, delete_endpoint, delete_perm
     return Group
 
 
-def make_bundle_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permission):
+def make_bundle_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permission,
+                     grid_cls=Grid):
     bundle_cls = entity_registry.registry.bundle_cls
 
-    class Bundle(webgrid.BaseGrid):
+    class Bundle(grid_cls):
         ActionColumn(
             '',
             bundle_cls.id,

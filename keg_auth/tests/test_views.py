@@ -4,9 +4,10 @@ from __future__ import unicode_literals
 import flask
 import flask_webtest
 from keg.db import db
-
-from keg_auth.testing import AuthTests, AuthTestApp, ViewTestBase
 import mock
+import pytest
+
+from keg_auth.testing import AuthTests, AuthTestApp, ViewTestBase, login_client_with_permissions
 
 from keg_auth_ta.model import entities as ents
 
@@ -309,3 +310,57 @@ class TestUserCrud(ViewTestBase):
         user = self.user_ent.get_by(email='abc@example.com')
         assert user.is_enabled is True
         assert user.is_superuser is False
+
+    def test_edit(self):
+        assert False
+
+    def test_not_found(self):
+        # 404 for edit/delete without ID, and bad ID
+        self.client.get('/users/edit', status=404)
+        self.client.get('/users/delete', status=404)
+        self.client.get('/users/edit/999999', status=404)
+        self.client.get('/users/delete/999999', status=404)
+
+    @pytest.mark.parametrize('action', [
+        'add', 'edit', 'delete', 'view'
+    ])
+    def test_alternate_permissions(self, action):
+        # patch in separate permissions for add/edit/view/delete
+        actions = {'add', 'edit', 'delete', 'view'}
+        ents.Permission.testing_create(token='permission1')
+
+        user_edit = ents.User.testing_create()
+        user_delete = ents.User.testing_create()
+
+        def url(url_action):
+            if url_action == 'view':
+                return '/users'
+            if url_action == 'edit':
+                return '/users/{}'.format(user_edit.id)
+            if url_action == 'delete':
+                return '/users/{}/delete'.format(user_delete.id)
+            return '/users/add'
+
+        with mock.patch.dict(
+            flask.current_app.view_functions[
+                'auth.user:{}'.format(action)
+            ].view_class.permissions,
+            {action: 'permission1'}
+        ):
+            client, _ = login_client_with_permissions('auth-manage')
+            client.get(url(action), status=403)
+            for url_action in actions.difference({action}):
+                print(url_action, url(url_action))
+                client.get(url(url_action))
+
+            client, _ = login_client_with_permissions('auth-manage', 'permission1')
+            client.get(url(action))
+
+    def test_delete(self):
+        assert False
+
+    def test_delete_failed(self):
+        assert False
+
+    def test_view(self):
+        assert False

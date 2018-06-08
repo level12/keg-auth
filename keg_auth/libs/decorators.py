@@ -2,6 +2,7 @@ import inspect
 
 import flask
 import flask_login
+from keg.web import validate_arguments, ArgumentValidationError, ViewArgumentError
 
 from keg_auth.model import utils as model_utils
 
@@ -29,7 +30,24 @@ class RequiresUser:
 
         def new_check_auth(*args, **kwargs):
             self.check_auth()
-            return old_check_auth(*args, **kwargs)
+
+            # the original check_auth method on the view may take any number of args/kwargs. Use
+            #   logic similar to keg.web's _call_with_expected_args, except that method does not
+            #   fit this case for bound methods
+            try:
+                # validate_arguments is made for a function, not a class method
+                # so we need to "trick" it by sending self here, but then
+                # removing it before the bound method is called below
+                pass_args, pass_kwargs = validate_arguments(old_check_auth, args, kwargs.copy())
+            except ArgumentValidationError as e:
+                msg = 'Argument mismatch occured: method=%s, missing=%s, ' \
+                      'extra_keys=%s, extra_pos=%s.' \
+                      '  Arguments available: %s' % (old_check_auth, e.missing, e.extra,
+                                                     e.extra_positional, kwargs)
+                raise ViewArgumentError(msg)
+
+            return old_check_auth(*pass_args, **pass_kwargs)
+
         cls.check_auth = new_check_auth
 
         # store auth info on the class itself

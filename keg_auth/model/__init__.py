@@ -190,6 +190,13 @@ class PermissionMixin(object):
     def get_by_token(cls, token):
         return cls.get_by(token=token)
 
+    @classmethod
+    def testing_create(cls, **kwargs):
+        matching = None
+        if 'token' in kwargs:
+            matching = cls.get_by_token(kwargs['token'])
+        return matching or super(PermissionMixin, cls).testing_create(**kwargs)
+
 
 class BundleMixin(object):
     name = sa.Column(sa.Unicode, nullable=False, unique=True)

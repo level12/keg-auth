@@ -399,10 +399,6 @@ class ViewTestBase:
 
         # ensure all of the tokens exists
         for perm in tolist(cls.permissions):
-            if not isinstance(perm, cls.permission_ent):
-                try:
-                    cls.permission_ent.testing_create(token=perm)
-                except sa.exc.IntegrityError:
-                    pass
+            cls.permission_ent.testing_create(token=perm)
 
         cls.client, cls.current_user = login_client_with_permissions(*tolist(cls.permissions))

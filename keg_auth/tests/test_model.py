@@ -186,7 +186,9 @@ class TestPermission(object):
     def test_token_unique(self):
         ents.Permission.testing_create(token='some-permission')
         with pytest.raises(sa.exc.IntegrityError) as exc:
-            ents.Permission.testing_create(token='some-permission')
+            # use `add` here instead of `testing_create`, because it is more helpful for the
+            #   `testing_create` method to return the existing permission if there is a match
+            ents.Permission.add(token='some-permission')
 
         assert 'unique' in str(exc.value).lower()
 
