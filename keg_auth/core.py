@@ -82,7 +82,7 @@ class AuthManager(object):
         app.login_manager = login_manager = flask_login.LoginManager()
         login_manager.user_loader(self.user_loader)
         if app.testing:
-            login_manager.request_loader(self.request_loader)
+            login_manager.request_loader(self.test_request_loader)
         login_manager.login_view = self.endpoint('login')
         login_manager.init_app(app)
 
@@ -99,7 +99,7 @@ class AuthManager(object):
         user_class = self.get_user_entity()
         return user_class.query.get(user_id)
 
-    def request_loader(self, request):
+    def test_request_loader(self, request):
         """ Load a user from a request when testing. This gives a nice API for test clients to
             be logged in:
 
