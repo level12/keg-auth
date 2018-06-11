@@ -1,16 +1,13 @@
+import flask
 import flask_login
+import keg
 import webgrid
 from webgrid import filters
-from webgrid.flask import WebGrid as GridManager
 from webhelpers2.html import literal
 from webhelpers2.html.tags import link_to
 
 from keg_auth.model import entity_registry
-
-
-class Grid(webgrid.BaseGrid):
-    manager = GridManager()
-    session_on = True
+from keg_auth.model.utils import has_permissions
 
 
 class ActionColumn(webgrid.Column):
@@ -57,11 +54,11 @@ class ActionColumn(webgrid.Column):
         view_perm = self.view_permission_for(record)
         edit_perm = self.edit_permission_for(record)
         delete_perm = self.delete_permission_for(record)
-        can_edit = flask_login.current_user.has_permissions(edit_perm)
-        can_delete = flask_login.current_user.permissions(delete_perm)
+        can_edit = has_permissions(edit_perm, flask_login.current_user)
+        can_delete = has_permissions(delete_perm, flask_login.current_user)
         can_view = (
             (self.edit_endpoint != self.view_endpoint or not can_edit) and
-            flask_login.current_user.permissions(view_perm)
+            has_permissions(view_perm, flask_login.current_user)
         )
 
         delete_link_class = self.delete_link_class_for(record)
@@ -73,7 +70,7 @@ class ActionColumn(webgrid.Column):
         if self.edit_endpoint and show_edit:
             result += link_to(
                 literal('&nbsp;'),
-                self.url_for(self.edit_endpoint, objid=value, session_key=self.grid.session_key),
+                flask.url_for(self.edit_endpoint, objid=value, session_key=self.grid.session_key),
                 **{
                     'aria-label': 'Edit',
                     'class_': 'edit-link',
@@ -83,7 +80,7 @@ class ActionColumn(webgrid.Column):
         if self.delete_endpoint and show_delete:
             result += link_to(
                 literal('&nbsp;'),
-                self.url_for(self.delete_endpoint, objid=value, session_key=self.grid.session_key),
+                flask.url_for(self.delete_endpoint, objid=value, session_key=self.grid.session_key),
                 **{
                     'aria-label': 'Delete',
                     'class_': delete_link_class,
@@ -93,7 +90,7 @@ class ActionColumn(webgrid.Column):
         if self.view_endpoint and show_view:
             result += link_to(
                 literal('&nbsp;'),
-                self.url_for(self.view_endpoint, objid=value, session_key=self.grid.session_key),
+                flask.url_for(self.view_endpoint, objid=value, session_key=self.grid.session_key),
                 **{
                     'aria-label': 'View',
                     'class_': 'view-link',
@@ -102,17 +99,11 @@ class ActionColumn(webgrid.Column):
             )
         return result
 
-    def url_for(self, *args, **kwargs):
-        """Proxies to the grid's `url_for` method."""
-        try:
-            return self.grid.url_for(*args, **kwargs)
-        except AttributeError:  # pragma: no cover
-            raise AttributeError('This column type must reside in an AppGrid')
-
 
 def make_user_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permission,
-                   grid_cls=Grid):
+                   grid_cls=None):
     user_cls = entity_registry.registry.user_cls
+    grid_cls = grid_cls or keg.current_app.auth_manager.grid_cls
 
     class User(grid_cls):
         ActionColumn(
@@ -135,8 +126,9 @@ def make_user_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permi
 
 
 def make_group_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permission,
-                    grid_cls=Grid):
+                    grid_cls=None):
     group_cls = entity_registry.registry.group_cls
+    grid_cls = grid_cls or keg.current_app.auth_manager.grid_cls
 
     class Group(grid_cls):
         ActionColumn(
@@ -157,8 +149,9 @@ def make_group_grid(edit_endpoint, edit_permission, delete_endpoint, delete_perm
 
 
 def make_bundle_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permission,
-                     grid_cls=Grid):
+                     grid_cls=None):
     bundle_cls = entity_registry.registry.bundle_cls
+    grid_cls = grid_cls or keg.current_app.auth_manager.grid_cls
 
     class Bundle(grid_cls):
         ActionColumn(

@@ -26,7 +26,7 @@ class AuthManager(object):
     cli_group_name = 'auth'
 
     def __init__(self, mail_ext, blueprint='auth', user_entity='User', endpoints=None,
-                 cli_group_name=None):
+                 cli_group_name=None, grid_cls=None):
         self.mail_ext = mail_ext
         self.blueprint_name = blueprint
         self.user_entity = user_entity
@@ -34,6 +34,7 @@ class AuthManager(object):
         if endpoints:
             self.endpoints.update(endpoints)
         self.cli_group_name = cli_group_name or self.cli_group_name
+        self.grid_cls = grid_cls
         self._model_initialized = False
 
     def init_app(self, app):

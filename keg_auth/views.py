@@ -2,6 +2,7 @@ import flask
 import flask_login
 import inflect
 import keg.web
+import sqlalchemy as sa
 import sqlalchemy.orm.exc as orm_exc
 from blazeutils.strings import case_cw2dash
 from keg.db import db
@@ -113,7 +114,7 @@ class CrudView(keg.web.BaseView):
 
         map_method_route('add', '{}/add'.format(cls.calc_url()), ('GET', 'POST'))
         map_method_route('edit', '{}/<int:objid>'.format(cls.calc_url()), ('GET', 'POST'))
-        map_method_route('delete', '{}/<int:objid>/delete'.format(cls.calc_url()), ('GET', 'POST'))
+        map_method_route('delete', '{}/<int:objid>/delete'.format(cls.calc_url()), ('GET', ))
         map_method_route('view', '{}'.format(cls.calc_url()), ('GET', 'POST'))
 
     def __init__(self, *args, **kwargs):
@@ -184,8 +185,12 @@ class CrudView(keg.web.BaseView):
         self.init_object(objid)
 
         def action():
-            self.orm_cls.delete(objid)
-            self.on_delete_success()
+            try:
+                self.orm_cls.delete(objid)
+            except sa.exc.IntegrityError:
+                return self.on_delete_failure()
+
+            return self.on_delete_success()
 
         return requires_permissions(self.permissions['delete'])(action)()
 
@@ -198,6 +203,13 @@ class CrudView(keg.web.BaseView):
 
     def on_delete_success(self):
         self.flash_success('removed')
+        return flask.redirect(flask.url_for(self.endpoint_for_action('view')))
+
+    def on_delete_failure(self):
+        flask.flash(
+            'Unable to delete {}. It may be referenced by other items.'.format(self.object_name),
+            'warning'
+        )
         return flask.redirect(flask.url_for(self.endpoint_for_action('view')))
 
     def on_add_edit_success(self, entity, is_edit):
@@ -217,13 +229,13 @@ class CrudView(keg.web.BaseView):
         return grid
 
     def render_grid_xls(self, grid):
-        grid.xls.as_response()
+        return grid.xls.as_response()
 
     def render_grid(self, xls_sheet_name=None):
         grid = self.make_grid()
 
         if grid.export_to == 'xls':
-            self.render_grid_xls(grid)
+            return self.render_grid_xls(grid)
 
         return flask.render_template(
             self.grid_template,
@@ -405,6 +417,7 @@ class User(CrudView):
         return obj
 
 
+@requires_permissions('auth-manage')
 class Group(CrudView):
     url = '/groups'
     object_name = 'Group'
@@ -417,7 +430,8 @@ class Group(CrudView):
     }
 
     def create_form(self, obj):
-        return forms.group_form()
+        form_cls = forms.group_form(endpoint=self.endpoint_for_action('edit'))
+        return form_cls(obj=obj)
 
     @property
     def orm_cls(self):
@@ -440,6 +454,7 @@ class Group(CrudView):
         return obj
 
 
+@requires_permissions('auth-manage')
 class Bundle(CrudView):
     url = '/bundles'
     object_name = 'Bundle'
@@ -452,11 +467,12 @@ class Bundle(CrudView):
     }
 
     def create_form(self, obj):
-        return forms.group_form()
+        form_cls = forms.bundle_form(endpoint=self.endpoint_for_action('edit'))
+        return form_cls(obj=obj)
 
     @property
     def orm_cls(self):
-        return entity_registry.registry.group_cls
+        return entity_registry.registry.bundle_cls
 
     @property
     def grid_cls(self):

@@ -57,6 +57,7 @@ setup(
             'pytest',
             'pytest-cov',
             'tox',
+            'xlwt',
         ],
     }
 )

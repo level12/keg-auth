@@ -6,6 +6,7 @@ import flask_webtest
 from keg.db import db
 import mock
 import pytest
+import sqlalchemy as sa
 
 from keg_auth.testing import AuthTests, AuthTestApp, ViewTestBase, login_client_with_permissions
 
@@ -296,12 +297,23 @@ class TestUserCrud(ViewTestBase):
     permissions = 'auth-manage'
 
     def test_add(self):
+        perm_approve = ents.Permission.testing_create()
+        ents.Permission.testing_create()
+        group_approve = ents.Group.testing_create()
+        ents.Group.testing_create()
+        bundle_approve = ents.Bundle.testing_create()
+        ents.Bundle.testing_create()
+
         resp = self.client.get('/users/add')
 
         assert resp.form['email'].value == ''
         assert 'is_superuser' not in resp.form.fields
 
         resp.form['email'] = 'abc@example.com'
+        resp.form['permission_ids'] = [perm_approve.id]
+        resp.form['group_ids'] = [group_approve.id]
+        resp.form['bundle_ids'] = [bundle_approve.id]
+
         resp = resp.form.submit()
         assert resp.status_code == 302
         assert resp.location.endswith('/users')
@@ -310,16 +322,26 @@ class TestUserCrud(ViewTestBase):
         user = self.user_ent.get_by(email='abc@example.com')
         assert user.is_enabled is True
         assert user.is_superuser is False
+        assert user.permissions == [perm_approve]
+        assert user.groups == [group_approve]
+        assert user.bundles == [bundle_approve]
 
     def test_edit(self):
-        assert False
+        user_edit = ents.User.testing_create()
+
+        resp = self.client.get('/users/{}'.format(user_edit.id))
+        assert resp.form['email'].value == user_edit.email
+        resp.form['email'] = 'foo@bar.baz'
+        resp = resp.form.submit()
+
+        assert resp.status_code == 302
+        assert resp.location.endswith('/users')
+        assert resp.flashes == [('success', 'Successfully modified User')]
+        assert self.user_ent.get_by(email='foo@bar.baz')
 
     def test_not_found(self):
-        # 404 for edit/delete without ID, and bad ID
-        self.client.get('/users/edit', status=404)
-        self.client.get('/users/delete', status=404)
-        self.client.get('/users/edit/999999', status=404)
-        self.client.get('/users/delete/999999', status=404)
+        self.client.get('/users/999999', status=404)
+        self.client.get('/users/999999/delete', status=404)
 
     @pytest.mark.parametrize('action', [
         'add', 'edit', 'delete', 'view'
@@ -357,10 +379,260 @@ class TestUserCrud(ViewTestBase):
             client.get(url(action))
 
     def test_delete(self):
-        assert False
+        user_delete_id = ents.User.testing_create().id
 
-    def test_delete_failed(self):
-        assert False
+        resp = self.client.get('/users/{}/delete'.format(user_delete_id))
+
+        assert resp.status_code == 302
+        assert resp.location.endswith('/users')
+        assert resp.flashes == [('success', 'Successfully removed User')]
+
+        assert not self.user_ent.query.get(user_delete_id)
+
+    @mock.patch('keg_auth_ta.model.entities.User.delete', autospec=True, spec_set=True)
+    def test_delete_failed(self, m_delete):
+        m_delete.side_effect = sa.exc.IntegrityError(None, None, None)
+        user_delete_id = ents.User.testing_create().id
+
+        resp = self.client.get('/users/{}/delete'.format(user_delete_id))
+
+        assert resp.status_code == 302
+        assert resp.location.endswith('/users')
+        assert resp.flashes == [('warning',
+                                 'Unable to delete User. It may be referenced by other items.')]
+
+        assert self.user_ent.query.get(user_delete_id)
 
     def test_view(self):
-        assert False
+        ents.User.testing_create()
+        resp = self.client.get('/users')
+        assert 'datagrid' in resp
+
+    def test_view_export(self):
+        ents.User.testing_create()
+        resp = self.client.get('/users?export_to=xls')
+        assert resp.content_type == 'application/vnd.ms-excel'
+
+
+class TestGroupCrud(ViewTestBase):
+    permissions = 'auth-manage'
+
+    def test_add(self):
+        perm_approve = ents.Permission.testing_create()
+        ents.Permission.testing_create()
+        bundle_approve = ents.Bundle.testing_create()
+        ents.Bundle.testing_create()
+
+        resp = self.client.get('/groups/add')
+
+        assert resp.form['name'].value == ''
+
+        resp.form['name'] = 'test adding a group'
+        resp.form['permission_ids'] = [perm_approve.id]
+        resp.form['bundle_ids'] = [bundle_approve.id]
+
+        resp = resp.form.submit()
+        assert resp.status_code == 302
+        assert resp.location.endswith('/groups')
+        assert resp.flashes == [('success', 'Successfully created Group')]
+
+        group = ents.Group.get_by(name='test adding a group')
+        assert group.permissions == [perm_approve]
+        assert group.bundles == [bundle_approve]
+
+    def test_edit(self):
+        group_edit = ents.Group.testing_create()
+
+        resp = self.client.get('/groups/{}'.format(group_edit.id))
+        assert resp.form['name'].value == group_edit.name
+        resp.form['name'] = 'test editing a group'
+        resp = resp.form.submit()
+
+        assert resp.status_code == 302
+        assert resp.location.endswith('/groups')
+        assert resp.flashes == [('success', 'Successfully modified Group')]
+        assert ents.Group.get_by(name='test editing a group')
+
+    def test_not_found(self):
+        self.client.get('/groups/999999', status=404)
+        self.client.get('/groups/999999/delete', status=404)
+
+    @pytest.mark.parametrize('action', [
+        'add', 'edit', 'delete', 'view'
+    ])
+    def test_alternate_permissions(self, action):
+        # patch in separate permissions for add/edit/view/delete
+        actions = {'add', 'edit', 'delete', 'view'}
+        ents.Permission.testing_create(token='permission1')
+
+        group_edit = ents.Group.testing_create()
+        group_delete = ents.Group.testing_create()
+
+        def url(url_action):
+            if url_action == 'view':
+                return '/groups'
+            if url_action == 'edit':
+                return '/groups/{}'.format(group_edit.id)
+            if url_action == 'delete':
+                return '/groups/{}/delete'.format(group_delete.id)
+            return '/groups/add'
+
+        with mock.patch.dict(
+            flask.current_app.view_functions[
+                'auth.group:{}'.format(action)
+            ].view_class.permissions,
+            {action: 'permission1'}
+        ):
+            client, _ = login_client_with_permissions('auth-manage')
+            client.get(url(action), status=403)
+            for url_action in actions.difference({action}):
+                print(url_action, url(url_action))
+                client.get(url(url_action))
+
+            client, _ = login_client_with_permissions('auth-manage', 'permission1')
+            client.get(url(action))
+
+    def test_delete(self):
+        group_delete_id = ents.Group.testing_create().id
+
+        resp = self.client.get('/groups/{}/delete'.format(group_delete_id))
+
+        assert resp.status_code == 302
+        assert resp.location.endswith('/groups')
+        assert resp.flashes == [('success', 'Successfully removed Group')]
+
+        assert not self.user_ent.query.get(group_delete_id)
+
+    @mock.patch('keg_auth_ta.model.entities.Group.delete', autospec=True, spec_set=True)
+    def test_delete_failed(self, m_delete):
+        m_delete.side_effect = sa.exc.IntegrityError(None, None, None)
+        group_delete_id = ents.Group.testing_create().id
+
+        resp = self.client.get('/groups/{}/delete'.format(group_delete_id))
+
+        assert resp.status_code == 302
+        assert resp.location.endswith('/groups')
+        assert resp.flashes == [('warning',
+                                 'Unable to delete Group. It may be referenced by other items.')]
+
+        assert ents.Group.query.get(group_delete_id)
+
+    def test_view(self):
+        ents.Group.testing_create()
+        resp = self.client.get('/groups')
+        assert 'datagrid' in resp
+
+    def test_view_export(self):
+        ents.Group.testing_create()
+        resp = self.client.get('/groups?export_to=xls')
+        assert resp.content_type == 'application/vnd.ms-excel'
+
+
+class TestBundleCrud(ViewTestBase):
+    permissions = 'auth-manage'
+
+    def test_add(self):
+        perm_approve = ents.Permission.testing_create()
+        ents.Permission.testing_create()
+
+        resp = self.client.get('/bundles/add')
+
+        assert resp.form['name'].value == ''
+
+        resp.form['name'] = 'test adding a bundle'
+        resp.form['permission_ids'] = [perm_approve.id]
+
+        resp = resp.form.submit()
+        assert resp.status_code == 302
+        assert resp.location.endswith('/bundles')
+        assert resp.flashes == [('success', 'Successfully created Bundle')]
+
+        bundle = ents.Bundle.get_by(name='test adding a bundle')
+        assert bundle.permissions == [perm_approve]
+
+    def test_edit(self):
+        bundle_edit = ents.Bundle.testing_create()
+
+        resp = self.client.get('/bundles/{}'.format(bundle_edit.id))
+        assert resp.form['name'].value == bundle_edit.name
+        resp.form['name'] = 'test editing a bundle'
+        resp = resp.form.submit()
+
+        assert resp.status_code == 302
+        assert resp.location.endswith('/bundles')
+        assert resp.flashes == [('success', 'Successfully modified Bundle')]
+        assert ents.Bundle.get_by(name='test editing a bundle')
+
+    def test_not_found(self):
+        self.client.get('/bundles/999999', status=404)
+        self.client.get('/bundles/999999/delete', status=404)
+
+    @pytest.mark.parametrize('action', [
+        'add', 'edit', 'delete', 'view'
+    ])
+    def test_alternate_permissions(self, action):
+        # patch in separate permissions for add/edit/view/delete
+        actions = {'add', 'edit', 'delete', 'view'}
+        ents.Permission.testing_create(token='permission1')
+
+        bundle_edit = ents.Bundle.testing_create()
+        bundle_delete = ents.Bundle.testing_create()
+
+        def url(url_action):
+            if url_action == 'view':
+                return '/bundles'
+            if url_action == 'edit':
+                return '/bundles/{}'.format(bundle_edit.id)
+            if url_action == 'delete':
+                return '/bundles/{}/delete'.format(bundle_delete.id)
+            return '/bundles/add'
+
+        with mock.patch.dict(
+            flask.current_app.view_functions[
+                'auth.bundle:{}'.format(action)
+            ].view_class.permissions,
+            {action: 'permission1'}
+        ):
+            client, _ = login_client_with_permissions('auth-manage')
+            client.get(url(action), status=403)
+            for url_action in actions.difference({action}):
+                print(url_action, url(url_action))
+                client.get(url(url_action))
+
+            client, _ = login_client_with_permissions('auth-manage', 'permission1')
+            client.get(url(action))
+
+    def test_delete(self):
+        bundle_delete_id = ents.Bundle.testing_create().id
+
+        resp = self.client.get('/bundles/{}/delete'.format(bundle_delete_id))
+
+        assert resp.status_code == 302
+        assert resp.location.endswith('/bundles')
+        assert resp.flashes == [('success', 'Successfully removed Bundle')]
+
+        assert not self.user_ent.query.get(bundle_delete_id)
+
+    @mock.patch('keg_auth_ta.model.entities.Bundle.delete', autospec=True, spec_set=True)
+    def test_delete_failed(self, m_delete):
+        m_delete.side_effect = sa.exc.IntegrityError(None, None, None)
+        bundle_delete_id = ents.Bundle.testing_create().id
+
+        resp = self.client.get('/bundles/{}/delete'.format(bundle_delete_id))
+
+        assert resp.status_code == 302
+        assert resp.location.endswith('/bundles')
+        assert resp.flashes == [('warning',
+                                 'Unable to delete Bundle. It may be referenced by other items.')]
+
+        assert ents.Bundle.query.get(bundle_delete_id)
+
+    def test_view(self):
+        ents.Bundle.testing_create()
+        resp = self.client.get('/bundles')
+        assert 'datagrid' in resp
+
+    def test_view_export(self):
+        ents.Bundle.testing_create()
+        resp = self.client.get('/bundles?export_to=xls')
+        assert resp.content_type == 'application/vnd.ms-excel'

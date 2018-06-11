@@ -2,8 +2,10 @@ from __future__ import absolute_import
 
 from flask_bootstrap import Bootstrap
 from keg.app import Keg
+from keg.db import db
 
 from keg_auth_ta.extensions import auth_manager, csrf, mail_ext
+from keg_auth_ta.grids import Grid
 from keg_auth_ta.views import blueprints
 
 
@@ -17,6 +19,9 @@ class KegAuthTestApp(Keg):
         auth_manager.init_app(self)
         csrf.init_app(self)
         mail_ext.init_app(self)
+
+        Grid.manager.init_db(db)
+        Grid.manager.init_app(self)
 
         if Bootstrap is not None:
             Bootstrap(self)
