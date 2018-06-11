@@ -14,6 +14,7 @@ class KegAuthTestApp(Keg):
     db_enabled = True
     use_blueprints = blueprints
     keyring_enable = False
+    visit_modules = ['.events']
 
     def on_init_complete(self):
         auth_manager.init_app(self)

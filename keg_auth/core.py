@@ -34,6 +34,7 @@ class AuthManager(object):
         if endpoints:
             self.endpoints.update(endpoints)
         self.cli_group_name = cli_group_name or self.cli_group_name
+        self.cli_group = None
         self.grid_cls = grid_cls
         self._model_initialized = False
 
@@ -57,8 +58,11 @@ class AuthManager(object):
         app.config.setdefault('KEGAUTH_BASE_TEMPLATE', 'base-page.html')
         app.config.setdefault('KEGAUTH_TOKEN_EXPIRE_MINS', 60 * 4)
 
+        app.config.setdefault('KEGAUTH_CLI_USER_ARGS', ['email'])
+
     def init_cli(self, app):
-        keg_auth.cli.add_cli_to_app(app, self.cli_group_name)
+        keg_auth.cli.add_cli_to_app(app, self.cli_group_name,
+                                    user_args=app.config.get('KEGAUTH_CLI_USER_ARGS'))
 
     def init_jinja(self, app):
         loader = jinja2.ChoiceLoader([
@@ -109,7 +113,7 @@ class AuthManager(object):
             return
         return self.user_loader(user_id)
 
-    def create_user_cli(self, email, extra_args):
+    def create_user_cli(self, extra_args=None, **kwargs):
         """ A thin layer between the cli and `create_user()` to transform the cli args
             into what the User entity expects for fields.
 
@@ -125,7 +129,7 @@ class AuthManager(object):
                     return self.create_user(user_kwargs)
         """
         # By default, we assume no extra arguments are used
-        user_kwargs = dict(email=email)
+        user_kwargs = kwargs
         return self.create_user(user_kwargs)
 
     def create_user(self, user_kwargs):
