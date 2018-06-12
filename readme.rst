@@ -36,6 +36,38 @@ Usage
           auth_manager = AuthManager(mail_ext, endpoints=_endpoints)
           auth_manager.init_app(app)
 
+
+   -  CLI is rudimentary, with just one create-user command in the auth group. You can extend the
+      group by using the cli_group attribute on the app's auth_manager, but you need access to the
+      app during startup to do that. You can use an event signal to handle this - just be sure
+      your app's `visit_modules` has the location of the event.
+
+.. code-block:: python
+
+          # in app definition
+          visit_modules = ['.events']
+
+
+          # in events module
+          from keg.signals import app_ready
+
+          from keg_auth_ta.cli import auth_cli_extensions
+
+
+          @app_ready.connect
+          def init_app_cli(app):
+              auth_cli_extensions(app)
+
+
+          # in cli
+          def auth_cli_extensions(app):
+              @app.auth_manager.cli_group.command('command-extension')
+              def command_extension():
+                  pass
+
+   -  CLI create-user command, by default, has one required argument (email). If you wish to have
+      additional arguments, put the list of arg names in `KEGAUTH_CLI_USER_ARGS` config
+
 -  Model
 
    -  create entities using the existing mixins, and register them with
