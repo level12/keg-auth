@@ -88,12 +88,17 @@ class Route(object):
 
         if inspect.isclass(view_obj) and hasattr(view_obj, 'get'):
             # view class has an action method likely to be called via a navigation link
-            view_obj.get.__keg_auth_parent_class__ = view_obj
+            if sys.version_info[0] != 2:
+                view_obj.get.__keg_auth_parent_class__ = view_obj
             view_obj = view_obj.get
 
         # make sure defining class is assigned (if any). We need to know this in order to
         #   check requirements at the class level
-        if not hasattr(view_obj, '__keg_auth_parent_class__'):
+        parent_class = getattr(
+            view_obj, 'im_class',
+            getattr(view_obj, '__keg_auth_parent_class__', None)
+        )
+        if not parent_class and not hasattr(view_obj, '__keg_auth_parent_class__'):
             obj = view_obj
 
             if hasattr(obj, '__keg_auth_original_function__'):
@@ -102,8 +107,9 @@ class Route(object):
                 obj = obj.__keg_auth_original_function__
 
             view_obj.__keg_auth_parent_class__ = get_defining_class(obj)
+            parent_class = view_obj.__keg_auth_parent_class__
 
-        return check_auth(view_obj) and check_auth(view_obj.__keg_auth_parent_class__)
+        return check_auth(view_obj) and check_auth(parent_class)
 
 
 class Node(object):

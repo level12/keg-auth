@@ -7,7 +7,7 @@ from keg.web import validate_arguments, ArgumentValidationError, ViewArgumentErr
 from keg_auth.model import utils as model_utils
 
 
-class RequiresUser:
+class RequiresUser(object):
     def __init__(self, on_authentication_failure=None, on_authorization_failure=None):
         # defaults for these handlers are provided, but may be overridden here
         self._on_authentication_failure = on_authentication_failure

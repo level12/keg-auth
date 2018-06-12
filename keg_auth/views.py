@@ -112,7 +112,7 @@ class CrudView(keg.web.BaseView):
 
     @classmethod
     def init_routes(cls):
-        super().init_routes()
+        super(CrudView, cls).init_routes()
 
         def map_method_route(method_name, route, methods):
             method_route = keg.web.MethodRoute(method_name, route, {'methods': methods},
@@ -130,7 +130,7 @@ class CrudView(keg.web.BaseView):
         map_method_route('view', '{}'.format(cls.calc_url()), ('GET', 'POST'))
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(CrudView, self).__init__(*args, **kwargs)
         self.objinst = None
 
     @property

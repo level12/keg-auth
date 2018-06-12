@@ -80,6 +80,11 @@ class Secret3(keg.web.BaseView):
         return 'secret3'
 
 
+class Secret3Sub(Secret3):
+    def get(self):
+        return 'secret3-sub'
+
+
 @requires_permissions('permission1')
 class Secret4(keg.web.BaseView):
     blueprint = private_bp

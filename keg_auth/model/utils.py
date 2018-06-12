@@ -1,7 +1,4 @@
-import abc
-
-
-class PermissionCondition(abc.ABC):
+class PermissionCondition(object):
     def __init__(self, *conditions):
         assert len(conditions) >= 1, 'At least one permission or condition is required'
         self.conditions = conditions
@@ -17,9 +14,8 @@ class PermissionCondition(abc.ABC):
             return False
         return user.has_all_permissions(condition)
 
-    @abc.abstractmethod
     def check(self, user):
-        pass
+        raise Exception('fill in the check method in the subclass')  # pragma: no cover
 
 
 class AllCondition(PermissionCondition):

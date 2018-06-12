@@ -1,3 +1,6 @@
+# Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
+from __future__ import unicode_literals
+
 from flask import current_app
 from mock import mock
 from pyquery import PyQuery
@@ -37,11 +40,12 @@ class TestLogin(FormBase):
     form_cls = forms.Login
 
     def ok_data(self, **kwargs):
-        return {
+        data = {
             'email': 'foo@example.com',
             'password': 'password123',
-            **kwargs
         }
+        data.update(kwargs)
+        return data
 
     def test_required(self):
         form = self.assert_not_valid(email='', password='')
@@ -59,10 +63,11 @@ class TestForgotPassword(FormBase):
     form_cls = forms.ForgotPassword
 
     def ok_data(self, **kwargs):
-        return {
+        data = {
             'email': 'foo@example.com',
-            **kwargs
         }
+        data.update(kwargs)
+        return data
 
     def test_required(self):
         form = self.assert_not_valid(email='')
@@ -79,11 +84,12 @@ class TestSetPassword(FormBase):
     form_cls = forms.SetPassword
 
     def ok_data(self, **kwargs):
-        return {
+        data = {
             'password': 'password123',
             'confirm': 'password123',
-            **kwargs
         }
+        data.update(kwargs)
+        return data
 
     def test_required(self):
         form = self.assert_not_valid(password='')
@@ -112,14 +118,15 @@ class TestUser(FormBase):
         ents.User.delete_cascaded()
 
     def ok_data(self, **kwargs):
-        return {
+        data = {
             'email': 'foo@example.com',
             'is_enabled': 'true',
             'permission_ids': [str(self.perms[0].id), str(self.perms[1].id)],
             'group_ids': [str(self.groups[0].id), str(self.groups[1].id)],
             'bundle_ids': [str(self.bundles[0].id), str(self.bundles[1].id)],
-            **kwargs
         }
+        data.update(kwargs)
+        return data
 
     def test_required(self):
         form = self.assert_not_valid(email='')
@@ -173,12 +180,13 @@ class TestGroup(FormBase):
         cls.bundles = [ents.Bundle.testing_create() for _ in range(3)]
 
     def ok_data(self, **kwargs):
-        return {
+        data = {
             'name': 'some-group',
             'permission_ids': [str(self.perms[0].id), str(self.perms[1].id)],
             'bundle_ids': [str(self.bundles[0].id), str(self.bundles[1].id)],
-            **kwargs
         }
+        data.update(kwargs)
+        return data
 
     def test_required(self):
         form = self.assert_not_valid(name='')
@@ -205,11 +213,12 @@ class TestBundle(FormBase):
         cls.perms = [ents.Permission.testing_create() for _ in range(3)]
 
     def ok_data(self, **kwargs):
-        return {
+        data = {
             'name': 'some-bundle',
             'permission_ids': [str(self.perms[0].id), str(self.perms[1].id)],
-            **kwargs
         }
+        data.update(kwargs)
+        return data
 
     def test_required(self):
         form = self.assert_not_valid(name='')

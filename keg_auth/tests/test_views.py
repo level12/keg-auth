@@ -246,6 +246,20 @@ class TestPermissionsRequired:
         client = flask_webtest.TestApp(flask.current_app)
         client.get('/secret3', status=302)
 
+    def test_class_level_inheritance(self):
+        allowed = ents.User.testing_create(permissions=[self.perm1, self.perm2])
+        disallowed = ents.User.testing_create(permissions=[self.perm1])
+
+        client = AuthTestApp(flask.current_app, user=allowed)
+        resp = client.get('/secret3-sub', status=200)
+        assert resp.text == 'secret3-sub'
+
+        client = AuthTestApp(flask.current_app, user=disallowed)
+        client.get('/secret3-sub', {}, status=403)
+
+        client = flask_webtest.TestApp(flask.current_app)
+        client.get('/secret3-sub', status=302)
+
     def test_class_and_method_level_combined(self):
         allowed = ents.User.testing_create(permissions=[self.perm1, self.perm2])
         disallowed1 = ents.User.testing_create(permissions=[self.perm1])
@@ -418,7 +432,7 @@ class TestUserCrud(ViewTestBase):
 
         assert not self.user_ent.query.get(user_delete_id)
 
-    @mock.patch('keg_auth_ta.model.entities.User.delete', autospec=True, spec_set=True)
+    @mock.patch('keg_elements.db.mixins.db.session.delete', autospec=True, spec_set=True)
     def test_delete_failed(self, m_delete):
         m_delete.side_effect = sa.exc.IntegrityError(None, None, None)
         user_delete_id = ents.User.testing_create().id
@@ -532,7 +546,7 @@ class TestGroupCrud(ViewTestBase):
 
         assert not self.user_ent.query.get(group_delete_id)
 
-    @mock.patch('keg_auth_ta.model.entities.Group.delete', autospec=True, spec_set=True)
+    @mock.patch('keg_elements.db.mixins.db.session.delete', autospec=True, spec_set=True)
     def test_delete_failed(self, m_delete):
         m_delete.side_effect = sa.exc.IntegrityError(None, None, None)
         group_delete_id = ents.Group.testing_create().id
@@ -642,7 +656,7 @@ class TestBundleCrud(ViewTestBase):
 
         assert not self.user_ent.query.get(bundle_delete_id)
 
-    @mock.patch('keg_auth_ta.model.entities.Bundle.delete', autospec=True, spec_set=True)
+    @mock.patch('keg_elements.db.mixins.db.session.delete', autospec=True, spec_set=True)
     def test_delete_failed(self, m_delete):
         m_delete.side_effect = sa.exc.IntegrityError(None, None, None)
         bundle_delete_id = ents.Bundle.testing_create().id

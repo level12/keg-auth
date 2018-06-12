@@ -1,3 +1,8 @@
+# Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
+from __future__ import unicode_literals
+
+import sys
+
 import flask
 import flask_login
 
@@ -45,7 +50,10 @@ class TestViewMetaInfo(object):
     def test_decorated_bound_method_meta_permissions(self):
         assert views.Secret2.get.__keg_auth_requires_user__
         assert views.Secret2.get.__keg_auth_requires_permissions__
-        assert views.Secret2.get.__keg_auth_parent_class__ is views.Secret2
+        if sys.version_info[0] != 2:
+            assert views.Secret2.get.__keg_auth_parent_class__ is views.Secret2
+        else:
+            assert views.Secret2.get.im_class is views.Secret2
 
 
 class TestNode(object):
