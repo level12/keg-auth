@@ -80,20 +80,19 @@ Usage
 
           from keg.db import db
           from keg_elements.db.mixins import DefaultColsMixin, MethodsMixin
-          from keg_auth.model.entity_registry import registry
-          from keg_auth import UserMixin, PermissionMixin, BundleMixin, GroupMixin
+          from keg_auth import UserMixin, PermissionMixin, BundleMixin, GroupMixin, auth_entity_registry
 
 
           class EntityMixin(DefaultColsMixin, MethodsMixin):
               pass
 
 
-          @registry.register_user
+          @auth_entity_registry.register_user
           class User(db.Model, UserMixin, EntityMixin):
               __tablename__ = 'users'
 
 
-          @registry.register_permission
+          @auth_entity_registry.register_permission
           class Permission(db.Model, PermissionMixin, EntityMixin):
               __tablename__ = 'permissions'
 
@@ -101,12 +100,12 @@ Usage
                   return '<Permission id={} token={}>'.format(self.id, self.token)
 
 
-          @registry.register_bundle
+          @auth_entity_registry.register_bundle
           class Bundle(db.Model, BundleMixin, EntityMixin):
               __tablename__ = 'bundles'
 
 
-          @registry.register_group
+          @auth_entity_registry.register_group
           class Group(db.Model, GroupMixin, EntityMixin):
               __tablename__ = 'groups'
 
