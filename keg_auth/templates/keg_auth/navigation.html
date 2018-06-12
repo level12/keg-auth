@@ -1,0 +1,21 @@
+{% macro render_node(nav_node) -%}
+    {% set NODE_LEAF = 1 %}
+    <li>
+        {% if nav_node.node_type == NODE_LEAF %}
+            <a href="{{ nav_node.route.url }}">{{ nav_node.label }}</a>
+        {% else %}
+            <a class="menu-header">{{ nav_node.label }}</a>
+            <ul>
+                {% for sub_node in nav_node.permitted_sub_nodes %}
+                    {{ render_node(sub_node) }}
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </li>
+{%- endmacro %}
+
+{% macro render_menu(nav_node) -%}
+    {% for sub_node in nav_node.permitted_sub_nodes %}
+        {{ render_node(sub_node) }}
+    {% endfor %}
+{%- endmacro %}

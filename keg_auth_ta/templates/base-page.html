@@ -1,7 +1,11 @@
 {% import "bootstrap/utils.html" as utils %}
+{% import "keg_auth/navigation.html" as navigation %}
 {% extends "base.html" %}
 
 {% block content %}
+<div id="navigation">
+    {{ navigation.render_menu(auth_manager.menus['main']) }}
+</div>
 <div class="container" id="flash-messages">
     {%- with messages = get_flashed_messages(with_categories=True) %}
     {%- if messages %}

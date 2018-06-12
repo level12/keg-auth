@@ -3,6 +3,7 @@ import sys
 
 import flask
 import flask_login
+import six
 
 from keg_auth.model.utils import has_permissions
 
@@ -56,7 +57,9 @@ class Route(object):
         # otherwise, we need to find the view for the route. In that case, both the route and its
         #   defining class (if any) may (or may not) have requirements to check.
         # the following checks are ANDed, so return False if anything fails
-        view_obj = flask.current_app.view_functions[self.route_string]
+        view_obj = flask.current_app.view_functions.get(self.route_string)
+        if not view_obj:
+            raise Exception('Endpoint {} in navigation is not registered'.format(self.route_string))
 
         def check_auth(obj):
             if obj is None:
@@ -126,8 +129,11 @@ class Node(object):
         STEM = 0
         LEAF = 1
 
-    def __init__(self, label, *args):
-        self.label = label
+    def __init__(self, *args):
+        self.label = None
+        if len(args) and isinstance(args[0], six.string_types):
+            self.label = args[0]
+            args = args[1:]
         self.route = None
         self.sub_nodes = None
 
@@ -175,11 +181,13 @@ class Node(object):
     @property
     def permitted_sub_nodes(self):
         if self._permitted_sub_nodes is None:
-            self._permitted_sub_nodes = [node for node in self.sub_nodes if node.is_permitted]
+            self._permitted_sub_nodes = [
+                node for node in (self.sub_nodes or []) if node.is_permitted
+            ]
 
         return self._permitted_sub_nodes
 
     def __str__(self):
         if self.node_type == Node.NodeType.LEAF:
-            return self.label + str(self.route)
-        return self.label + ''.join([str(node) for node in self.sub_nodes])
+            return (self.label or '') + str(self.route)
+        return (self.label or '') + ''.join([str(node) for node in self.sub_nodes])

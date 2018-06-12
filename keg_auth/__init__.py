@@ -1,6 +1,7 @@
 # flake8: noqa
 from keg_auth.core import AuthManager
 from keg_auth.libs.decorators import requires_permissions, requires_user
+from keg_auth.libs.navigation import Node, Route
 from keg_auth.model import (
     UserMixin,
     PermissionMixin,

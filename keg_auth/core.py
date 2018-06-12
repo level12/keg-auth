@@ -36,6 +36,7 @@ class AuthManager(object):
         self.cli_group_name = cli_group_name or self.cli_group_name
         self.cli_group = None
         self.grid_cls = grid_cls
+        self.menus = dict()
         self._model_initialized = False
 
     def init_app(self, app):
@@ -89,6 +90,9 @@ class AuthManager(object):
             login_manager.request_loader(self.test_request_loader)
         login_manager.login_view = self.endpoint('login')
         login_manager.init_app(app)
+
+    def add_navigation_menu(self, name, menu):
+        self.menus[name] = menu
 
     def endpoint(self, ident):
         return self.endpoints[ident].format(blueprint=self.blueprint_name)
@@ -154,3 +158,13 @@ class AuthManager(object):
     def reset_password_url(self, user):
         return self.url_for(
             'reset-password', user_id=user.id, token=user._token_plain, _external=True)
+
+
+# ensure that any manager-attached menus are reset for auth requirements on login/logout
+def refresh_session_menus(app, user):
+    for menu in app.auth_manager.menus.values():
+        menu.clear_authorization()
+
+
+flask_login.signals.user_logged_in.connect(refresh_session_menus)
+flask_login.signals.user_logged_out.connect(refresh_session_menus)

@@ -5,6 +5,7 @@ import sys
 
 import flask
 import flask_login
+import pytest
 
 from keg_auth.libs.navigation import Node, Route
 from keg_auth.model import entity_registry
@@ -12,7 +13,6 @@ from keg_auth.model import entity_registry
 from keg_auth_ta import views
 
 nav_menu = Node(
-    None,
     Node('Home', Route('public.home')),
     Node(
         'Nesting',
@@ -69,6 +69,12 @@ class TestNode(object):
     def setup(self):
         self.Permission = entity_registry.registry.permission_cls
         self.Permission.delete_cascaded()
+
+    def test_node_invalid_endpoint(self):
+        with pytest.raises(
+            Exception, message='Endpoint pink_unicorns in navigation is not registered'
+        ):
+            Node('Foo', Route('pink_unicorns')).is_permitted
 
     def test_leaf_no_requirement(self):
         node = Node('Foo', Route('public.home'))

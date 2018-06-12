@@ -29,6 +29,7 @@ class TestViews(object):
         ents.Permission.delete_cascaded()
         cls.perm1 = ents.Permission.testing_create(token='permission1')
         cls.perm2 = ents.Permission.testing_create(token='permission2')
+        cls.perm_auth = ents.Permission.testing_create(token='auth-manage')
 
     def setup(self):
         ents.User.delete_cascaded()
@@ -64,6 +65,35 @@ class TestViews(object):
         # Now that we have logged in, we should be able to get to the page.
         resp = client.get('/secret2', status=200)
         assert resp.text == 'secret2'
+
+    def test_rendered_navigation(self):
+        ents.User.testing_create(email='foo@bar.com', password='pass',
+                                 permissions=[self.perm_auth])
+
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('/')
+        doc = resp.pyquery
+        assert doc.find('div#navigation a[href="/"]')
+        assert not doc.find('div#navigation a[href="/users"]')
+        assert not doc.find('div#navigation a[href="/secret-nested"]')
+
+        resp = client.get('/login')
+        resp.form['email'] = 'foo@bar.com'
+        resp.form['password'] = 'pass'
+        resp = resp.form.submit(status=302)
+
+        resp = client.get('/')
+        doc = resp.pyquery
+        assert doc.find('div#navigation a[href="/"]')
+        assert doc.find('div#navigation a[href="/users"]')
+        assert not doc.find('div#navigation a[href="/secret-nested"]')
+
+        client.get('/logout')
+        resp = client.get('/')
+        doc = resp.pyquery
+        assert doc.find('div#navigation a[href="/"]')
+        assert not doc.find('div#navigation a[href="/users"]')
+        assert not doc.find('div#navigation a[href="/secret-nested"]')
 
     def test_authenticated_client(self):
         user = ents.User.testing_create()
@@ -139,8 +169,8 @@ class TestViews(object):
         assert doc('title').text() == 'Log In | Keg Auth Demo'
         assert doc('h1').text() == 'Log In'
         assert doc('button').text() == 'Log In'
-        assert doc('a').text() == 'I forgot my password'
-        assert doc('a').attr('href') == '/forgot-password'
+        assert doc('div#page-content a').text() == 'I forgot my password'
+        assert doc('div#page-content a').attr('href') == '/forgot-password'
 
     def test_forgot_pw_template(self):
         client = flask_webtest.TestApp(flask.current_app)
@@ -149,8 +179,8 @@ class TestViews(object):
         assert doc('title').text() == 'Initiate Password Reset | Keg Auth Demo'
         assert doc('h1').text() == 'Initiate Password Reset'
         assert doc('button').text() == 'Send Reset Email'
-        assert doc('a').text() == 'Cancel'
-        assert doc('a').attr('href') == '/login'
+        assert doc('div#page-content a').text() == 'Cancel'
+        assert doc('div#page-content a').attr('href') == '/login'
 
     @mock.patch('keg_auth.views.flask.current_app.auth_mail_manager.send_reset_password',
                 autospec=True, spec_set=True)
@@ -181,8 +211,8 @@ class TestViews(object):
         assert doc('title').text() == 'Complete Password Reset | Keg Auth Demo'
         assert doc('h1').text() == 'Complete Password Reset'
         assert doc('button').text() == 'Change Password'
-        assert doc('a').text() == 'Cancel'
-        assert doc('a').attr('href') == '/login'
+        assert doc('div#page-content a').text() == 'Cancel'
+        assert doc('div#page-content a').attr('href') == '/login'
 
     def test_reset_pw_actions(self):
         user = ents.User.testing_create()
@@ -209,8 +239,8 @@ class TestViews(object):
         assert doc('title').text() == 'Verify Account & Set Password | Keg Auth Demo'
         assert doc('h1').text() == 'Verify Account & Set Password'
         assert doc('button').text() == 'Verify & Set Password'
-        assert doc('a').text() == 'Cancel'
-        assert doc('a').attr('href') == '/login'
+        assert doc('div#page-content a').text() == 'Cancel'
+        assert doc('div#page-content a').attr('href') == '/login'
 
 
 class TestPermissionsRequired:

@@ -110,6 +110,47 @@ Usage
           class Group(db.Model, GroupMixin, EntityMixin):
               __tablename__ = 'groups'
 
+-  Navigation Helpers
+
+   -  Keg-Auth provides navigation helpers to set up a menu tree, for which nodes on the tree are
+      restricted according to the authentication/authorization requirements of the target endpoint
+   -  Usage involves setting up a menu structure with Node/Route objects. Note that permissions on
+      a route may be overridden for navigation purposes
+   -  Menus may be tracked on the auth manager, which will reset their cached access on
+      login/logout
+   -  `keg_auth/navigation.html` template has a helper `render_menu` to render a given menu as a ul
+      -  `render_menu(auth_manager.menus['main'])`
+   -  Example:
+
+.. code-block:: python
+
+          from keg.signals import app_ready
+
+          from keg_auth import Node, Route
+
+          @app_ready.connect
+          def init_navigation(app):
+              app.auth_manager.add_navigation_menu(
+                  'main',
+                  Node(
+                      Node('Home', Route('public.home')),
+                      Node(
+                          'Nesting',
+                          Node('Secret1', Route('private.secret1')),
+                          Node('Secret1 Class', Route('private.secret1-class')),
+                      ),
+                      Node('Permissions On Stock Methods', Route('private.secret2')),
+                      Node('Permissions On Methods', Route('private.someroute')),
+                      Node('Permissions On Class And Method', Route('private.secret4')),
+                      Node('Permissions On Route',
+                           Route(
+                               'private.secret3', requires_permissions='permission3'
+                           )),
+                      Node('User Manage', Route('auth.user:add')),
+                  )
+              )
+
+
 -  Views
 
    -  views may be restricted for access using the requires\* decorators
