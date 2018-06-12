@@ -8,11 +8,18 @@ from keg_auth_ta.extensions import csrf
 
 log = logging.getLogger(__name__)
 
+
+@requires_permissions('permission1')
+class ProtectedBlueprint(flask.Blueprint):
+    pass
+
+
 public_bp = flask.Blueprint('public', __name__)
 private_bp = flask.Blueprint('private', __name__)
+protected_bp = ProtectedBlueprint('protected', __name__)
 auth_bp = make_blueprint(__name__)
 
-blueprints = public_bp, private_bp, auth_bp
+blueprints = public_bp, private_bp, protected_bp, auth_bp
 
 # Exempt from CSRF or we have problems with Secret2.post.
 csrf.exempt(private_bp)
@@ -120,3 +127,15 @@ class SecretRouteOnClass(keg.web.BaseView):
     @requires_permissions('permission1')
     def someroute(self):
         return 'secret-route-on-class'
+
+
+class ProtectedClass(keg.web.BaseView):
+    blueprint = protected_bp
+
+    def get(self):
+        return 'protected-class'
+
+
+@protected_bp.route('/protected-method')
+def protected_method():
+    return 'protected-method'

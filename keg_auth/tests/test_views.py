@@ -335,6 +335,31 @@ class TestPermissionsRequired:
         ):
             check(email, allowed)
 
+    def test_blueprint_method_level(self):
+        allowed = ents.User.testing_create(permissions=[self.perm1])
+        disallowed = ents.User.testing_create()
+
+        client = AuthTestApp(flask.current_app, user=allowed)
+        resp = client.get('/protected-method', status=200)
+        assert resp.text == 'protected-method'
+
+        client = AuthTestApp(flask.current_app, user=disallowed)
+        client.get('/protected-method', status=403)
+
+    def test_blueprint_class_level(self):
+        allowed = ents.User.testing_create(permissions=[self.perm1])
+        disallowed = ents.User.testing_create()
+
+        client = AuthTestApp(flask.current_app, user=allowed)
+        resp = client.get('/protected-class', status=200)
+        assert resp.text == 'protected-class'
+
+        client = AuthTestApp(flask.current_app, user=disallowed)
+        client.get('/protected-class', {}, status=403)
+
+        client = flask_webtest.TestApp(flask.current_app)
+        client.get('/protected-class', status=302)
+
 
 class TestUserCrud(ViewTestBase):
     permissions = 'auth-manage'

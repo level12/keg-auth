@@ -81,6 +81,26 @@ class Route(object):
 
             return True
 
+        def fetch_parent_class(view_obj):
+            parent_class = getattr(
+                view_obj, 'im_class',
+                getattr(view_obj, '__keg_auth_parent_class__', None)
+            )
+            if not parent_class and not hasattr(view_obj, '__keg_auth_parent_class__'):
+                obj = view_obj
+
+                if hasattr(obj, '__keg_auth_original_function__'):
+                    # the target method has been wrapped by a keg auth decorator, so we need
+                    #   to inspect the original method to find the parent class (if any)
+                    obj = obj.__keg_auth_original_function__
+
+                view_obj.__keg_auth_parent_class__ = get_defining_class(obj)
+                parent_class = view_obj.__keg_auth_parent_class__
+            return parent_class
+
+        def fetch_blueprint():
+            return flask.current_app.blueprints.get(self.route_string.split('.', 1)[0], None)
+
         if hasattr(view_obj, 'view_class'):
             # class got wrapped with flask's as_view - get the original view to see what
             #   requirements are stored there
@@ -94,22 +114,11 @@ class Route(object):
 
         # make sure defining class is assigned (if any). We need to know this in order to
         #   check requirements at the class level
-        parent_class = getattr(
-            view_obj, 'im_class',
-            getattr(view_obj, '__keg_auth_parent_class__', None)
-        )
-        if not parent_class and not hasattr(view_obj, '__keg_auth_parent_class__'):
-            obj = view_obj
+        parent_class = fetch_parent_class(view_obj)
 
-            if hasattr(obj, '__keg_auth_original_function__'):
-                # the target method has been wrapped by a keg auth decorator, so we need
-                #   to inspect the original method to find the parent class (if any)
-                obj = obj.__keg_auth_original_function__
+        blueprint = fetch_blueprint()
 
-            view_obj.__keg_auth_parent_class__ = get_defining_class(obj)
-            parent_class = view_obj.__keg_auth_parent_class__
-
-        return check_auth(view_obj) and check_auth(parent_class)
+        return check_auth(view_obj) and check_auth(parent_class) and check_auth(blueprint)
 
 
 class Node(object):

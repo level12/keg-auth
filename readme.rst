@@ -18,7 +18,8 @@ Usage
 
 -  Blueprints
 
-   -  include an auth blueprint along with your app’s blueprints:
+   -  include an auth blueprint along with your app’s blueprints, which includes the login views
+      and user/group/bundle management:
 
 .. code-block:: python
 
@@ -114,6 +115,8 @@ Usage
    -  views may be restricted for access using the requires\* decorators
    -  each decorator can be used as a class decorator or on individual
       view methods
+   -  additionally, the decorator may be used on a Blueprint to apply the requirement to all
+      routes on the blueprint
    -  ``requires_user``
 
       -  require a user to be authenticated before proceeding

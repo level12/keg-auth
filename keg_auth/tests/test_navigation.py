@@ -55,6 +55,10 @@ class TestViewMetaInfo(object):
         else:
             assert views.Secret2.get.im_class is views.Secret2
 
+    def test_decorated_blueprint(self):
+        assert views.protected_bp.__keg_auth_requires_user__
+        assert views.protected_bp.__keg_auth_requires_permissions__
+
 
 class TestNode(object):
     """ Test node permission logic
@@ -171,6 +175,42 @@ class TestNode(object):
 
     def test_leaf_specifies_own_requirement(self):
         node = Node('Foo', Route('private.secret2', requires_permissions='permission1'))
+
+        with flask.current_app.test_request_context('/'):
+            flask_login.logout_user()
+            assert not node.is_permitted
+
+            user = entity_registry.registry.user_cls.testing_create()
+            flask_login.login_user(user)
+            node.clear_authorization()
+            assert not node.is_permitted
+
+            perm1 = self.Permission.testing_create(token='permission1')
+            user = entity_registry.registry.user_cls.testing_create(permissions=[perm1])
+            flask_login.login_user(user)
+            node.clear_authorization()
+            assert node.is_permitted
+
+    def test_leaf_method_blueprint_requires_permissions(self):
+        node = Node('Foo', Route('protected.protected_method'))
+
+        with flask.current_app.test_request_context('/'):
+            flask_login.logout_user()
+            assert not node.is_permitted
+
+            user = entity_registry.registry.user_cls.testing_create()
+            flask_login.login_user(user)
+            node.clear_authorization()
+            assert not node.is_permitted
+
+            perm1 = self.Permission.testing_create(token='permission1')
+            user = entity_registry.registry.user_cls.testing_create(permissions=[perm1])
+            flask_login.login_user(user)
+            node.clear_authorization()
+            assert node.is_permitted
+
+    def test_leaf_class_blueprint_requires_permissions(self):
+        node = Node('Foo', Route('protected.protected-class'))
 
         with flask.current_app.test_request_context('/'):
             flask_login.logout_user()

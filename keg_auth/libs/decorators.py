@@ -16,11 +16,27 @@ class RequiresUser(object):
     def __call__(self, class_or_function):
         # decorator may be applied to a class or a function, but the effect is different
         if inspect.isclass(class_or_function):
+            if issubclass(class_or_function, flask.Blueprint):
+                return self.decorate_blueprint(class_or_function)
             return self.decorate_class(class_or_function)
         return self.decorate_function(class_or_function)
 
     def store_auth_info(self, obj):
         obj.__keg_auth_requires_user__ = True
+
+    def decorate_blueprint(self, bp):
+        # when decorating a blueprint, we simply need to attach a before_request method
+        old_init = getattr(bp, '__init__')
+
+        def new_init(*args, **kwargs):
+            old_init(*args, **kwargs)
+
+            this = args[0]
+            this.before_request(self.check_auth)
+
+        bp.__init__ = new_init
+        self.store_auth_info(bp)
+        return bp
 
     def decorate_class(self, cls):
         # when decorating a view class, all of the class's route methods will submit to the given
