@@ -2,6 +2,7 @@ import flask
 import flask_login
 from keg.db import db
 import jinja2
+import six
 
 import keg_auth.cli
 from keg_auth import model
@@ -103,19 +104,19 @@ class AuthManager(object):
     def get_user_entity(self):
         return db.Model._decl_class_registry[self.user_entity]
 
-    def user_loader(self, user_id):
+    def user_loader(self, session_key):
         user_class = self.get_user_entity()
-        return user_class.query.get(user_id)
+        return user_class.get_by(session_key=six.text_type(session_key))
 
     def test_request_loader(self, request):
         """ Load a user from a request when testing. This gives a nice API for test clients to
             be logged in:
 
         """
-        user_id = request.environ.get('TEST_USER_ID')
-        if user_id is None:
+        session_key = request.environ.get('TEST_USER_ID')
+        if session_key is None:
             return
-        return self.user_loader(user_id)
+        return self.user_loader(session_key)
 
     def create_user_cli(self, extra_args=None, **kwargs):
         """ A thin layer between the cli and `create_user()` to transform the cli args

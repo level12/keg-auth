@@ -346,7 +346,7 @@ class AuthTests(object):
         user = self.user_ent.testing_create()
         client = flask_webtest.TestApp(flask.current_app)
         with client.session_transaction() as sess:
-            sess['user_id'] = user.id
+            sess['user_id'] = user.session_key
 
         # Make sure our client is actually logged in
         client.get(self.protected_url, status=200)
@@ -369,7 +369,7 @@ def user_request(wrapped, instance, args, kwargs):
     user = new_kwargs.pop('user', None)
     extra_environ = new_kwargs.setdefault('extra_environ', {})
     if user is not None:
-        extra_environ['TEST_USER_ID'] = str(user.id)
+        extra_environ['TEST_USER_ID'] = str(user.session_key)
     return wrapped(*args, **new_kwargs)
 
 
@@ -378,7 +378,7 @@ class AuthTestApp(flask_webtest.TestApp):
         user = kwargs.pop('user', None)
         extra_environ = kwargs.pop('extra_environ', {})
         if user is not None:
-            extra_environ['TEST_USER_ID'] = str(user.id)
+            extra_environ['TEST_USER_ID'] = str(user.session_key)
         super(AuthTestApp, self).__init__(app, extra_environ=extra_environ, **kwargs)
 
     @user_request

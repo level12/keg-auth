@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 import arrow
 import flask
+from keg.db import db
 import pytest
 from freezegun import freeze_time
 import sqlalchemy as sa
@@ -149,6 +150,27 @@ class TestUser(object):
         perm3 = ents.Permission.testing_create(token='perm-3')
 
         user = ents.User.testing_create(permissions=[perm1, perm2, perm3])
+
+        assert user.get_all_permission_tokens() == {'perm-1', 'perm-2', 'perm-3'}
+
+    def test_get_all_permission_tokens_cached(self):
+        ents.Permission.delete_cascaded()
+        perm1 = ents.Permission.testing_create(token='perm-1')
+        perm2 = ents.Permission.testing_create(token='perm-2')
+        perm3 = ents.Permission.testing_create(token='perm-3')
+
+        user = ents.User.testing_create(permissions=[perm1, perm2])
+        # trigger the cache storage
+        assert user.get_all_permission_tokens() == {'perm-1', 'perm-2'}
+
+        # permissions in cache go stale
+        user.permissions = [perm1, perm2, perm3]
+        db.session.commit()
+
+        assert user.get_all_permission_tokens() == {'perm-1', 'perm-2'}
+
+        # reset the cache
+        delattr(user, '_permission_cache')
 
         assert user.get_all_permission_tokens() == {'perm-1', 'perm-2', 'perm-3'}
 

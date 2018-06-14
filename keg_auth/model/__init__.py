@@ -4,6 +4,7 @@ import flask
 from keg.db import db
 from keg_elements.db.mixins import might_commit
 import shortuuid
+import six
 import sqlalchemy as sa
 import sqlalchemy.sql as sa_sql
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -37,10 +38,15 @@ class UserMixin(object):
     token = sa.Column(PasswordType(onload=_create_cryptcontext_kwargs))
     token_created_utc = sa.Column(ArrowType)
 
+    # key used to identify the "id" for flask-login, which is expected to be a string. While we
+    #   could return the user's db id cast to string, that would not give us a hook to reset
+    #   sessions when permissions go stale
+    session_key = sa.Column(sa.Unicode(36), nullable=False, unique=True,
+                            default=lambda: six.text_type(shortuuid.uuid()))
+
     def get_id(self):
-        # Flask-Login requires that this return a unicode value.  We are assuming at this point
-        # that the entity this is mixed into will have it's PK as .id.
-        return str(self.id)
+        # Flask-Login requires that this return a string value for the session
+        return str(self.session_key)
 
     @hybrid_property
     def is_active(self):
@@ -121,7 +127,16 @@ class UserMixin(object):
         return set(q)
 
     def get_all_permission_tokens(self):
-        return {p.token for p in self.get_all_permissions()}
+        # permission tokens for a given user should get loaded once per session. This method, called
+        #   by has_all_permissions, is the main interface to grab them. So, set up a cache here, so
+        #   the user instance stored by flask-login will hold the set to be used (rather than
+        #   continuing to query the database on each permission check)
+        # the other side to this is that permissions can become stale, because we are not querying
+        #   the database every time. If an admin changes permissions while a user is actively
+        #   logged in, we have to make sure the session is invalidated (see session_key field)
+        if not hasattr(self, '_permission_cache'):
+            self._permission_cache = {p.token for p in self.get_all_permissions()}
+        return self._permission_cache
 
     def has_all_permissions(self, *tokens):
         return set(tokens).issubset(self.get_all_permission_tokens())
