@@ -79,6 +79,7 @@ class AuthManager(object):
     def init_model(self, app):
         if not self._model_initialized:
             model.initialize_mappings()
+            model.initialize_events()
             self._model_initialized = True
 
     def init_managers(self, app):

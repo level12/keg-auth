@@ -165,6 +165,7 @@ class CrudView(keg.web.BaseView):
         if meth == 'POST':
             if form.validate():
                 result = self.update_obj(obj, form)
+                db.session.commit()
                 if result:
                     return self.on_add_edit_success(result, obj is not None)
             else:

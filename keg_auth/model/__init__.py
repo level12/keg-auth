@@ -2,10 +2,11 @@ import arrow
 from blazeutils.strings import randchars
 import flask
 from keg.db import db
-from keg_elements.db.mixins import might_commit
+from keg_elements.db.mixins import might_commit, might_flush
 import shortuuid
 import six
 import sqlalchemy as sa
+import sqlalchemy.orm as sa_orm
 import sqlalchemy.sql as sa_sql
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy_utils import ArrowType, EmailType, PasswordType, force_auto_coercion
@@ -21,6 +22,10 @@ def _create_cryptcontext_kwargs(**column_kwargs):
     retval.update(config)
     retval.update(column_kwargs)
     return retval
+
+
+def _generate_session_key():
+    return six.text_type(shortuuid.uuid())
 
 
 class UserMixin(object):
@@ -42,11 +47,14 @@ class UserMixin(object):
     #   could return the user's db id cast to string, that would not give us a hook to reset
     #   sessions when permissions go stale
     session_key = sa.Column(sa.Unicode(36), nullable=False, unique=True,
-                            default=lambda: six.text_type(shortuuid.uuid()))
+                            default=_generate_session_key)
 
     def get_id(self):
         # Flask-Login requires that this return a string value for the session
         return str(self.session_key)
+
+    def reset_session_key(self):
+        self.session_key = _generate_session_key()
 
     @hybrid_property
     def is_active(self):
@@ -216,6 +224,32 @@ class PermissionMixin(object):
 class BundleMixin(object):
     name = sa.Column(sa.Unicode, nullable=False, unique=True)
 
+    @might_commit
+    @might_flush
+    @classmethod
+    def edit(cls, oid=None, **kwargs):
+        """obj = cls.query.get(oid)
+
+        rights_keys = ('permissions', )
+        original_rights = _rights_as_dict(obj, *rights_keys)
+        original_users = {user.id for user in obj.users}
+        original_groups = {group.id for group in obj.groups}"""
+
+        obj = super(BundleMixin, cls).edit(oid=oid, _commit=False, **kwargs)
+
+        """# if any users were added or removed, reset their session keys
+        # if any groups were added or removed, reset their users' session keys
+        # if this bundle's rights changed, reset all of the assigned users and group users
+        user_cls = entity_registry.registry.user_cls
+        reset_user_ids = original_users ^ {user.id for user in obj.users}
+        if original_rights != _rights_as_dict(obj, *rights_keys):
+            reset_user_ids |= {user.id for user in obj.users}
+
+        for user_id in reset_user_ids:
+            user_cls.query.get(user_id).session_key = _generate_session_key()"""
+
+        return obj
+
 
 class GroupMixin(object):
     name = sa.Column(sa.Unicode, nullable=False, unique=True)
@@ -315,7 +349,7 @@ def user_bundle_mapping(user_cls, bundle_cls, table_name='user_bundles',
     if rel_property:
         setattr(
             user_cls, rel_property,
-            sa.orm.relationship(bundle_cls, secondary=table)
+            sa.orm.relationship(bundle_cls, secondary=table, backref='users')
         )
     return table
 
@@ -331,7 +365,7 @@ def user_group_mapping(user_cls, group_cls, table_name='user_groups',
     if rel_property:
         setattr(
             user_cls, rel_property,
-            sa.orm.relationship(group_cls, secondary=table)
+            sa.orm.relationship(group_cls, secondary=table, backref='users')
         )
     return table
 
@@ -352,7 +386,7 @@ def group_permission_mapping(group_cls, permission_cls, table_name='group_permis
     return table
 
 
-def group_bundle_mapping(group_cls, bundle_cls, table_name='group_permissions',
+def group_bundle_mapping(group_cls, bundle_cls, table_name='group_bundles',
                          group_id_attr='id', bundle_id_attr='id',
                          rel_property='bundles'):
     table = _make_mapping_table(
@@ -363,7 +397,7 @@ def group_bundle_mapping(group_cls, bundle_cls, table_name='group_permissions',
     if rel_property:
         setattr(
             group_cls, rel_property,
-            sa.orm.relationship(bundle_cls, secondary=table)
+            sa.orm.relationship(bundle_cls, secondary=table, backref='groups')
         )
     return table
 
@@ -388,3 +422,79 @@ def initialize_mappings(namespace='keg_auth', registry=entity_registry.registry)
 
         tables[base_name] = table_func(table1, table2, table_name=_make_table_name(base_name))
     return tables
+
+
+def initialize_events(registry=entity_registry.registry):
+    # look for changes to rights throughout users, groups, and bundles before flush. Reset the
+    #   session key when there is a change
+
+    def _sa_attr_has_changes(target, attr):
+        return sa_orm.attributes.get_history(target, attr).has_changes()
+
+    @sa.event.listens_for(db.session, 'before_flush')
+    def changed_users(session, *args):
+        for target in session.new | session.dirty:
+            if not isinstance(target, registry.user_cls):
+                continue
+
+            if (
+                _sa_attr_has_changes(target, 'permissions') or
+                _sa_attr_has_changes(target, 'groups') or
+                _sa_attr_has_changes(target, 'bundles')
+            ):
+                target.reset_session_key()
+
+    @sa.event.listens_for(db.session, 'before_flush')
+    def changed_groups(session, *args):
+        for target in session.new | session.dirty:
+            if not isinstance(target, registry.group_cls):
+                continue
+
+            if (
+                _sa_attr_has_changes(target, 'permissions') or
+                _sa_attr_has_changes(target, 'bundles')
+            ):
+                for user in target.users:
+                    user.reset_session_key()
+            user_history = sa_orm.attributes.get_history(target, 'users')
+            for user in user_history.added + user_history.deleted:
+                user.reset_session_key()
+
+        for target in session.deleted:
+            if not isinstance(target, registry.group_cls):
+                continue
+
+            for user in target.users:
+                user.reset_session_key()
+
+    @sa.event.listens_for(db.session, 'before_flush')
+    def changed_bundles(session, *args):
+        for target in session.new | session.dirty:
+            if not isinstance(target, registry.bundle_cls):
+                continue
+
+            if _sa_attr_has_changes(target, 'permissions'):
+                for user in target.users:
+                    user.reset_session_key()
+                for group in target.groups:
+                    for user in group.users:
+                        user.reset_session_key()
+            user_history = sa_orm.attributes.get_history(target, 'users')
+            update_users = user_history.added + user_history.deleted
+
+            group_history = sa_orm.attributes.get_history(target, 'groups')
+            for group in group_history.added + group_history.deleted:
+                update_users += tuple(group.users)
+
+            for user in update_users:
+                user.reset_session_key()
+
+        for target in session.deleted:
+            if not isinstance(target, registry.bundle_cls):
+                continue
+
+            update_users = target.users
+            for group in target.groups:
+                update_users += group.users
+            for user in update_users:
+                user.reset_session_key()

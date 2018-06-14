@@ -200,6 +200,47 @@ class TestUser(object):
         assert user.has_any_permission('perm-1') is True
         assert user.has_any_permission('perm-3') is False
 
+    def test_permission_update_resets_session_key(self):
+        perm1 = ents.Permission.testing_create(token='perm-1')
+        perm2 = ents.Permission.testing_create(token='perm-2')
+
+        user = ents.User.testing_create(permissions=[perm1])
+        original_session_key = user.session_key
+
+        ents.User.edit(user.id, permissions=[perm2])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_group_update_resets_session_key(self):
+        group1 = ents.Group.testing_create(name='group-1')
+        group2 = ents.Group.testing_create(name='group-2')
+
+        user = ents.User.testing_create(groups=[group1])
+        original_session_key = user.session_key
+
+        ents.User.edit(user.id, groups=[group2])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_bundle_update_resets_session_key(self):
+        bundle1 = ents.Bundle.testing_create(name='bundle-1')
+        bundle2 = ents.Bundle.testing_create(name='bundle-2')
+
+        user = ents.User.testing_create(bundles=[bundle1])
+        original_session_key = user.session_key
+
+        ents.User.edit(user.id, bundles=[bundle2])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_non_permission_update_does_not_reset_session_key(self):
+        user = ents.User.testing_create()
+        original_session_key = user.session_key
+
+        ents.User.edit(user.id, email='foo@bar.baz')
+        db.session.expire(user)
+        assert user.session_key == original_session_key
+
 
 class TestPermission(object):
     def setup(self):
@@ -225,6 +266,97 @@ class TestBundle(object):
             ents.Bundle.testing_create(name='Bundle 1')
 
         assert 'unique' in str(exc.value).lower()
+
+    def test_permission_update_resets_user_session_keys(self):
+        perm1 = ents.Permission.testing_create(token='perm-1')
+        perm2 = ents.Permission.testing_create(token='perm-2')
+
+        user = ents.User.testing_create()
+        bundle = ents.Bundle.testing_create(permissions=[perm1], users=[user])
+        original_session_key = user.session_key
+
+        ents.Bundle.edit(bundle.id, permissions=[perm2])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_permission_update_resets_group_user_session_keys(self):
+        perm1 = ents.Permission.testing_create(token='perm-1')
+        perm2 = ents.Permission.testing_create(token='perm-2')
+
+        user = ents.User.testing_create()
+        group = ents.Group.testing_create(users=[user])
+        bundle = ents.Bundle.testing_create(permissions=[perm1], groups=[group])
+        original_session_key = user.session_key
+
+        ents.Bundle.edit(bundle.id, permissions=[perm2])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_group_addition_resets_user_session_keys(self):
+        user = ents.User.testing_create()
+        group = ents.Group.testing_create(users=[user])
+        bundle = ents.Bundle.testing_create()
+        original_session_key = user.session_key
+
+        ents.Bundle.edit(bundle.id, groups=[group])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_group_removal_resets_user_session_keys(self):
+        user = ents.User.testing_create()
+        group = ents.Group.testing_create(users=[user])
+        bundle = ents.Bundle.testing_create(groups=[group])
+        original_session_key = user.session_key
+
+        ents.Bundle.edit(bundle.id, groups=[])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_user_addition_resets_user_session_keys(self):
+        user = ents.User.testing_create()
+        bundle = ents.Bundle.testing_create()
+        original_session_key = user.session_key
+
+        ents.Bundle.edit(bundle.id, users=[user])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_user_removal_resets_user_session_keys(self):
+        user = ents.User.testing_create()
+        bundle = ents.Bundle.testing_create(users=[user])
+        original_session_key = user.session_key
+
+        ents.Bundle.edit(bundle.id, users=[])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_bundle_removal_resets_user_session_keys(self):
+        user = ents.User.testing_create()
+        bundle = ents.Bundle.testing_create(users=[user])
+        original_session_key = user.session_key
+        ents.Bundle.delete(bundle.id)
+
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_bundle_removal_resets_group_session_keys(self):
+        user = ents.User.testing_create()
+        group = ents.Group.testing_create(users=[user])
+        bundle = ents.Bundle.testing_create(groups=[group])
+        original_session_key = user.session_key
+        ents.Bundle.delete(bundle.id)
+
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_non_permission_update_does_not_reset_user_session_keys(self):
+        user = ents.User.testing_create()
+        bundle = ents.Bundle.testing_create(users=[user])
+        original_session_key = user.session_key
+
+        ents.Bundle.edit(bundle.id, name='foo')
+        db.session.expire(user)
+        assert user.session_key == original_session_key
 
 
 class TestGroup(object):
@@ -263,6 +395,66 @@ class TestGroup(object):
 
         assert group1.get_all_permissions() == {perm1, perm2}
         assert group2.get_all_permissions() == {perm2, perm3}
+
+    def test_permission_update_resets_user_session_keys(self):
+        perm1 = ents.Permission.testing_create(token='perm-1')
+        perm2 = ents.Permission.testing_create(token='perm-2')
+
+        user = ents.User.testing_create()
+        original_session_key = user.session_key
+        group = ents.Group.testing_create(permissions=[perm1], users=[user])
+
+        ents.Group.edit(group.id, permissions=[perm2])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_bundle_update_resets_user_session_keys(self):
+        bundle1 = ents.Bundle.testing_create(name='bundle-1')
+        bundle2 = ents.Bundle.testing_create(name='bundle-2')
+
+        user = ents.User.testing_create()
+        original_session_key = user.session_key
+        group = ents.Group.testing_create(bundles=[bundle1], users=[user])
+
+        ents.Group.edit(group.id, bundles=[bundle2])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_user_addition_resets_user_session_keys(self):
+        user = ents.User.testing_create()
+        original_session_key = user.session_key
+        group = ents.Group.testing_create()
+
+        ents.Group.edit(group.id, users=[user])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_user_removal_resets_user_session_keys(self):
+        user = ents.User.testing_create()
+        original_session_key = user.session_key
+        group = ents.Group.testing_create(users=[user])
+
+        ents.Group.edit(group.id, users=[])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_group_removal_resets_user_session_keys(self):
+        user = ents.User.testing_create()
+        group = ents.Group.testing_create(users=[user])
+        original_session_key = user.session_key
+        ents.Group.delete(group.id)
+
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_non_permission_update_does_not_reset_user_session_keys(self):
+        user = ents.User.testing_create()
+        group = ents.Group.testing_create(users=[user])
+        original_session_key = user.session_key
+
+        ents.Group.edit(group.id, name='foo')
+        db.session.expire(user)
+        assert user.session_key == original_session_key
 
 
 class TestEntityRegistry(object):

@@ -437,6 +437,24 @@ class TestUserCrud(ViewTestBase):
         assert resp.flashes == [('success', 'Successfully modified User')]
         assert self.user_ent.get_by(email='foo@bar.baz')
 
+    def test_edit_triggers_session_key_refresh(self):
+        target_user_client, target_user = login_client_with_permissions('auth-manage')
+        new_perm = ents.Permission.testing_create()
+        original_session_key = target_user.session_key
+
+        # target user has matching session key and rights to page
+        target_user_client.get('/users', status=200)
+
+        resp = self.client.get('/users/{}'.format(target_user.id))
+        resp.form['permission_ids'] = [new_perm.id]
+        resp = resp.form.submit()
+
+        db.session.expire(target_user)
+        assert target_user.session_key != original_session_key
+
+        # target user should need to log in now
+        assert '/login' in target_user_client.get('/users', status=302).location
+
     def test_not_found(self):
         self.client.get('/users/999999', status=404)
         self.client.get('/users/999999/delete', status=404)
