@@ -96,7 +96,7 @@ class RequiresUser(object):
         flask.abort(403)
 
     def check_auth(self):
-        user = flask_login.current_user
+        user = flask.current_app.auth_manager.primary_authenticator.get_authenticated_user()
         if not user or not user.is_authenticated:
             self.on_authentication_failure()
 

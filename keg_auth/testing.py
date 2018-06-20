@@ -155,7 +155,7 @@ class AuthTests(object):
         resp.form['password'] = 'badpass'
         resp = resp.form.submit(status=200)
 
-        msg = 'The user account "foo@bar.com" has an unverified email addres.  Please check' \
+        msg = 'The user account "foo@bar.com" has an unverified email address.  Please check' \
             ' your email for a verification link from this website.  Or, use the "forgot' \
             ' password" link to verify the account.'
         assert resp.flashes == [('error', msg)]

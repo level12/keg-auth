@@ -3,12 +3,12 @@ import flask_login
 import inflect
 import keg.web
 import sqlalchemy as sa
-import sqlalchemy.orm.exc as orm_exc
 from blazeutils.strings import case_cw2dash
 from keg.db import db
 from six.moves import urllib
 
 from keg_auth import forms, grids, requires_permissions
+from keg_auth.libs import authenticators
 from keg_auth.model import entity_registry
 
 
@@ -25,6 +25,11 @@ class AuthFormView(_BaseView):
     flash_invalid_user = 'No user account matches: {}', 'error'
     flash_disabled_user = 'The user account "{}" has been disabled.  Please contact this' \
         ' site\'s administrators for more information.', 'error'
+
+    def __init__(self, *args, **kwargs):
+        super(AuthFormView, self).__init__(*args, **kwargs)
+
+        self.authenticator = flask.current_app.auth_manager.primary_authenticator
 
     @property
     def form_action_text(self):
@@ -74,10 +79,8 @@ class AuthFormView(_BaseView):
     def make_form(self):
         return self.form_cls()
 
-    def get_user(self, form):
-        email = form.email.data
-        user_ent = flask.current_app.auth_manager.get_user_entity()
-        return user_ent.query.filter_by(email=email).one()
+    def get_user(self, login_id=None, password=None):
+        return self.authenticator.verify_user(login_id=login_id, password=password)
 
     def on_form_error(self, form):
         flask.flash(*self.flash_form_error)
@@ -267,25 +270,22 @@ class Login(AuthFormView):
     page_title = 'Log In'
     flash_success = 'Login successful.', 'success'
     flash_invalid_password = 'Invalid password.', 'error'
-    flash_unverified_user = 'The user account "{}" has an unverified email addres.  Please check' \
+    flash_unverified_user = 'The user account "{}" has an unverified email address.  Please check' \
         ' your email for a verification link from this website.  Or, use the "forgot' \
         ' password" link to verify the account.', 'error'
 
     def on_form_valid(self, form):
         try:
-            user = self.get_user(form)
-            if not user.is_active:
-                self.on_inactive_user(user)
-            elif not self.verify_password(user, form):
-                self.on_invalid_password()
-            else:
-                # User is active and password is verified
-                return self.on_success(user)
-        except orm_exc.NoResultFound:
-            self.on_invalid_user(form)
+            user = self.get_user(login_id=form.email.data, password=form.password.data)
 
-    def verify_password(self, user, form):
-        return user.password == form.password.data
+            # User is active and password is verified
+            return self.on_success(user)
+        except authenticators.UserNotFound:
+            self.on_invalid_user(form)
+        except authenticators.UserInactive as exc:
+            self.on_inactive_user(exc.user)
+        except authenticators.UserInvalidAuth:
+            self.on_invalid_password()
 
     def on_invalid_password(self):
         flask.flash(*self.flash_invalid_password)
@@ -321,12 +321,14 @@ class ForgotPassword(AuthFormView):
 
     def on_form_valid(self, form):
         try:
-            user = self.get_user(form)
-            if self.verify_user_enabled(user):
-                # User is active, take action to initiate password reset
-                return self.on_success(user)
-        except orm_exc.NoResultFound:
+            user = self.get_user(login_id=form.email.data)
+
+            # User is active, take action to initiate password reset
+            return self.on_success(user)
+        except authenticators.UserNotFound:
             self.on_invalid_user(form)
+        except authenticators.UserInactive as exc:
+            self.verify_user_enabled(exc.user)
 
     def on_success(self, user):
         self.send_email(user)

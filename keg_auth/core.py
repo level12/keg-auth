@@ -5,6 +5,7 @@ import jinja2
 import six
 
 import keg_auth.cli
+from keg_auth.libs.authenticators import KegAuthenticator
 from keg_auth import model
 from keg_auth.mail import MailManager
 
@@ -27,7 +28,8 @@ class AuthManager(object):
     cli_group_name = 'auth'
 
     def __init__(self, mail_ext, blueprint='auth', user_entity='User', endpoints=None,
-                 cli_group_name=None, grid_cls=None):
+                 cli_group_name=None, grid_cls=None, primary_authenticator_cls=KegAuthenticator,
+                 secondary_authenticators=[]):
         self.mail_ext = mail_ext
         self.blueprint_name = blueprint
         self.user_entity = user_entity
@@ -37,8 +39,12 @@ class AuthManager(object):
         self.cli_group_name = cli_group_name or self.cli_group_name
         self.cli_group = None
         self.grid_cls = grid_cls
+        self.primary_authenticator_cls = primary_authenticator_cls
+        self.secondary_authenticators = secondary_authenticators
+        self.authenticators = {}
         self.menus = dict()
         self._model_initialized = False
+        self._authenticators_initialized = False
 
     def init_app(self, app):
         self.init_model(app)
@@ -46,6 +52,7 @@ class AuthManager(object):
         self.init_managers(app)
         self.init_cli(app)
         self.init_jinja(app)
+        self.init_authenticators(app)
 
     def init_config(self, app):
         _cc_kwargs = dict(schemes=['bcrypt', 'pbkdf2_sha256'], deprecated='auto')
@@ -92,6 +99,19 @@ class AuthManager(object):
             login_manager.request_loader(self.test_request_loader)
         login_manager.login_view = self.endpoint('login')
         login_manager.init_app(app)
+
+    def init_authenticators(self, app):
+        if self._authenticators_initialized:
+            return
+
+        primary = self.primary_authenticator_cls(app)
+        self.authenticators['__primary__'] = primary
+        self.authenticators[primary.get_identifier()] = primary
+
+        for authenticator_cls in self.secondary_authenticators:
+            self.authenticators[authenticator_cls.get_identifier()] = authenticator_cls(app)
+
+        self._authenticators_initialized = True
 
     def add_navigation_menu(self, name, menu):
         self.menus[name] = menu
@@ -160,6 +180,13 @@ class AuthManager(object):
     def reset_password_url(self, user):
         return self.url_for(
             'reset-password', user_id=user.id, token=user._token_plain, _external=True)
+
+    def get_authenticator(self, identifier):
+        return self.authenticators.get(identifier)
+
+    @property
+    def primary_authenticator(self):
+        return self.get_authenticator('__primary__')
 
 
 # ensure that any manager-attached menus are reset for auth requirements on login/logout

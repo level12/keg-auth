@@ -54,6 +54,7 @@ setup(
         'test': [
             'flake8',
             'flask-bootstrap',
+            'flask-jwt-extended',
             'flask-webtest',
             'freezegun',
             'mock',
@@ -64,5 +65,8 @@ setup(
             'tox',
             'xlwt',
         ],
+        'jwt': [
+            'flask-jwt-extended',
+        ]
     }
 )
