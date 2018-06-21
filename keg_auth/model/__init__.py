@@ -56,10 +56,6 @@ class UserMixin(object):
     def reset_session_key(self):
         self.session_key = _generate_session_key()
 
-    @property
-    def _login_id(self):
-        return self.email
-
     @hybrid_property
     def is_active(self):
         return self.is_verified and self.is_enabled

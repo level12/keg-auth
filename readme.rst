@@ -93,6 +93,8 @@ Usage
       keg_auth
    -  note: the User model assumes that the entity mixed with UserMixin
       will have a PK id
+   -  the User entity should have an attribute matching the KEGAUTH_USER_IDENT_FIELD setting, as
+      that field will be used for authentication purposes
 
 .. code-block:: python
 

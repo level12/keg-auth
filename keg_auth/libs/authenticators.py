@@ -67,7 +67,10 @@ class TokenAuthenticatorMixin(object):
 
 class KegAuthenticator(PasswordAuthenticatorMixin, Authenticator):
     def verify_user(self, login_id=None, password=None):
-        user = self.user_ent.query.filter_by(email=login_id).one_or_none()
+        kwargs = {
+            flask.current_app.config.get('KEGAUTH_USER_IDENT_FIELD'): login_id
+        }
+        user = self.user_ent.query.filter_by(**kwargs).one_or_none()
 
         if not user:
             raise UserNotFound
@@ -108,9 +111,10 @@ class LdapAuthenticator(KegAuthenticator):
             raise Exception('No KEGAUTH_LDAP_DN_FORMAT configured!')
 
         session = ldap.initialize(ldap_url)
+        login_id = getattr(user, flask.current_app.config.get('KEGAUTH_USER_IDENT_FIELD'))
 
         try:
-            dn = ldap_dn_format.format(user._login_id)
+            dn = ldap_dn_format.format(login_id)
             result = session.simple_bind_s(dn, password)
             return bool(
                 result and
