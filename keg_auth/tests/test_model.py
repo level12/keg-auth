@@ -200,6 +200,22 @@ class TestUser(object):
         assert user.has_any_permission('perm-1') is True
         assert user.has_any_permission('perm-3') is False
 
+    def test_superuser_update_resets_session_key(self):
+        user = ents.User.testing_create(is_superuser=True)
+        original_session_key = user.session_key
+
+        ents.User.edit(user.id, is_superuser=False)
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_enabled_update_resets_session_key(self):
+        user = ents.User.testing_create(is_enabled=True)
+        original_session_key = user.session_key
+
+        ents.User.edit(user.id, is_enabled=False)
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
     def test_permission_update_resets_session_key(self):
         perm1 = ents.Permission.testing_create(token='perm-1')
         perm2 = ents.Permission.testing_create(token='perm-2')

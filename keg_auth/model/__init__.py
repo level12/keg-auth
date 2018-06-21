@@ -441,7 +441,9 @@ def initialize_events(registry=entity_registry.registry):
             if (
                 _sa_attr_has_changes(target, 'permissions') or
                 _sa_attr_has_changes(target, 'groups') or
-                _sa_attr_has_changes(target, 'bundles')
+                _sa_attr_has_changes(target, 'bundles') or
+                _sa_attr_has_changes(target, 'is_superuser') or
+                _sa_attr_has_changes(target, 'is_enabled')
             ):
                 target.reset_session_key()
 
