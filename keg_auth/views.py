@@ -451,6 +451,12 @@ class User(CrudView):
         obj.groups = form.get_selected_groups()
         return obj
 
+    def delete(self, objid):
+        # ensure user cannot delete oneself
+        if objid == flask_login.current_user.id:
+            return self.on_delete_failure()
+        return super(User, self).delete(objid)
+
 
 @requires_permissions('auth-manage')
 class Group(CrudView):

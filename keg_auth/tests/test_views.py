@@ -576,6 +576,14 @@ class TestUserCrud(ViewTestBase):
         assert resp.status_code == 302
         assert resp.location.endswith('/users?session_key=foo')
 
+    def test_delete_myself_fails(self):
+        resp = self.client.get('/users/{}/delete'.format(self.current_user.id))
+
+        assert resp.status_code == 302
+        assert resp.location.endswith('/users')
+        assert resp.flashes == [('warning',
+                                 'Unable to delete User. It may be referenced by other items.')]
+
     @mock.patch('keg_elements.db.mixins.db.session.delete', autospec=True, spec_set=True)
     def test_delete_failed(self, m_delete):
         m_delete.side_effect = sa.exc.IntegrityError(None, None, None)
