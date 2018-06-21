@@ -1,6 +1,7 @@
 import flask
 import flask_jwt_extended
 import jwt
+import ldap
 import mock
 import pytest
 
@@ -45,6 +46,110 @@ class TestKegAuthenticator:
         authenticator = auth.KegAuthenticator(app=flask.current_app)
         found_user = authenticator.verify_user(login_id=user.email, password=user._plaintext_pass)
         assert user is found_user
+
+
+class TestLdapAuthenticator:
+    def setup(self):
+        flask.current_app.config['KEGAUTH_LDAP_SERVER_URL'] = 'abc123'
+        flask.current_app.config['KEGAUTH_LDAP_DN_FORMAT'] = '{}'
+
+    @pytest.mark.parametrize('is_authenticated', [
+        User.testing_create, lambda: None
+    ])
+    def test_user_is_authenticated(self, is_authenticated):
+        auth_user = is_authenticated()
+        with mock.patch('flask_login.current_user') as current_user:  # noqa: M100, M102
+            current_user.is_authenticated = auth_user is not None
+            assert (auth_user is not None) == (
+                auth.LdapAuthenticator.get_authenticated_user() is not None
+            )
+
+    def test_user_not_found(self):
+        with pytest.raises(auth.UserNotFound):
+            authenticator = auth.LdapAuthenticator(app=flask.current_app)
+            authenticator.verify_user(login_id='nobodybythisnamehere')
+
+    def test_user_not_active(self):
+        user = User.testing_create(is_enabled=False)
+        with pytest.raises(auth.UserInactive) as e_info:
+            authenticator = auth.LdapAuthenticator(app=flask.current_app)
+            authenticator.verify_user(login_id=user.email)
+        assert e_info.value.user is user
+
+    @mock.patch('ldap.initialize', autospec=True, spec_set=True)
+    def test_no_server_url_set(self, mocked_ldap):
+        del flask.current_app.config['KEGAUTH_LDAP_SERVER_URL']
+
+        user = User.testing_create()
+        authenticator = auth.LdapAuthenticator(app=flask.current_app)
+        with pytest.raises(Exception) as e_info:
+            authenticator.verify_password(user, None)
+        assert 'KEGAUTH_LDAP_SERVER_URL' in str(e_info.value)
+
+    @mock.patch('ldap.initialize', autospec=True, spec_set=True)
+    def test_no_dn_format_set(self, mocked_ldap):
+        del flask.current_app.config['KEGAUTH_LDAP_DN_FORMAT']
+
+        user = User.testing_create()
+        authenticator = auth.LdapAuthenticator(app=flask.current_app)
+        with pytest.raises(Exception) as e_info:
+            authenticator.verify_password(user, None)
+        assert 'KEGAUTH_LDAP_DN_FORMAT' in str(e_info.value)
+
+    @mock.patch('ldap.initialize', autospec=True, spec_set=True)
+    def test_unsuccessful_authentication(self, mocked_ldap):
+        mocked_ldap.return_value.simple_bind_s.side_effect = ldap.INVALID_CREDENTIALS()
+
+        user = User.testing_create()
+        authenticator = auth.LdapAuthenticator(app=flask.current_app)
+        success = authenticator.verify_password(user, 'foo')
+
+        assert mocked_ldap.call_count
+        assert success is False
+
+    @mock.patch('ldap.initialize', autospec=True, spec_set=True)
+    def test_invalid_dn_syntax(self, mocked_ldap):
+        mocked_ldap.return_value.simple_bind_s.side_effect = ldap.INVALID_DN_SYNTAX()
+
+        user = User.testing_create()
+        authenticator = auth.LdapAuthenticator(app=flask.current_app)
+        success = authenticator.verify_password(user, 'foo')
+
+        assert mocked_ldap.call_count
+        assert success is False
+
+    @mock.patch('ldap.initialize', autospec=True, spec_set=True)
+    def test_unsuccessful_authentication_wrong_result(self, mocked_ldap):
+        mocked_ldap.return_value.simple_bind_s.return_value = (0, )
+
+        user = User.testing_create()
+        authenticator = auth.LdapAuthenticator(app=flask.current_app)
+        success = authenticator.verify_password(user, 'foo')
+
+        assert mocked_ldap.call_count
+        assert success is False
+
+    @mock.patch('ldap.initialize', autospec=True, spec_set=True)
+    def test_successful_authentication(self, mocked_ldap):
+        mocked_ldap.return_value.simple_bind_s.return_value = (ldap.RES_BIND, )
+
+        user = User.testing_create()
+        authenticator = auth.LdapAuthenticator(app=flask.current_app)
+        success = authenticator.verify_password(user, 'foo')
+
+        assert mocked_ldap.call_count
+        assert success is True
+
+    @mock.patch('ldap.initialize', autospec=True, spec_set=True)
+    def test_debug_override(self, mocked_ldap):
+        flask.current_app.config['KEGAUTH_LDAP_TEST_MODE'] = True
+
+        user = User.testing_create()
+        authenticator = auth.LdapAuthenticator(app=flask.current_app)
+        success = authenticator.verify_password(user, 'foo')
+
+        assert not mocked_ldap.call_count
+        assert success is True
 
 
 class TestJwtAuthenticator:

@@ -56,13 +56,17 @@ class UserMixin(object):
     def reset_session_key(self):
         self.session_key = _generate_session_key()
 
+    @property
+    def _login_id(self):
+        return self.email
+
     @hybrid_property
     def is_active(self):
         return self.is_verified and self.is_enabled
 
     @is_active.expression
-    def is_active(self):
-        return sa_sql.and_(self.is_verified == sa.true(), self.is_enabled == sa.true())
+    def is_active(cls):
+        return sa_sql.and_(cls.is_verified == sa.true(), cls.is_enabled == sa.true())
 
     @classmethod
     def testing_create(cls, **kwargs):

@@ -1,7 +1,13 @@
+import flask
 import flask_login
 
 try:
     import flask_jwt_extended
+except ImportError:
+    pass
+
+try:
+    import ldap
 except ImportError:
     pass
 
@@ -74,6 +80,45 @@ class KegAuthenticator(PasswordAuthenticatorMixin, Authenticator):
 
     def verify_password(self, user, password):
         return user.password == password
+
+
+class LdapAuthenticator(KegAuthenticator):
+    def verify_password(self, user, password):
+        """
+        Check the given username/password combination at the
+        application's configured LDAP server. Returns `True` if
+        the user authentication is successful, `False` otherwise.
+        NOTE: By request, authentication can be bypassed by setting
+              the KEGAUTH_LDAP_TEST_MODE configuration setting to `True`.
+              When set, all authentication attempts will succeed!
+        :param username:
+        :param password:
+        :return:
+        """
+
+        if flask.current_app.config.get('KEGAUTH_LDAP_TEST_MODE', False):
+            return True
+
+        ldap_url = flask.current_app.config.get('KEGAUTH_LDAP_SERVER_URL')
+        if not ldap_url:
+            raise Exception('No KEGAUTH_LDAP_SERVER_URL configured!')
+
+        ldap_dn_format = flask.current_app.config.get('KEGAUTH_LDAP_DN_FORMAT')
+        if not ldap_dn_format:
+            raise Exception('No KEGAUTH_LDAP_DN_FORMAT configured!')
+
+        session = ldap.initialize(ldap_url)
+
+        try:
+            dn = ldap_dn_format.format(user._login_id)
+            result = session.simple_bind_s(dn, password)
+            return bool(
+                result and
+                len(result) and
+                result[0] == ldap.RES_BIND
+            )
+        except (ldap.INVALID_CREDENTIALS, ldap.INVALID_DN_SYNTAX):
+            return False
 
 
 class JwtAuthenticator(TokenAuthenticatorMixin, Authenticator):

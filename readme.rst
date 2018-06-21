@@ -44,8 +44,17 @@ Usage
          -  ``AuthManager(mail_ext, secondary_authenticators=[JwtAuthenticator, LdapAuthenticator])``
       -  token authenticators, like JwtAuthenticator, have a `create_access_token` method
          -  ``token = auth_manager.get_authenticator('jwt').create_access_token(user)``
-      -  JWT authentication uses flask-jwt-extended, which needs to be installed:
-         -  ``pip install keg-auth[jwt]``
+      -  JWT authentication:
+         -  ``from keg_auth import JwtAuthenticator``
+         -  uses flask-jwt-extended, which needs to be installed: ``pip install keg-auth[jwt]``
+      -  LDAP authentication
+         -  ``from keg_auth import LdapAuthenticator``
+         -  uses pyldap, which needs to be installed: ``pip install keg-auth[ldap]``
+         -  additional config:
+            -  KEGAUTH_LDAP_TEST_MODE: when True, bypasses LDAP calls. Defaults to False
+            -  KEGAUTH_LDAP_SERVER_URL: target LDAP server to use for queries
+            -  KEGAUTH_LDAP_DN_FORMAT: format-able string to set up for the query
+               -  ex. ``uid={},dc=example,dc=org``
 
    -  CLI is rudimentary, with just one create-user command in the auth group. You can extend the
       group by using the cli_group attribute on the app's auth_manager, but you need access to the
