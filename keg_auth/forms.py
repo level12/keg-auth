@@ -90,6 +90,11 @@ def user_form(allow_superuser, endpoint):
             model = user_cls
             only = fields
 
+        class FieldsMeta:
+            is_enabled = FieldMeta('Enabled')
+            is_superuser = FieldMeta('Superuser')
+            __default__ = FieldMeta
+
         email = EmailField('Email', validators=[validators.data_required(),
                                                 validators.email(),
                                                 ValidateUnique(html_link)])
@@ -110,6 +115,12 @@ def user_form(allow_superuser, endpoint):
         @property
         def obj(self):
             return self._obj
+
+        __order = tuple(fields + ['group_ids', 'bundle_ids', 'permission_ids'])
+
+        def __iter__(self):
+            order = ('csrf_token', ) + self.__order
+            return (getattr(self, field_id) for field_id in order)
 
     return User
 
