@@ -35,6 +35,8 @@ class AnyCondition(PermissionCondition):
 
 
 def has_permissions(condition, user):
+    if condition is None:
+        return True
     return PermissionCondition._check_condition(condition, user)
 
 

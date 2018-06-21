@@ -467,6 +467,16 @@ class TestUserCrud(ViewTestBase):
         assert user.groups == [group_approve]
         assert user.bundles == [bundle_approve]
 
+    def test_add_with_session_key(self):
+        resp = self.client.get('/users/add?session_key=foo')
+        assert resp.pyquery('a.cancel').attr('href').endswith('/users?session_key=foo')
+
+        resp.form['email'] = 'abc@example.session.com'
+
+        resp = resp.form.submit()
+        assert resp.status_code == 302
+        assert resp.location.endswith('/users?session_key=foo')
+
     def test_edit(self):
         user_edit = ents.User.testing_create()
 
@@ -480,7 +490,17 @@ class TestUserCrud(ViewTestBase):
         assert resp.flashes == [('success', 'Successfully modified User')]
         assert self.user_ent.get_by(email='foo@bar.baz')
 
-    def test_edit_triggers_session_key_refresh(self):
+    def test_edit_with_session_key(self):
+        user_edit = ents.User.testing_create()
+
+        resp = self.client.get('/users/{}/edit?session_key=foo'.format(user_edit.id))
+        assert resp.pyquery('a.cancel').attr('href').endswith('/users?session_key=foo')
+
+        resp = resp.form.submit()
+        assert resp.status_code == 302
+        assert resp.location.endswith('/users?session_key=foo')
+
+    def test_edit_triggers_user_session_key_refresh(self):
         target_user_client, target_user = login_client_with_permissions('auth-manage')
         new_perm = ents.Permission.testing_create()
         original_session_key = target_user.session_key
@@ -547,6 +567,14 @@ class TestUserCrud(ViewTestBase):
         assert resp.flashes == [('success', 'Successfully removed User')]
 
         assert not self.user_ent.query.get(user_delete_id)
+
+    def test_delete_with_session_key(self):
+        user_delete = ents.User.testing_create()
+
+        resp = self.client.get('/users/{}/delete?session_key=foo'.format(user_delete.id))
+
+        assert resp.status_code == 302
+        assert resp.location.endswith('/users?session_key=foo')
 
     @mock.patch('keg_elements.db.mixins.db.session.delete', autospec=True, spec_set=True)
     def test_delete_failed(self, m_delete):

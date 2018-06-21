@@ -208,6 +208,12 @@ Usage
          -  ``@requires_permissions(has_all(has_any('token1', 'token2'), 'token3'))``
          -  ``@requires_permissions(custom_authorization_callable that takes user arg)``
 
+   -  a standard CRUD view is provided which has add, edit, delete, and list "actions"
+
+      - ``from keg_auth import CrudView``
+      - because the standard action routes are predefined, you can assign specific permission(s) to
+        them in the view's `permissions` dictionary, keyed by action (e.g. `permissions['add'] = 'foo'`)
+
 User Login During Testing
 -------------------------
 

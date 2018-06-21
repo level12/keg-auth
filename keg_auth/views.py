@@ -146,6 +146,11 @@ class CrudView(keg.web.BaseView):
     def object_name_plural(self):
         return self._inflect.plural(self.object_name)
 
+    def page_title(self, action):
+        if action in ('Create', 'Edit'):
+            return '{} {}'.format(action, self.object_name)
+        return self.object_name_plural
+
     def create_form(self, obj):
         return self.form_cls(obj=obj)
 
@@ -156,6 +161,7 @@ class CrudView(keg.web.BaseView):
             'cancel_url': self.cancel_url(),
             'form': form,
             'obj_inst': obj,
+            'page_title': self.page_title(action),
         }
         return flask.render_template(self.form_template, **default_template_args)
 
@@ -219,24 +225,29 @@ class CrudView(keg.web.BaseView):
     def list(self):
         return requires_permissions(self.permissions['list'])(self.render_grid)()
 
+    @property
+    def list_url_with_session(self):
+        return flask.url_for(self.endpoint_for_action('list'),
+                             session_key=flask.request.args.get('session_key'))
+
     def flash_success(self, verb):
         flask.flash('Successfully {verb} {object}'.format(verb=verb, object=self.object_name),
                     'success')
 
     def on_delete_success(self):
         self.flash_success('removed')
-        return flask.redirect(flask.url_for(self.endpoint_for_action('list')))
+        return flask.redirect(self.list_url_with_session)
 
     def on_delete_failure(self):
         flask.flash(
             'Unable to delete {}. It may be referenced by other items.'.format(self.object_name),
             'warning'
         )
-        return flask.redirect(flask.url_for(self.endpoint_for_action('list')))
+        return flask.redirect(self.list_url_with_session)
 
     def on_add_edit_success(self, entity, is_edit):
         self.flash_success('modified' if is_edit else 'created')
-        return flask.redirect(flask.url_for(self.endpoint_for_action('list')))
+        return flask.redirect(self.list_url_with_session)
 
     def on_add_edit_failure(self, entity, is_edit):
         flask.flash('Form errors detected.  Please see below for details.', 'error')
@@ -262,11 +273,12 @@ class CrudView(keg.web.BaseView):
         return flask.render_template(
             self.grid_template,
             add_url=flask.url_for(self.endpoint_for_action('add')),
+            page_title=self.page_title('list'),
             grid=grid
         )
 
     def cancel_url(self):
-        return flask.url_for(self.endpoint_for_action('list'))
+        return self.list_url_with_session
 
 
 class Login(AuthFormView):

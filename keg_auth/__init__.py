@@ -17,6 +17,7 @@ from keg_auth.model.utils import (
     has_any,
 )
 from keg_auth.views import (
+    CrudView,
     make_blueprint,
 )
 from keg_auth.version import VERSION as __VERSION__
