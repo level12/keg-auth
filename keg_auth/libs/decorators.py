@@ -159,7 +159,7 @@ class RequiresPermissions(RequiresUser):
         super(RequiresPermissions, self).check_auth()
 
         user = flask_login.current_user
-        if not model_utils.has_permissions(self.condition, user):
+        if self.condition and not model_utils.has_permissions(self.condition, user):
             self.on_authorization_failure()
 
 

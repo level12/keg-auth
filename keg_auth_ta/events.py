@@ -18,7 +18,7 @@ def init_navigation(app):
             Node('Home', Route('public.home')),
             Node(
                 'Sub-Menu',
-                Node('User Manage', Route('auth.user:view')),
+                Node('User Manage', Route('auth.user:list')),
                 Node('Secret View', Route('private.secret_nested')),
             ),
         )

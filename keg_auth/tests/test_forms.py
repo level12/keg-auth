@@ -161,7 +161,7 @@ class TestUser(FormBase):
         print(form.email.errors[0])
         error = PyQuery(form.email.errors[0])
         assert 'This value must be unique' in error.text()
-        assert error('a').attr('href').endswith('/users/{}'.format(usr.id))
+        assert error('a').attr('href').endswith('/users/{}/edit'.format(usr.id))
         assert error('a').text() == 'foo@example.com'
 
         self.assert_valid(obj=usr)

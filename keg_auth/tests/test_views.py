@@ -470,7 +470,7 @@ class TestUserCrud(ViewTestBase):
     def test_edit(self):
         user_edit = ents.User.testing_create()
 
-        resp = self.client.get('/users/{}'.format(user_edit.id))
+        resp = self.client.get('/users/{}/edit'.format(user_edit.id))
         assert resp.form['email'].value == user_edit.email
         resp.form['email'] = 'foo@bar.baz'
         resp = resp.form.submit()
@@ -488,7 +488,7 @@ class TestUserCrud(ViewTestBase):
         # target user has matching session key and rights to page
         target_user_client.get('/users', status=200)
 
-        resp = self.client.get('/users/{}'.format(target_user.id))
+        resp = self.client.get('/users/{}/edit'.format(target_user.id))
         resp.form['permission_ids'] = [new_perm.id]
         resp = resp.form.submit()
 
@@ -503,21 +503,21 @@ class TestUserCrud(ViewTestBase):
         self.client.get('/users/999999/delete', status=404)
 
     @pytest.mark.parametrize('action', [
-        'add', 'edit', 'delete', 'view'
+        'add', 'edit', 'delete', 'list'
     ])
     def test_alternate_permissions(self, action):
         # patch in separate permissions for add/edit/view/delete
-        actions = {'add', 'edit', 'delete', 'view'}
+        actions = {'add', 'edit', 'delete', 'list'}
         ents.Permission.testing_create(token='permission1')
 
         user_edit = ents.User.testing_create()
         user_delete = ents.User.testing_create()
 
         def url(url_action):
-            if url_action == 'view':
+            if url_action == 'list':
                 return '/users'
             if url_action == 'edit':
-                return '/users/{}'.format(user_edit.id)
+                return '/users/{}/edit'.format(user_edit.id)
             if url_action == 'delete':
                 return '/users/{}/delete'.format(user_delete.id)
             return '/users/add'
@@ -562,12 +562,12 @@ class TestUserCrud(ViewTestBase):
 
         assert self.user_ent.query.get(user_delete_id)
 
-    def test_view(self):
+    def test_list(self):
         ents.User.testing_create()
         resp = self.client.get('/users')
         assert 'datagrid' in resp
 
-    def test_view_export(self):
+    def test_list_export(self):
         ents.User.testing_create()
         resp = self.client.get('/users?export_to=xls')
         assert resp.content_type == 'application/vnd.ms-excel'
@@ -602,7 +602,7 @@ class TestGroupCrud(ViewTestBase):
     def test_edit(self):
         group_edit = ents.Group.testing_create()
 
-        resp = self.client.get('/groups/{}'.format(group_edit.id))
+        resp = self.client.get('/groups/{}/edit'.format(group_edit.id))
         assert resp.form['name'].value == group_edit.name
         resp.form['name'] = 'test editing a group'
         resp = resp.form.submit()
@@ -617,21 +617,21 @@ class TestGroupCrud(ViewTestBase):
         self.client.get('/groups/999999/delete', status=404)
 
     @pytest.mark.parametrize('action', [
-        'add', 'edit', 'delete', 'view'
+        'add', 'edit', 'delete', 'list'
     ])
     def test_alternate_permissions(self, action):
         # patch in separate permissions for add/edit/view/delete
-        actions = {'add', 'edit', 'delete', 'view'}
+        actions = {'add', 'edit', 'delete', 'list'}
         ents.Permission.testing_create(token='permission1')
 
         group_edit = ents.Group.testing_create()
         group_delete = ents.Group.testing_create()
 
         def url(url_action):
-            if url_action == 'view':
+            if url_action == 'list':
                 return '/groups'
             if url_action == 'edit':
-                return '/groups/{}'.format(group_edit.id)
+                return '/groups/{}/edit'.format(group_edit.id)
             if url_action == 'delete':
                 return '/groups/{}/delete'.format(group_delete.id)
             return '/groups/add'
@@ -676,12 +676,12 @@ class TestGroupCrud(ViewTestBase):
 
         assert ents.Group.query.get(group_delete_id)
 
-    def test_view(self):
+    def test_list(self):
         ents.Group.testing_create()
         resp = self.client.get('/groups')
         assert 'datagrid' in resp
 
-    def test_view_export(self):
+    def test_list_export(self):
         ents.Group.testing_create()
         resp = self.client.get('/groups?export_to=xls')
         assert resp.content_type == 'application/vnd.ms-excel'
@@ -712,7 +712,7 @@ class TestBundleCrud(ViewTestBase):
     def test_edit(self):
         bundle_edit = ents.Bundle.testing_create()
 
-        resp = self.client.get('/bundles/{}'.format(bundle_edit.id))
+        resp = self.client.get('/bundles/{}/edit'.format(bundle_edit.id))
         assert resp.form['name'].value == bundle_edit.name
         resp.form['name'] = 'test editing a bundle'
         resp = resp.form.submit()
@@ -727,21 +727,21 @@ class TestBundleCrud(ViewTestBase):
         self.client.get('/bundles/999999/delete', status=404)
 
     @pytest.mark.parametrize('action', [
-        'add', 'edit', 'delete', 'view'
+        'add', 'edit', 'delete', 'list'
     ])
     def test_alternate_permissions(self, action):
         # patch in separate permissions for add/edit/view/delete
-        actions = {'add', 'edit', 'delete', 'view'}
+        actions = {'add', 'edit', 'delete', 'list'}
         ents.Permission.testing_create(token='permission1')
 
         bundle_edit = ents.Bundle.testing_create()
         bundle_delete = ents.Bundle.testing_create()
 
         def url(url_action):
-            if url_action == 'view':
+            if url_action == 'list':
                 return '/bundles'
             if url_action == 'edit':
-                return '/bundles/{}'.format(bundle_edit.id)
+                return '/bundles/{}/edit'.format(bundle_edit.id)
             if url_action == 'delete':
                 return '/bundles/{}/delete'.format(bundle_delete.id)
             return '/bundles/add'
@@ -786,12 +786,12 @@ class TestBundleCrud(ViewTestBase):
 
         assert ents.Bundle.query.get(bundle_delete_id)
 
-    def test_view(self):
+    def test_list(self):
         ents.Bundle.testing_create()
         resp = self.client.get('/bundles')
         assert 'datagrid' in resp
 
-    def test_view_export(self):
+    def test_list_export(self):
         ents.Bundle.testing_create()
         resp = self.client.get('/bundles?export_to=xls')
         assert resp.content_type == 'application/vnd.ms-excel'

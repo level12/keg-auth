@@ -103,34 +103,40 @@ class CrudView(keg.web.BaseView):
     form_cls = None
     orm_cls = None
     form_template = 'keg_auth/crud-addedit.html'
-    grid_template = 'keg_auth/crud-view.html'
+    grid_template = 'keg_auth/crud-list.html'
     object_name = None
     _inflect = inflect.engine()
     permissions = {
         'add': None,
         'edit': None,
         'delete': None,
-        'view': None
+        'list': None
     }
 
     @classmethod
+    def map_method_route(cls, method_name, route, methods):
+        method_route = keg.web.MethodRoute(method_name, route, {'methods': methods},
+                                           cls.calc_url(), cls.calc_endpoint())
+        mr_options = method_route.options()
+        view_func = cls.as_view(method_route.view_func_name,
+                                method_route.sanitized_method_name('_'))
+        cls.view_funcs[method_route.endpoint] = view_func
+        mr_options['view_func'] = cls.view_funcs[method_route.endpoint]
+        cls.blueprint.add_url_rule(method_route.rule(), **mr_options)
+
+    @classmethod
     def init_routes(cls):
+        """ Creates the standard set of routes from methods (add, edit, delete, list).
+
+            To extend to further action routes:
+                `cls.map_method_route(method_name, url, HTTP methods)`
+                ex. `cls.map_method_route('read', '/foo', ('GET', ))`"""
         super(CrudView, cls).init_routes()
 
-        def map_method_route(method_name, route, methods):
-            method_route = keg.web.MethodRoute(method_name, route, {'methods': methods},
-                                               cls.calc_url(), cls.calc_endpoint())
-            mr_options = method_route.options()
-            view_func = cls.as_view(method_route.view_func_name,
-                                    method_route.sanitized_method_name('_'))
-            cls.view_funcs[method_route.endpoint] = view_func
-            mr_options['view_func'] = cls.view_funcs[method_route.endpoint]
-            cls.blueprint.add_url_rule(method_route.rule(), **mr_options)
-
-        map_method_route('add', '{}/add'.format(cls.calc_url()), ('GET', 'POST'))
-        map_method_route('edit', '{}/<int:objid>'.format(cls.calc_url()), ('GET', 'POST'))
-        map_method_route('delete', '{}/<int:objid>/delete'.format(cls.calc_url()), ('GET', ))
-        map_method_route('view', '{}'.format(cls.calc_url()), ('GET', 'POST'))
+        cls.map_method_route('add', '{}/add'.format(cls.calc_url()), ('GET', 'POST'))
+        cls.map_method_route('edit', '{}/<int:objid>/edit'.format(cls.calc_url()), ('GET', 'POST'))
+        cls.map_method_route('delete', '{}/<int:objid>/delete'.format(cls.calc_url()), ('GET', ))
+        cls.map_method_route('list', '{}'.format(cls.calc_url()), ('GET', 'POST'))
 
     def __init__(self, *args, **kwargs):
         super(CrudView, self).__init__(*args, **kwargs)
@@ -210,8 +216,8 @@ class CrudView(keg.web.BaseView):
 
         return requires_permissions(self.permissions['delete'])(action)()
 
-    def view(self):
-        return requires_permissions(self.permissions['view'])(self.render_grid)()
+    def list(self):
+        return requires_permissions(self.permissions['list'])(self.render_grid)()
 
     def flash_success(self, verb):
         flask.flash('Successfully {verb} {object}'.format(verb=verb, object=self.object_name),
@@ -219,18 +225,18 @@ class CrudView(keg.web.BaseView):
 
     def on_delete_success(self):
         self.flash_success('removed')
-        return flask.redirect(flask.url_for(self.endpoint_for_action('view')))
+        return flask.redirect(flask.url_for(self.endpoint_for_action('list')))
 
     def on_delete_failure(self):
         flask.flash(
             'Unable to delete {}. It may be referenced by other items.'.format(self.object_name),
             'warning'
         )
-        return flask.redirect(flask.url_for(self.endpoint_for_action('view')))
+        return flask.redirect(flask.url_for(self.endpoint_for_action('list')))
 
     def on_add_edit_success(self, entity, is_edit):
         self.flash_success('modified' if is_edit else 'created')
-        return flask.redirect(flask.url_for(self.endpoint_for_action('view')))
+        return flask.redirect(flask.url_for(self.endpoint_for_action('list')))
 
     def on_add_edit_failure(self, entity, is_edit):
         flask.flash('Form errors detected.  Please see below for details.', 'error')
@@ -260,7 +266,7 @@ class CrudView(keg.web.BaseView):
         )
 
     def cancel_url(self):
-        return flask.url_for(self.endpoint_for_action('view'))
+        return flask.url_for(self.endpoint_for_action('list'))
 
 
 class Login(AuthFormView):
@@ -407,13 +413,6 @@ class User(CrudView):
     url = '/users'
     object_name = 'User'
 
-    permissions = {
-        'add': 'auth-manage',
-        'edit': 'auth-manage',
-        'delete': 'auth-manage',
-        'view': 'auth-manage'
-    }
-
     def create_form(self, obj):
         form_cls = forms.user_form(allow_superuser=flask_login.current_user.is_superuser,
                                    endpoint=self.endpoint_for_action('edit'))
@@ -446,13 +445,6 @@ class Group(CrudView):
     url = '/groups'
     object_name = 'Group'
 
-    permissions = {
-        'add': 'auth-manage',
-        'edit': 'auth-manage',
-        'delete': 'auth-manage',
-        'view': 'auth-manage'
-    }
-
     def create_form(self, obj):
         form_cls = forms.group_form(endpoint=self.endpoint_for_action('edit'))
         return form_cls(obj=obj)
@@ -482,13 +474,6 @@ class Group(CrudView):
 class Bundle(CrudView):
     url = '/bundles'
     object_name = 'Bundle'
-
-    permissions = {
-        'add': 'auth-manage',
-        'edit': 'auth-manage',
-        'delete': 'auth-manage',
-        'view': 'auth-manage'
-    }
 
     def create_form(self, obj):
         form_cls = forms.bundle_form(endpoint=self.endpoint_for_action('edit'))
