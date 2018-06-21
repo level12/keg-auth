@@ -139,3 +139,15 @@ class ProtectedClass(keg.web.BaseView):
 @protected_bp.route('/protected-method')
 def protected_method():
     return 'protected-method'
+
+
+@private_bp.route('/jwt-required')
+@requires_user(authenticators='jwt')
+def jwt_required():
+    return 'jwt-required'
+
+
+@private_bp.route('/multiple-authenticators')
+@requires_user(authenticators=['keg', 'jwt'])
+def multiple_authenticators():
+    return 'multiple-authenticators'

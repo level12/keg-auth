@@ -1,14 +1,19 @@
 import inspect
 
+from blazeutils import tolist
 import flask
 import flask_login
 from keg.web import validate_arguments, ArgumentValidationError, ViewArgumentError
 
+from keg_auth.libs.authenticators import Authenticator
 from keg_auth.model import utils as model_utils
 
 
 class RequiresUser(object):
-    def __init__(self, on_authentication_failure=None, on_authorization_failure=None):
+    def __init__(self, authenticators=[], on_authentication_failure=None,
+                 on_authorization_failure=None):
+        self.authenticators = tolist(authenticators)
+
         # defaults for these handlers are provided, but may be overridden here
         self._on_authentication_failure = on_authentication_failure
         self._on_authorization_failure = on_authorization_failure
@@ -87,8 +92,21 @@ class RequiresUser(object):
     def on_authentication_failure(self):
         if self._on_authentication_failure:
             self._on_authentication_failure()
-        redirect_resp = flask.current_app.login_manager.unauthorized()
-        flask.abort(redirect_resp)
+
+        should_redirect = False
+
+        for authenticator in (
+            self.authenticators or [flask.current_app.auth_manager.primary_authenticator]
+        ):
+            auth_instance = authenticator if isinstance(authenticator, Authenticator) else \
+                flask.current_app.auth_manager.get_authenticator(authenticator)
+            should_redirect = should_redirect or auth_instance.authentication_failure_redirect
+
+        if should_redirect:
+            redirect_resp = flask.current_app.login_manager.unauthorized()
+            flask.abort(redirect_resp)
+        else:
+            flask.abort(401)
 
     def on_authorization_failure(self):
         if self._on_authorization_failure:
@@ -96,7 +114,14 @@ class RequiresUser(object):
         flask.abort(403)
 
     def check_auth(self):
-        user = flask.current_app.auth_manager.primary_authenticator.get_authenticated_user()
+        for authenticator in (
+            self.authenticators or [flask.current_app.auth_manager.primary_authenticator]
+        ):
+            auth_instance = authenticator if isinstance(authenticator, Authenticator) else \
+                flask.current_app.auth_manager.get_authenticator(authenticator)
+            user = auth_instance.get_authenticated_user()
+            if user:
+                break
         if not user or not user.is_authenticated:
             self.on_authentication_failure()
 
@@ -117,8 +142,10 @@ class RequiresPermissions(RequiresUser):
         - @requires_permissions(has_all(has_any('token1', 'token2'), 'token3'))
         - @requires_permissions(custom_authorization_callable that takes user arg)
     """
-    def __init__(self, condition, on_authentication_failure=None, on_authorization_failure=None):
+    def __init__(self, condition, authenticators=[], on_authentication_failure=None,
+                 on_authorization_failure=None):
         super(RequiresPermissions, self).__init__(
+            authenticators=authenticators,
             on_authentication_failure=on_authentication_failure,
             on_authorization_failure=on_authorization_failure,
         )
@@ -140,8 +167,14 @@ def requires_user(arg=None, *args, **kwargs):
     """ Require a user to be authenticated before proceeding to decorated target. May be used as
         a class decorator or method decorator.
 
-        Usage: @requires_user OR @requires_user()
-        Note: both usage forms are identical
+        Usage: @requires_user OR @requires_user() (both usage forms are identical)
+        Parameters:
+            authenticators: identifiers for authenticators registered on the auth_manager. The
+                primary authenticator on auth_manager will be used by default
+            on_authentication_failure: method called on authentication failures. If one is not
+                specified, behavior is derived from authenticators (redirect or 401)
+            on_authorization_failure: method called on authorization failures. If one is not
+                specified, response will be 403
     """
     if arg is None:
         return RequiresUser(*args, **kwargs)

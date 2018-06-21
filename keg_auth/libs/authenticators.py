@@ -25,6 +25,8 @@ class Authenticator(object):
 
         Most authenticators will rely on flask-login's current user. Token authenticators
         will need to validate here and bring a user into that context. """
+    authentication_failure_redirect = True
+
     def __init__(self, app):
         self.user_ent = app.auth_manager.get_user_entity()
 
@@ -44,16 +46,15 @@ class PasswordAuthenticatorMixin(object):
     def verify_user(self, login_id=None, password=None):
         raise Exception('fill in get_user method')  # pragma: no cover
 
-    def user_is_active(self, user):
-        raise Exception('fill in user_is_active method')  # pragma: no cover
-
-    def user_is_verified(self, user):
-        raise Exception('fill in user_is_verified method')  # pragma: no cover
+    def verify_password(self, user, password):
+        return user.password == password
 
 
 class TokenAuthenticatorMixin(object):
     """ Token authenticators will need a way to generate an access token, which will then be
         loaded in the request to log a user into flask-login """
+    authentication_failure_redirect = False
+
     def create_access_token(self, user):
         raise Exception('fill in create_access_token method')  # pragma: no cover
 
@@ -98,8 +99,10 @@ class JwtAuthenticator(TokenAuthenticatorMixin, Authenticator):
             """
             Load a user entity from the JWT token
             This method is the complement of `user_identity_loader`
+
+            Note, if user is not found or inactive, fail silently - user just won't get loaded
             """
-            return self.user_ent.get_by(session_key=session_key)
+            return self.user_ent.get_by(session_key=session_key, is_active=True)
 
     @staticmethod
     def get_authenticated_user():

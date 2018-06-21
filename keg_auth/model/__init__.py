@@ -73,6 +73,7 @@ class UserMixin(object):
         kwargs.setdefault('is_verified', True)
 
         user = super(UserMixin, cls).testing_create(**kwargs)
+        user._plaintext_pass = kwargs['password']
         return user
 
     def token_verify(self, token):

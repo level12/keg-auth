@@ -37,6 +37,15 @@ Usage
           auth_manager = AuthManager(mail_ext, endpoints=_endpoints)
           auth_manager.init_app(app)
 
+   -  Authenticators control validation of users
+      -  'keg' is the default primary authenticator, and uses username/password
+      -  authenticators may be registered on the auth_manager:
+         -  ``AuthManager(mail_ext, primary_authenticator_cls=JwtAuthenticator)``
+         -  ``AuthManager(mail_ext, secondary_authenticators=[JwtAuthenticator, LdapAuthenticator])``
+      -  token authenticators, like JwtAuthenticator, have a `create_access_token` method
+         -  ``token = auth_manager.get_authenticator('jwt').create_access_token(user)``
+      -  JWT authentication uses flask-jwt-extended, which needs to be installed:
+         -  ``pip install keg-auth[jwt]``
 
    -  CLI is rudimentary, with just one create-user command in the auth group. You can extend the
       group by using the cli_group attribute on the app's auth_manager, but you need access to the
@@ -162,9 +171,14 @@ Usage
       -  require a user to be authenticated before proceeding
          (authentication only)
       -  usage: ``@requires_user`` or ``@requires_user()`` (both usage
-         patterns are identical)
+         patterns are identical if no secondary authenticators are needed)
       -  note: this is similar to ``flask_login.login_required``, but
          can be used as a class decorator
+      -  the decorator uses authenticators to determine whether a user is logged in
+         -  the primary authenticator is used by default
+         -  control a view/blueprint's authenticators by specifying them on the decorator:
+            -  ``@requires_user(authenticators='jwt')``
+            -  ``@requires_user(authenticators=['keg', 'jwt'])``
 
    -  ``requires_permissions``
 
@@ -173,9 +187,11 @@ Usage
       -  ``has_any`` and ``has_all`` helpers can be used to construct
          complex conditions, using string permission tokens, nested
          helpers, and callable methods
+      -  authenticators are used as in `requires_user`
       -  usage:
 
          -  ``@requires_permissions(('token1', 'token2'))``
+         -  ``@requires_permissions(('token1', 'token2'), authenticators='jwt')``
          -  ``@requires_permissions(has_any('token1', 'token2'))``
          -  ``@requires_permissions(has_all('token1', 'token2'))``
          -  ``@requires_permissions(has_all(has_any('token1', 'token2'), 'token3'))``

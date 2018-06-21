@@ -1,3 +1,4 @@
+from blazeutils import tolist
 import flask
 import flask_login
 from keg.db import db
@@ -40,7 +41,7 @@ class AuthManager(object):
         self.cli_group = None
         self.grid_cls = grid_cls
         self.primary_authenticator_cls = primary_authenticator_cls
-        self.secondary_authenticators = secondary_authenticators
+        self.secondary_authenticators = tolist(secondary_authenticators)
         self.authenticators = {}
         self.menus = dict()
         self._model_initialized = False
