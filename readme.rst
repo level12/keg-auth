@@ -138,6 +138,7 @@ Usage
    -  Menus may be tracked on the auth manager, which will reset their cached access on
       login/logout
    -  `keg_auth/navigation.html` template has a helper `render_menu` to render a given menu as a ul
+      -  `{% import "keg_auth/navigation.html" as navigation %}`
       -  `render_menu(auth_manager.menus['main'])`
    -  Example:
 
@@ -169,6 +170,13 @@ Usage
                   )
               )
 
+
+-  Templates
+
+   -  templates are provided for the auth views, as well as base crud templates
+   -  base templates are referenced from settings. The first of these defined is used:
+      -  `BASE_TEMPLATE`
+      -  `KEGAUTH_BASE_TEMPLATE`
 
 -  Views
 
