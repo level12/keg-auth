@@ -36,8 +36,9 @@ Usage
           _endpoints = {'after-login': 'public.home'}
           auth_manager = AuthManager(mail_ext, endpoints=_endpoints)
           auth_manager.init_app(app)
+..
 
-   -  Authenticators control validation of users
+    -  Authenticators control validation of users
       -  'keg' is the default primary authenticator, and uses username/password
       -  authenticators may be registered on the auth_manager:
          -  ``AuthManager(mail_ext, primary_authenticator_cls=JwtAuthenticator)``
@@ -83,6 +84,7 @@ Usage
               @app.auth_manager.cli_group.command('command-extension')
               def command_extension():
                   pass
+..
 
    -  CLI create-user command, by default, has one required argument (email). If you wish to have
       additional arguments, put the list of arg names in `KEGAUTH_CLI_USER_ARGS` config
