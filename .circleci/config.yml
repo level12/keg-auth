@@ -16,7 +16,7 @@ jobs:
 
             - run:
                 name: install tox
-                command: sudo pip install tox
+                command: pip install tox
 
             - run:
                 name: version checks
