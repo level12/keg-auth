@@ -16,6 +16,16 @@ https://github.com/level12/keg-app-cookiecutter
 Usage
 -----
 
+-  Configuration
+
+   -  `SERVER_NAME = 'somehost'`: required for Keg Auth when generating URL in create-user CLI command
+       -  include a port number if needed (e.g. `localhost:5000`)
+   -  `PREFERRED_URL_SCHEME = 'https'`: this is important so that generated auth related URLS are
+        secure.  You could have an SSL redirect but by the time that would fire, the key would
+        have already been sent in the URL.
+   -  `KEGAUTH_EMAIL_SITE_NAME = 'Some Thing'`: used in email templates
+   -  `KEGAUTH_EMAIL_SITE_ABBR = 'Some Thing'`: used in email templates
+
 -  Blueprints
 
    -  include an auth blueprint along with your app’s blueprints, which includes the login views
