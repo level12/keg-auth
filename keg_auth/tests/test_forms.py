@@ -201,6 +201,16 @@ class TestGroup(FormBase):
         assert form.get_selected_permissions() == []
         assert form.get_selected_bundles() == []
 
+    def test_unique(self):
+        obj = ents.Group.testing_create(name='some-group')
+
+        form = self.assert_not_valid()
+        print(form.name.errors[0])
+        error = PyQuery(form.name.errors[0])
+        assert 'Already exists.' in error.text()
+
+        self.assert_valid(obj=obj)
+
 
 @mock.patch.dict(current_app.config, WTF_CSRF_ENABLED=False)
 class TestBundle(FormBase):
@@ -230,3 +240,13 @@ class TestBundle(FormBase):
 
         form = self.assert_valid(permission_ids=[])
         assert form.get_selected_permissions() == []
+
+    def test_unique(self):
+        obj = ents.Bundle.testing_create(name='some-bundle')
+
+        form = self.assert_not_valid()
+        print(form.name.errors[0])
+        error = PyQuery(form.name.errors[0])
+        assert 'Already exists.' in error.text()
+
+        self.assert_valid(obj=obj)

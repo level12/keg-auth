@@ -151,3 +151,15 @@ def jwt_required():
 @requires_user(authenticators=['keg', 'jwt'])
 def multiple_authenticators():
     return 'multiple-authenticators'
+
+
+@private_bp.route('/custom-auth-failure')
+@requires_user(on_authentication_failure=lambda: flask.abort(400))
+def custom_auth_failure():
+    return 'custom-auth-failure'
+
+
+@private_bp.route('/custom-perm-failure')
+@requires_permissions('permission1', on_authorization_failure=lambda: flask.abort(400))
+def custom_perm_failure():
+    return 'custom-perm-failure'

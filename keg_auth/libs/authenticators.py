@@ -4,12 +4,12 @@ import flask_login
 try:
     import flask_jwt_extended
 except ImportError:
-    pass
+    pass  # pragma: no cover
 
 try:
     import ldap
 except ImportError:
-    pass
+    pass  # pragma: no cover
 
 
 class UserNotFound(Exception):
@@ -50,10 +50,10 @@ class PasswordAuthenticatorMixin(object):
     """ Username/password authenticators will need a way to verify a user is valid
         prior to making it the current user in flask login """
     def verify_user(self, login_id=None, password=None):
-        raise Exception('fill in get_user method')  # pragma: no cover
+        raise Exception('fill in verify_user method')  # pragma: no cover
 
     def verify_password(self, user, password):
-        return user.password == password
+        return Exception('fill in verify_password method')  # pragma: no cover
 
 
 class TokenAuthenticatorMixin(object):

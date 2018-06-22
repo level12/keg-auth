@@ -13,7 +13,7 @@ from keg_auth.model import entity_registry
 from keg_auth_ta import views
 
 nav_menu = Node(
-    Node('Home', Route('public.home')),
+    Node('Home', Route('public.home', arg1='foo')),
     Node(
         'Nesting',
         Node('Secret1', Route('private.secret1')),
@@ -53,7 +53,7 @@ class TestViewMetaInfo(object):
         if sys.version_info[0] != 2:
             assert views.Secret2.get.__keg_auth_parent_class__ is views.Secret2
         else:
-            assert views.Secret2.get.im_class is views.Secret2
+            assert views.Secret2.get.im_class is views.Secret2  # pragma: no cover
 
     def test_decorated_blueprint(self):
         assert views.protected_bp.__keg_auth_requires_user__
@@ -69,6 +69,11 @@ class TestNode(object):
     def setup(self):
         self.Permission = entity_registry.registry.permission_cls
         self.Permission.delete_cascaded()
+
+    def test_no_args(self):
+        with pytest.raises(Exception) as e_info:
+            Node()
+        assert str(e_info.value) == 'must provide a Route or a list of Nodes'
 
     def test_node_invalid_endpoint(self):
         with pytest.raises(

@@ -251,6 +251,25 @@ class TestPermissionsRequired:
         cls.perm2 = ents.Permission.testing_create(token='permission2')
         cls.perm3 = ents.Permission.testing_create(token='permission3')
 
+    def test_custom_authentication_failure(self):
+        allowed = ents.User.testing_create()
+        client = AuthTestApp(flask.current_app, user=allowed)
+        resp = client.get('/custom-auth-failure', status=200)
+        assert resp.text == 'custom-auth-failure'
+
+        client = flask_webtest.TestApp(flask.current_app)
+        client.get('/custom-auth-failure', status=400)
+
+    def test_custom_authorization_failure(self):
+        allowed = ents.User.testing_create(permissions=[self.perm1])
+        disallowed = ents.User.testing_create()
+        client = AuthTestApp(flask.current_app, user=allowed)
+        resp = client.get('/custom-perm-failure', status=200)
+        assert resp.text == 'custom-perm-failure'
+
+        client = AuthTestApp(flask.current_app, user=disallowed)
+        client.get('/custom-perm-failure', status=400)
+
     def test_method_level(self):
         allowed = ents.User.testing_create(permissions=[self.perm1, self.perm2])
         disallowed = ents.User.testing_create(permissions=[self.perm1])

@@ -64,8 +64,8 @@ class RequiresUser(object):
                 msg = 'Argument mismatch occured: method=%s, missing=%s, ' \
                       'extra_keys=%s, extra_pos=%s.' \
                       '  Arguments available: %s' % (old_check_auth, e.missing, e.extra,
-                                                     e.extra_positional, kwargs)
-                raise ViewArgumentError(msg)
+                                                     e.extra_positional, kwargs)  # pragma: no cover
+                raise ViewArgumentError(msg)  # pragma: no cover
 
             return old_check_auth(*pass_args, **pass_kwargs)
 
@@ -179,7 +179,7 @@ def requires_user(arg=None, *args, **kwargs):
     if arg is None:
         return RequiresUser(*args, **kwargs)
     if inspect.isclass(arg):
-        return RequiresUser().decorate_class(arg)
+        return RequiresUser().decorate_class(arg)  # pragma: no cover
     return RequiresUser().decorate_function(arg)
 
 

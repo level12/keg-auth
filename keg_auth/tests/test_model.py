@@ -474,6 +474,16 @@ class TestGroup(object):
 
 
 class TestEntityRegistry(object):
+    def test_bad_type(self):
+        registry = entity_registry.EntityRegistry()
+        with pytest.raises(entity_registry.RegistryError):
+            registry.get_entity_cls('foo')
+
+    def test_entity_not_defined(self):
+        registry = entity_registry.EntityRegistry()
+        with pytest.raises(entity_registry.RegistryError):
+            registry.get_entity_cls('user')
+
     def test_register_entities(self):
         registry = entity_registry.EntityRegistry()
 

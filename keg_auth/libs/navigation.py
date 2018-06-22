@@ -13,12 +13,7 @@ def get_defining_class(func):
         return
 
     if sys.version_info[0] == 2:
-        return getattr(func, 'im_class', None)
-
-    if inspect.ismethod(func):
-        for cls in inspect.getmro(func.__self__.__class__):
-            if cls.__dict__.get(func.__name__) is func:
-                return cls
+        return getattr(func, 'im_class', None)  # pragma: no cover
 
     if inspect.isfunction(func):
         parse_def = func.__qualname__.split('.<locals>', 1)[0].rsplit('.', 1)
@@ -38,9 +33,6 @@ class Route(object):
     @property
     def url(self):
         return flask.url_for(self.route_string, *self.route_args, **self.route_kwargs)
-
-    def __str__(self):
-        return self.route_string + str(self.route_args) + str(self.route_kwargs)
 
     @property
     def is_permitted(self):
@@ -186,8 +178,3 @@ class Node(object):
             ]
 
         return self._permitted_sub_nodes
-
-    def __str__(self):
-        if self.node_type == Node.NodeType.LEAF:
-            return (self.label or '') + str(self.route)
-        return (self.label or '') + ''.join([str(node) for node in self.sub_nodes])

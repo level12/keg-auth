@@ -130,7 +130,7 @@ def group_form(endpoint):
 
     def html_link(obj):
         import flask
-        return link_to(obj.email, flask.url_for(endpoint, objid=obj.id))
+        return link_to(obj.name, flask.url_for(endpoint, objid=obj.id))
 
     class Group(ModelForm, PermissionsMixin, BundlesMixin):
         class Meta:
@@ -158,7 +158,7 @@ def bundle_form(endpoint):
 
     def html_link(obj):
         import flask
-        return link_to(obj.email, flask.url_for(endpoint, objid=obj.id))
+        return link_to(obj.name, flask.url_for(endpoint, objid=obj.id))
 
     class Bundle(ModelForm, PermissionsMixin):
         class Meta:
