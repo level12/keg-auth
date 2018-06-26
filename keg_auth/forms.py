@@ -74,12 +74,14 @@ class BundlesMixin(object):
         return entities_from_ids(entity_registry.registry.bundle_cls, self.bundle_ids.data)
 
 
-def user_form(allow_superuser, endpoint):
+def user_form(allow_superuser=False, endpoint='', fields=['email', 'is_enabled']):
     user_cls = entity_registry.registry.user_cls
 
-    fields = ['email', 'is_enabled']
-    if allow_superuser:
-        fields.append('is_superuser')
+    # create a copy of fields for internal use. In python 2, if we use this as a static method,
+    #   the kwarg value would get modified in the wrong scope
+    _fields = fields[:]
+    if allow_superuser and 'is_superuser' not in _fields:
+        _fields.append('is_superuser')
 
     def html_link(obj):
         import flask
@@ -88,7 +90,7 @@ def user_form(allow_superuser, endpoint):
     class User(ModelForm, PermissionsMixin, BundlesMixin):
         class Meta:
             model = user_cls
-            only = fields
+            only = _fields
 
         class FieldsMeta:
             is_enabled = FieldMeta('Enabled')
@@ -116,10 +118,10 @@ def user_form(allow_superuser, endpoint):
         def obj(self):
             return self._obj
 
-        __order = tuple(fields + ['group_ids', 'bundle_ids', 'permission_ids'])
+        field_order = tuple(_fields + ['group_ids', 'bundle_ids', 'permission_ids'])
 
         def __iter__(self):
-            order = ('csrf_token', ) + self.__order
+            order = ('csrf_token', ) + self.field_order
             return (getattr(self, field_id) for field_id in order)
 
     return User

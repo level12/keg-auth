@@ -424,10 +424,11 @@ class Logout(_BaseView):
 class User(CrudView):
     url = '/users'
     object_name = 'User'
+    form_cls = staticmethod(forms.user_form)
 
     def create_form(self, obj):
-        form_cls = forms.user_form(allow_superuser=flask_login.current_user.is_superuser,
-                                   endpoint=self.endpoint_for_action('edit'))
+        form_cls = self.form_cls(allow_superuser=flask_login.current_user.is_superuser,
+                                 endpoint=self.endpoint_for_action('edit'))
         return form_cls(obj=obj)
 
     @property
@@ -462,9 +463,10 @@ class User(CrudView):
 class Group(CrudView):
     url = '/groups'
     object_name = 'Group'
+    form_cls = staticmethod(forms.group_form)
 
     def create_form(self, obj):
-        form_cls = forms.group_form(endpoint=self.endpoint_for_action('edit'))
+        form_cls = self.form_cls(endpoint=self.endpoint_for_action('edit'))
         return form_cls(obj=obj)
 
     @property
@@ -492,9 +494,10 @@ class Group(CrudView):
 class Bundle(CrudView):
     url = '/bundles'
     object_name = 'Bundle'
+    form_cls = staticmethod(forms.bundle_form)
 
     def create_form(self, obj):
-        form_cls = forms.bundle_form(endpoint=self.endpoint_for_action('edit'))
+        form_cls = self.form_cls(endpoint=self.endpoint_for_action('edit'))
         return form_cls(obj=obj)
 
     @property

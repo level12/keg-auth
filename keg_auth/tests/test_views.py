@@ -467,7 +467,7 @@ class TestUserCrud(ViewTestBase):
         resp = self.client.get('/users/add')
 
         assert resp.form['email'].value == ''
-        assert 'is_superuser' not in resp.form.fields
+        assert 'is_superuser' not in resp.form.fields, resp.form.fields.keys()
 
         resp.form['email'] = 'abc@example.com'
         resp.form['permission_ids'] = [perm_approve.id]
@@ -538,7 +538,7 @@ class TestUserCrud(ViewTestBase):
         assert '/login' in target_user_client.get('/users', status=302).location
 
     def test_not_found(self):
-        self.client.get('/users/999999', status=404)
+        self.client.get('/users/999999/edit', status=404)
         self.client.get('/users/999999/delete', status=404)
 
     @pytest.mark.parametrize('action', [
@@ -668,7 +668,7 @@ class TestGroupCrud(ViewTestBase):
         assert ents.Group.get_by(name='test editing a group')
 
     def test_not_found(self):
-        self.client.get('/groups/999999', status=404)
+        self.client.get('/groups/999999/edit', status=404)
         self.client.get('/groups/999999/delete', status=404)
 
     @pytest.mark.parametrize('action', [
@@ -715,7 +715,7 @@ class TestGroupCrud(ViewTestBase):
         assert resp.location.endswith('/groups')
         assert resp.flashes == [('success', 'Successfully removed Group')]
 
-        assert not self.user_ent.query.get(group_delete_id)
+        assert not ents.Group.query.get(group_delete_id)
 
     @mock.patch('keg_elements.db.mixins.db.session.delete', autospec=True, spec_set=True)
     def test_delete_failed(self, m_delete):
@@ -778,7 +778,7 @@ class TestBundleCrud(ViewTestBase):
         assert ents.Bundle.get_by(name='test editing a bundle')
 
     def test_not_found(self):
-        self.client.get('/bundles/999999', status=404)
+        self.client.get('/bundles/999999/edit', status=404)
         self.client.get('/bundles/999999/delete', status=404)
 
     @pytest.mark.parametrize('action', [
@@ -825,7 +825,7 @@ class TestBundleCrud(ViewTestBase):
         assert resp.location.endswith('/bundles')
         assert resp.flashes == [('success', 'Successfully removed Bundle')]
 
-        assert not self.user_ent.query.get(bundle_delete_id)
+        assert not ents.Bundle.query.get(bundle_delete_id)
 
     @mock.patch('keg_elements.db.mixins.db.session.delete', autospec=True, spec_set=True)
     def test_delete_failed(self, m_delete):

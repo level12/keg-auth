@@ -2,6 +2,7 @@ from blazeutils import tolist
 import flask
 import flask_login
 from keg.db import db
+from keg.signals import init_complete
 import jinja2
 import six
 
@@ -30,7 +31,7 @@ class AuthManager(object):
 
     def __init__(self, mail_ext, blueprint='auth', user_entity='User', endpoints=None,
                  cli_group_name=None, grid_cls=None, primary_authenticator_cls=KegAuthenticator,
-                 secondary_authenticators=[]):
+                 secondary_authenticators=[], permissions=[]):
         self.mail_ext = mail_ext
         self.blueprint_name = blueprint
         self.user_entity = user_entity
@@ -44,6 +45,7 @@ class AuthManager(object):
         self.secondary_authenticators = tolist(secondary_authenticators)
         self.authenticators = {}
         self.menus = dict()
+        self.permissions = permissions
         self._model_initialized = False
         self._authenticators_initialized = False
 
@@ -54,6 +56,7 @@ class AuthManager(object):
         self.init_cli(app)
         self.init_jinja(app)
         self.init_authenticators(app)
+        self.init_permissions(app)
 
     def init_config(self, app):
         _cc_kwargs = dict(schemes=['bcrypt', 'pbkdf2_sha256'], deprecated='auto')
@@ -114,6 +117,26 @@ class AuthManager(object):
             self.authenticators[authenticator_cls.get_identifier()] = authenticator_cls(app)
 
         self._authenticators_initialized = True
+
+    def init_permissions(self, app):
+        # add permissions to the database
+        from keg_auth.model.entity_registry import RegistryError, registry
+        try:
+            Permission = registry.permission_cls
+        except RegistryError:
+            return
+
+        # an app context has not been pushed yet
+        with app.app_context():
+            desired = set(app.auth_manager.permissions)
+            current = {
+                permission.token for permission in db.session.query(Permission)
+            }
+            for permission in desired - current:
+                Permission.add(token=permission)
+            for permission in current - desired:
+                Permission.query.filter_by(token=permission).delete()
+            db.session.commit()
 
     def add_navigation_menu(self, name, menu):
         self.menus[name] = menu

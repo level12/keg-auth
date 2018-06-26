@@ -23,11 +23,18 @@ def add_cli_to_app(app, cli_group_name, user_args=['email']):
         click.echo('User created.  Email sent with verification URL.')
         click.echo('Verification URL: {}'.format(verification_url))
 
+    @click.argument('extra_args', nargs=-1)
+    def _create_superuser(**kwargs):
+        _create_user(is_superuser=True, **kwargs)
+
     # dress up _create_user as needed
     user_args.reverse()
     create_user = _create_user
+    create_superuser = _create_superuser
     for arg in user_args:
         create_user = click.argument(arg)(create_user)
+        create_superuser = click.argument(arg)(create_superuser)
     auth.command('create-user')(create_user)
+    auth.command('create-superuser')(create_superuser)
 
     app.auth_manager.cli_group = auth

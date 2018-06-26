@@ -102,7 +102,7 @@ class TestSetPassword(FormBase):
 
 @mock.patch.dict(current_app.config, WTF_CSRF_ENABLED=False)
 class TestUser(FormBase):
-    form_cls = forms.user_form(False, endpoint='auth.user:edit')
+    form_cls = forms.user_form(allow_superuser=False, endpoint='auth.user:edit')
 
     @classmethod
     def setup_class(cls):

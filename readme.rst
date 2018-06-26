@@ -44,7 +44,8 @@ Usage
 
           mail_ext = Mail()
           _endpoints = {'after-login': 'public.home'}
-          auth_manager = AuthManager(mail_ext, endpoints=_endpoints)
+          permissions = ('auth-manage', 'app-permission1', 'app-permission2')
+          auth_manager = AuthManager(mail_ext, endpoints=_endpoints, permissions=permissions)
           auth_manager.init_app(app)
 ..
 
@@ -79,12 +80,12 @@ Usage
 
 
           # in events module
-          from keg.signals import app_ready
+          from keg.signals import init_complete
 
           from keg_auth_ta.cli import auth_cli_extensions
 
 
-          @app_ready.connect
+          @init_complete.connect
           def init_app_cli(app):
               auth_cli_extensions(app)
 
@@ -149,18 +150,18 @@ Usage
       a route may be overridden for navigation purposes
    -  Menus may be tracked on the auth manager, which will reset their cached access on
       login/logout
-   -  `keg_auth/navigation.html` template has a helper `render_menu` to render a given menu as a ul
-      -  `{% import "keg_auth/navigation.html" as navigation %}`
-      -  `render_menu(auth_manager.menus['main'])`
+   -  ``keg_auth/navigation.html`` template has a helper ``render_menu`` to render a given menu as a ul
+      -  ``{% import "keg_auth/navigation.html" as navigation %}``
+      -  ``render_menu(auth_manager.menus['main'])``
    -  Example:
 
 .. code-block:: python
 
-          from keg.signals import app_ready
+          from keg.signals import init_complete
 
           from keg_auth import Node, Route
 
-          @app_ready.connect
+          @init_complete.connect
           def init_navigation(app):
               app.auth_manager.add_navigation_menu(
                   'main',
