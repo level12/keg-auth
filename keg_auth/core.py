@@ -1,10 +1,14 @@
-from blazeutils.strings import randchars
+from blazeutils import tolist
 import flask
 import flask_login
 from keg.db import db
+from keg.signals import db_init_post
 import jinja2
+import six
 
 import keg_auth.cli
+from keg_auth.libs.authenticators import KegAuthenticator
+from keg_auth import model
 from keg_auth.mail import MailManager
 
 
@@ -26,20 +30,33 @@ class AuthManager(object):
     cli_group_name = 'auth'
 
     def __init__(self, mail_ext, blueprint='auth', user_entity='User', endpoints=None,
-                 cli_group_name=None):
+                 cli_group_name=None, grid_cls=None, primary_authenticator_cls=KegAuthenticator,
+                 secondary_authenticators=[], permissions=[]):
         self.mail_ext = mail_ext
         self.blueprint_name = blueprint
-        self.user_entity = 'User'
+        self.user_entity = user_entity
         self.endpoints = self.endpoints.copy()
         if endpoints:
             self.endpoints.update(endpoints)
         self.cli_group_name = cli_group_name or self.cli_group_name
+        self.cli_group = None
+        self.grid_cls = grid_cls
+        self.primary_authenticator_cls = primary_authenticator_cls
+        self.secondary_authenticators = tolist(secondary_authenticators)
+        self.authenticators = {}
+        self.menus = dict()
+        self.permissions = permissions
+        self._model_initialized = False
+        self._authenticators_initialized = False
 
     def init_app(self, app):
+        self.init_model(app)
         self.init_config(app)
         self.init_managers(app)
         self.init_cli(app)
         self.init_jinja(app)
+        self.init_authenticators(app)
+        self.init_permissions(app)
 
     def init_config(self, app):
         _cc_kwargs = dict(schemes=['bcrypt', 'pbkdf2_sha256'], deprecated='auto')
@@ -54,8 +71,12 @@ class AuthManager(object):
         app.config.setdefault('KEGAUTH_BASE_TEMPLATE', 'base-page.html')
         app.config.setdefault('KEGAUTH_TOKEN_EXPIRE_MINS', 60 * 4)
 
+        app.config.setdefault('KEGAUTH_CLI_USER_ARGS', ['email'])
+        app.config.setdefault('KEGAUTH_USER_IDENT_FIELD', 'email')
+
     def init_cli(self, app):
-        keg_auth.cli.add_cli_to_app(app, self.cli_group_name)
+        keg_auth.cli.add_cli_to_app(app, self.cli_group_name,
+                                    user_args=app.config.get('KEGAUTH_CLI_USER_ARGS'))
 
     def init_jinja(self, app):
         loader = jinja2.ChoiceLoader([
@@ -67,6 +88,12 @@ class AuthManager(object):
         app.jinja_loader = loader
         app.context_processor(lambda: {'auth_manager': self})
 
+    def init_model(self, app):
+        if not self._model_initialized:
+            model.initialize_mappings()
+            model.initialize_events()
+            self._model_initialized = True
+
     def init_managers(self, app):
         app.auth_manager = self
         app.auth_mail_manager = self.mail_manager_cls(self.mail_ext)
@@ -74,9 +101,53 @@ class AuthManager(object):
         app.login_manager = login_manager = flask_login.LoginManager()
         login_manager.user_loader(self.user_loader)
         if app.testing:
-            login_manager.request_loader(self.request_loader)
+            login_manager.request_loader(self.test_request_loader)
         login_manager.login_view = self.endpoint('login')
         login_manager.init_app(app)
+
+    def init_authenticators(self, app):
+        if self._authenticators_initialized:
+            return
+
+        primary = self.primary_authenticator_cls(app)
+        self.authenticators['__primary__'] = primary
+        self.authenticators[primary.get_identifier()] = primary
+
+        for authenticator_cls in self.secondary_authenticators:
+            self.authenticators[authenticator_cls.get_identifier()] = authenticator_cls(app)
+
+        self._authenticators_initialized = True
+
+    def init_permissions(self, app):
+        # add permissions to the database
+        from keg_auth.model.entity_registry import RegistryError, registry
+        try:
+            Permission = registry.permission_cls
+        except RegistryError:
+            return
+
+        # the tricky thing here is that the db may not be ready. Normal app startup should
+        # expect it at this point, but test setup may not have initialized tables by now.
+        # So, connect it to the test signal, then try to call it, and trap the exception
+        @db_init_post.connect
+        def sync_permissions():
+            desired = set(app.auth_manager.permissions)
+            current = {
+                permission.token for permission in db.session.query(Permission)
+            }
+            for permission in desired - current:
+                Permission.add(token=permission)
+            for permission in current - desired:
+                Permission.query.filter_by(token=permission).delete()
+            db.session.commit()
+
+        try:
+            sync_permissions()
+        except Exception:
+            pass
+
+    def add_navigation_menu(self, name, menu):
+        self.menus[name] = menu
 
     def endpoint(self, ident):
         return self.endpoints[ident].format(blueprint=self.blueprint_name)
@@ -87,21 +158,21 @@ class AuthManager(object):
     def get_user_entity(self):
         return db.Model._decl_class_registry[self.user_entity]
 
-    def user_loader(self, user_id):
+    def user_loader(self, session_key):
         user_class = self.get_user_entity()
-        return user_class.query.get(user_id)
+        return user_class.get_by(session_key=six.text_type(session_key))
 
-    def request_loader(self, request):
+    def test_request_loader(self, request):
         """ Load a user from a request when testing. This gives a nice API for test clients to
             be logged in:
 
         """
-        user_id = request.environ.get('TEST_USER_ID')
-        if user_id is None:
+        session_key = request.environ.get('TEST_USER_ID')
+        if session_key is None:
             return
-        return self.user_loader(user_id)
+        return self.user_loader(session_key)
 
-    def create_user_cli(self, email, extra_args):
+    def create_user_cli(self, extra_args=None, **kwargs):
         """ A thin layer between the cli and `create_user()` to transform the cli args
             into what the User entity expects for fields.
 
@@ -117,11 +188,12 @@ class AuthManager(object):
                     return self.create_user(user_kwargs)
         """
         # By default, we assume no extra arguments are used
-        user_kwargs = dict(email=email)
+        user_kwargs = kwargs
         return self.create_user(user_kwargs)
 
     def create_user(self, user_kwargs):
-        user_kwargs.setdefault('password', randchars(30))
+        from passlib.pwd import genword
+        user_kwargs.setdefault('password', genword(entropy='secure'))
         user_class = self.get_user_entity()
         user = user_class(**user_kwargs)
         user.token_generate()
@@ -141,3 +213,20 @@ class AuthManager(object):
     def reset_password_url(self, user):
         return self.url_for(
             'reset-password', user_id=user.id, token=user._token_plain, _external=True)
+
+    def get_authenticator(self, identifier):
+        return self.authenticators.get(identifier)
+
+    @property
+    def primary_authenticator(self):
+        return self.get_authenticator('__primary__')
+
+
+# ensure that any manager-attached menus are reset for auth requirements on login/logout
+def refresh_session_menus(app, user):
+    for menu in app.auth_manager.menus.values():
+        menu.clear_authorization()
+
+
+flask_login.signals.user_logged_in.connect(refresh_session_menus)
+flask_login.signals.user_logged_out.connect(refresh_session_menus)

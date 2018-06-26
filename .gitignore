@@ -7,3 +7,4 @@ tags
 /coverage.xml
 .cache
 /keg_auth_ta-config.py
+.pytest_cache

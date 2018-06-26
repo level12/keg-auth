@@ -3,7 +3,12 @@ from __future__ import unicode_literals
 
 import arrow
 import flask
+from keg.db import db
+import pytest
 from freezegun import freeze_time
+import sqlalchemy as sa
+
+from keg_auth.model import entity_registry, utils
 from keg_auth_ta.model import entities as ents
 import mock
 
@@ -11,6 +16,7 @@ import mock
 class TestUser(object):
     def setup(self):
         ents.User.delete_cascaded()
+        ents.Permission.delete_cascaded()
 
     def test_email_case_insensitive(self):
         ents.User.testing_create(email='foo@BAR.com')
@@ -88,3 +94,559 @@ class TestUser(object):
         assert not user.token_verify(token)
         assert user.password == 'abc123'
         assert user.is_verified
+
+    def test_permissions_mapping(self):
+        perm1 = ents.Permission.testing_create()
+        perm2 = ents.Permission.testing_create()
+        perm3 = ents.Permission.testing_create()
+        perm4 = ents.Permission.testing_create()
+        perm5 = ents.Permission.testing_create()
+
+        bundle1 = ents.Bundle.testing_create()
+        bundle2 = ents.Bundle.testing_create()
+        bundle3 = ents.Bundle.testing_create()
+
+        group1 = ents.Group.testing_create()
+        group2 = ents.Group.testing_create()
+        group3 = ents.Group.testing_create()
+
+        user1 = ents.User.testing_create()
+        user2 = ents.User.testing_create()
+
+        # Directly assigned
+        user1.permissions = [perm1]
+
+        # Assigned via user bundle
+        bundle1.permissions = [perm2]
+        user1.bundles = [bundle1]
+
+        # Assigned via group
+        group1.permissions = [perm3]
+
+        # Assigned via group bundle
+        bundle2.permissions = [perm4]
+        group1.bundles = [bundle2]
+        user1.groups = [group1, group2]
+
+        assert user1.get_all_permissions() == {perm1, perm2, perm3, perm4}
+        assert user2.get_all_permissions() == set()
+
+        user2.permissions = [perm1, perm2]
+        group3.permissions = [perm2, perm3]
+        bundle3.permissions = [perm1, perm5]
+        group3.bundles = [bundle3]
+        user2.groups = [group3]
+
+        assert user1.get_all_permissions() == {perm1, perm2, perm3, perm4}
+        assert user2.get_all_permissions() == {perm1, perm2, perm3, perm5}
+
+        user1.is_superuser = True
+        assert user1.get_all_permissions() == {perm1, perm2, perm3, perm4, perm5}
+
+    def test_get_all_permission_tokens(self):
+        ents.Permission.delete_cascaded()
+        perm1 = ents.Permission.testing_create(token='perm-1')
+        perm2 = ents.Permission.testing_create(token='perm-2')
+        perm3 = ents.Permission.testing_create(token='perm-3')
+
+        user = ents.User.testing_create(permissions=[perm1, perm2, perm3])
+
+        assert user.get_all_permission_tokens() == {'perm-1', 'perm-2', 'perm-3'}
+
+    def test_get_all_permission_tokens_cached(self):
+        ents.Permission.delete_cascaded()
+        perm1 = ents.Permission.testing_create(token='perm-1')
+        perm2 = ents.Permission.testing_create(token='perm-2')
+        perm3 = ents.Permission.testing_create(token='perm-3')
+
+        user = ents.User.testing_create(permissions=[perm1, perm2])
+        # trigger the cache storage
+        assert user.get_all_permission_tokens() == {'perm-1', 'perm-2'}
+
+        # permissions in cache go stale
+        user.permissions = [perm1, perm2, perm3]
+        db.session.commit()
+
+        assert user.get_all_permission_tokens() == {'perm-1', 'perm-2'}
+
+        # reset the cache
+        delattr(user, '_permission_cache')
+
+        assert user.get_all_permission_tokens() == {'perm-1', 'perm-2', 'perm-3'}
+
+    def test_has_all_permissions(self):
+        ents.Permission.delete_cascaded()
+        perm1 = ents.Permission.testing_create(token='perm-1')
+        perm2 = ents.Permission.testing_create(token='perm-2')
+        ents.Permission.testing_create(token='perm-3')
+
+        user = ents.User.testing_create(permissions=[perm1, perm2])
+
+        assert user.has_all_permissions('perm-1', 'perm-2') is True
+        assert user.has_all_permissions('perm-1', 'perm-3') is False
+        assert user.has_all_permissions('perm-1') is True
+        assert user.has_all_permissions('perm-3') is False
+
+    def test_has_any_permission(self):
+        ents.Permission.delete_cascaded()
+        perm1 = ents.Permission.testing_create(token='perm-1')
+        perm2 = ents.Permission.testing_create(token='perm-2')
+        ents.Permission.testing_create(token='perm-3')
+
+        user = ents.User.testing_create(permissions=[perm1, perm2])
+
+        assert user.has_any_permission('perm-1', 'perm-2') is True
+        assert user.has_any_permission('perm-1', 'perm-3') is True
+        assert user.has_any_permission('perm-1') is True
+        assert user.has_any_permission('perm-3') is False
+
+    def test_superuser_update_resets_session_key(self):
+        user = ents.User.testing_create(is_superuser=True)
+        original_session_key = user.session_key
+
+        ents.User.edit(user.id, is_superuser=False)
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_enabled_update_resets_session_key(self):
+        user = ents.User.testing_create(is_enabled=True)
+        original_session_key = user.session_key
+
+        ents.User.edit(user.id, is_enabled=False)
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_permission_update_resets_session_key(self):
+        perm1 = ents.Permission.testing_create(token='perm-1')
+        perm2 = ents.Permission.testing_create(token='perm-2')
+
+        user = ents.User.testing_create(permissions=[perm1])
+        original_session_key = user.session_key
+
+        ents.User.edit(user.id, permissions=[perm2])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_group_update_resets_session_key(self):
+        group1 = ents.Group.testing_create(name='group-1')
+        group2 = ents.Group.testing_create(name='group-2')
+
+        user = ents.User.testing_create(groups=[group1])
+        original_session_key = user.session_key
+
+        ents.User.edit(user.id, groups=[group2])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_bundle_update_resets_session_key(self):
+        bundle1 = ents.Bundle.testing_create(name='bundle-1')
+        bundle2 = ents.Bundle.testing_create(name='bundle-2')
+
+        user = ents.User.testing_create(bundles=[bundle1])
+        original_session_key = user.session_key
+
+        ents.User.edit(user.id, bundles=[bundle2])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_non_permission_update_does_not_reset_session_key(self):
+        user = ents.User.testing_create()
+        original_session_key = user.session_key
+
+        ents.User.edit(user.id, email='foo@bar.baz')
+        db.session.expire(user)
+        assert user.session_key == original_session_key
+
+
+class TestPermission(object):
+    def setup(self):
+        ents.Permission.delete_cascaded()
+
+    def test_token_unique(self):
+        ents.Permission.testing_create(token='some-permission')
+        with pytest.raises(sa.exc.IntegrityError) as exc:
+            # use `add` here instead of `testing_create`, because it is more helpful for the
+            #   `testing_create` method to return the existing permission if there is a match
+            ents.Permission.add(token='some-permission')
+
+        assert 'unique' in str(exc.value).lower()
+
+
+class TestBundle(object):
+    def setup(self):
+        ents.Bundle.delete_cascaded()
+
+    def test_name_unique(self):
+        ents.Bundle.testing_create(name='Bundle 1')
+        with pytest.raises(sa.exc.IntegrityError) as exc:
+            ents.Bundle.testing_create(name='Bundle 1')
+
+        assert 'unique' in str(exc.value).lower()
+
+    def test_permission_update_resets_user_session_keys(self):
+        perm1 = ents.Permission.testing_create(token='perm-1')
+        perm2 = ents.Permission.testing_create(token='perm-2')
+
+        user = ents.User.testing_create()
+        bundle = ents.Bundle.testing_create(permissions=[perm1], users=[user])
+        original_session_key = user.session_key
+
+        ents.Bundle.edit(bundle.id, permissions=[perm2])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_permission_update_resets_group_user_session_keys(self):
+        perm1 = ents.Permission.testing_create(token='perm-1')
+        perm2 = ents.Permission.testing_create(token='perm-2')
+
+        user = ents.User.testing_create()
+        group = ents.Group.testing_create(users=[user])
+        bundle = ents.Bundle.testing_create(permissions=[perm1], groups=[group])
+        original_session_key = user.session_key
+
+        ents.Bundle.edit(bundle.id, permissions=[perm2])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_group_addition_resets_user_session_keys(self):
+        user = ents.User.testing_create()
+        group = ents.Group.testing_create(users=[user])
+        bundle = ents.Bundle.testing_create()
+        original_session_key = user.session_key
+
+        ents.Bundle.edit(bundle.id, groups=[group])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_group_removal_resets_user_session_keys(self):
+        user = ents.User.testing_create()
+        group = ents.Group.testing_create(users=[user])
+        bundle = ents.Bundle.testing_create(groups=[group])
+        original_session_key = user.session_key
+
+        ents.Bundle.edit(bundle.id, groups=[])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_user_addition_resets_user_session_keys(self):
+        user = ents.User.testing_create()
+        bundle = ents.Bundle.testing_create()
+        original_session_key = user.session_key
+
+        ents.Bundle.edit(bundle.id, users=[user])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_user_removal_resets_user_session_keys(self):
+        user = ents.User.testing_create()
+        bundle = ents.Bundle.testing_create(users=[user])
+        original_session_key = user.session_key
+
+        ents.Bundle.edit(bundle.id, users=[])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_bundle_removal_resets_user_session_keys(self):
+        user = ents.User.testing_create()
+        bundle = ents.Bundle.testing_create(users=[user])
+        original_session_key = user.session_key
+        ents.Bundle.delete(bundle.id)
+
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_bundle_removal_resets_group_session_keys(self):
+        user = ents.User.testing_create()
+        group = ents.Group.testing_create(users=[user])
+        bundle = ents.Bundle.testing_create(groups=[group])
+        original_session_key = user.session_key
+        ents.Bundle.delete(bundle.id)
+
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_non_permission_update_does_not_reset_user_session_keys(self):
+        user = ents.User.testing_create()
+        bundle = ents.Bundle.testing_create(users=[user])
+        original_session_key = user.session_key
+
+        ents.Bundle.edit(bundle.id, name='foo')
+        db.session.expire(user)
+        assert user.session_key == original_session_key
+
+
+class TestGroup(object):
+    def setup(self):
+        ents.Group.delete_cascaded()
+
+    def test_name_unique(self):
+        ents.Group.testing_create(name='Group 1')
+        with pytest.raises(sa.exc.IntegrityError) as exc:
+            ents.Group.testing_create(name='Group 1')
+
+        assert 'unique' in str(exc.value).lower()
+
+    def test_get_all_permissions(self):
+        perm1 = ents.Permission.testing_create()
+        perm2 = ents.Permission.testing_create()
+        perm3 = ents.Permission.testing_create()
+
+        bundle = ents.Bundle.testing_create()
+
+        group1 = ents.Group.testing_create()
+        group2 = ents.Group.testing_create()
+
+        # Assigned directly
+        group1.permissions = [perm1]
+
+        # Assigned via bundle
+        bundle.permissions = [perm2]
+        group1.bundles = [bundle]
+
+        assert group1.get_all_permissions() == {perm1, perm2}
+        assert group2.get_all_permissions() == set()
+
+        group2.bundles = [bundle]
+        group2.permissions = [perm2, perm3]
+
+        assert group1.get_all_permissions() == {perm1, perm2}
+        assert group2.get_all_permissions() == {perm2, perm3}
+
+    def test_permission_update_resets_user_session_keys(self):
+        perm1 = ents.Permission.testing_create(token='perm-1')
+        perm2 = ents.Permission.testing_create(token='perm-2')
+
+        user = ents.User.testing_create()
+        original_session_key = user.session_key
+        group = ents.Group.testing_create(permissions=[perm1], users=[user])
+
+        ents.Group.edit(group.id, permissions=[perm2])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_bundle_update_resets_user_session_keys(self):
+        bundle1 = ents.Bundle.testing_create(name='bundle-1')
+        bundle2 = ents.Bundle.testing_create(name='bundle-2')
+
+        user = ents.User.testing_create()
+        original_session_key = user.session_key
+        group = ents.Group.testing_create(bundles=[bundle1], users=[user])
+
+        ents.Group.edit(group.id, bundles=[bundle2])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_user_addition_resets_user_session_keys(self):
+        user = ents.User.testing_create()
+        original_session_key = user.session_key
+        group = ents.Group.testing_create()
+
+        ents.Group.edit(group.id, users=[user])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_user_removal_resets_user_session_keys(self):
+        user = ents.User.testing_create()
+        original_session_key = user.session_key
+        group = ents.Group.testing_create(users=[user])
+
+        ents.Group.edit(group.id, users=[])
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_group_removal_resets_user_session_keys(self):
+        user = ents.User.testing_create()
+        group = ents.Group.testing_create(users=[user])
+        original_session_key = user.session_key
+        ents.Group.delete(group.id)
+
+        db.session.expire(user)
+        assert user.session_key != original_session_key
+
+    def test_non_permission_update_does_not_reset_user_session_keys(self):
+        user = ents.User.testing_create()
+        group = ents.Group.testing_create(users=[user])
+        original_session_key = user.session_key
+
+        ents.Group.edit(group.id, name='foo')
+        db.session.expire(user)
+        assert user.session_key == original_session_key
+
+
+class TestEntityRegistry(object):
+    def test_bad_type(self):
+        registry = entity_registry.EntityRegistry()
+        with pytest.raises(entity_registry.RegistryError):
+            registry.get_entity_cls('foo')
+
+    def test_entity_not_defined(self):
+        registry = entity_registry.EntityRegistry()
+        with pytest.raises(entity_registry.RegistryError):
+            registry.get_entity_cls('user')
+
+    def test_register_entities(self):
+        registry = entity_registry.EntityRegistry()
+
+        @registry.register_user
+        class TestingUser(object):
+            pass
+
+        @registry.register_permission
+        class TestingPermission(object):
+            pass
+
+        @registry.register_bundle
+        class TestingBundle(object):
+            pass
+
+        @registry.register_group
+        class TestingGroup(object):
+            pass
+
+        assert registry.user_cls is TestingUser
+        assert registry.permission_cls is TestingPermission
+        assert registry.bundle_cls is TestingBundle
+        assert registry.group_cls is TestingGroup
+
+    def test_duplicate_registration(self):
+        registry = entity_registry.EntityRegistry()
+
+        @registry.register_user
+        class TestingUser1(object):
+            pass
+
+        with pytest.raises(entity_registry.RegistryError) as exc:
+            @registry.register_user
+            class TestingUser2(object):
+                pass
+
+        assert str(exc.value) == 'Entity class already registered for user'
+
+    def test_register_unknown_type(self):
+        registry = entity_registry.EntityRegistry()
+
+        class Foo(object):
+            pass
+
+        with pytest.raises(entity_registry.RegistryError) as exc:
+            registry.register_entity('foo', Foo)
+
+        assert str(exc.value) == 'Attempting to register unknown type foo'
+
+    def test_register_nonclass(self):
+        registry = entity_registry.EntityRegistry()
+
+        with pytest.raises(entity_registry.RegistryError) as exc:
+            @registry.register_user
+            def testing_user():
+                pass
+
+        assert str(exc.value) == 'Entity must be a class'
+
+        with pytest.raises(entity_registry.RegistryError) as exc:
+            registry.register_user(ents.User.testing_create())
+
+        assert str(exc.value) == 'Entity must be a class'
+
+    def test_is_registered(self):
+        registry = entity_registry.EntityRegistry()
+
+        @registry.register_user
+        class TestingUser(object):
+            pass
+
+        @registry.register_permission
+        class TestingPermission(object):
+            pass
+
+        assert registry.is_registered('user') is True
+        assert registry.is_registered('permission') is True
+        assert registry.is_registered('bundle') is False
+        assert registry.is_registered('group') is False
+
+
+class TestPermissionsConditions:
+    def setup(self):
+        ents.Permission.delete_cascaded()
+        ents.User.delete_cascaded()
+
+    def test_simple_string(self):
+        user = ents.User.testing_create(
+            permissions=[ents.Permission.testing_create(token='perm1')]
+        )
+        ents.Permission.testing_create(token='perm2')
+
+        assert utils.has_any('perm1').check(user) is True
+        assert utils.has_all('perm1').check(user) is True
+
+        assert utils.has_any('perm2').check(user) is False
+        assert utils.has_all('perm2').check(user) is False
+
+    def test_callable(self):
+        user1 = ents.User.testing_create(email='foo@bar.com')
+        user2 = ents.User.testing_create(email='abc@123.com')
+
+        def func(usr):
+            return usr.email.endswith('@bar.com')
+
+        assert utils.has_any(func).check(user1) is True
+        assert utils.has_all(func).check(user1) is True
+
+        assert utils.has_any(func).check(user2) is False
+        assert utils.has_all(func).check(user2) is False
+
+    def test_all(self):
+        user = ents.User.testing_create(
+            permissions=[
+                ents.Permission.testing_create(token='perm1'),
+                ents.Permission.testing_create(token='perm2'),
+                ents.Permission.testing_create(token='perm3'),
+            ]
+        )
+        ents.Permission.testing_create(token='perm4')
+
+        assert utils.has_all('perm1').check(user) is True
+        assert utils.has_all('perm1', 'perm2').check(user) is True
+        assert utils.has_all('perm1', 'perm2', 'perm3').check(user) is True
+
+        assert utils.has_all('perm4').check(user) is False
+        assert utils.has_all('perm1', 'perm4').check(user) is False
+        assert utils.has_all('perm1', 'perm2', 'perm4').check(user) is False
+
+    def test_any(self):
+        user = ents.User.testing_create(
+            permissions=[ents.Permission.testing_create(token='perm1')]
+        )
+        ents.Permission.testing_create(token='perm2'),
+        ents.Permission.testing_create(token='perm3'),
+        ents.Permission.testing_create(token='perm4')
+
+        assert utils.has_any('perm1').check(user) is True
+        assert utils.has_any('perm1', 'perm2').check(user) is True
+        assert utils.has_any('perm1', 'perm2', 'perm3').check(user) is True
+
+        assert utils.has_any('perm2').check(user) is False
+        assert utils.has_any('perm2', 'perm3').check(user) is False
+        assert utils.has_any('perm2', 'perm3', 'perm4').check(user) is False
+
+    def test_nested(self):
+        user = ents.User.testing_create(
+            permissions=[
+                ents.Permission.testing_create(token='perm1'),
+                ents.Permission.testing_create(token='perm2'),
+                ents.Permission.testing_create(token='perm3'),
+            ]
+        )
+        ents.Permission.testing_create(token='perm4')
+
+        condition = utils.has_any('perm4', utils.has_all('perm1', 'perm2'))
+        assert condition.check(user) is True
+
+        condition = utils.has_all(utils.has_any('perm1', 'perm2'), 'perm4')
+        assert condition.check(user) is False
+
+        condition = utils.has_all(utils.has_any('perm4', lambda _: True), 'perm1')
+        assert condition.check(user) is True
+
+        condition = utils.has_all(utils.has_any('perm4', lambda _: False), 'perm1')
+        assert condition.check(user) is False
