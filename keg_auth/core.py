@@ -141,13 +141,10 @@ class AuthManager(object):
                 Permission.query.filter_by(token=permission).delete()
             db.session.commit()
 
-        # if an exception happens during normal startup, raise it
-        # if an exception happens during testing startup, wait for the signal to fire
         try:
             sync_permissions()
         except Exception:
-            if not app.config.get('TESTING'):
-                raise
+            pass
 
     def add_navigation_menu(self, name, menu):
         self.menus[name] = menu
