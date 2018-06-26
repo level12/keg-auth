@@ -2,7 +2,7 @@ from blazeutils import tolist
 import flask
 import flask_login
 from keg.db import db
-from keg.signals import init_complete
+from keg.signals import db_init_post
 import jinja2
 import six
 
@@ -126,8 +126,11 @@ class AuthManager(object):
         except RegistryError:
             return
 
-        # an app context has not been pushed yet
-        with app.app_context():
+        # the tricky thing here is that the db may not be ready. Normal app startup should
+        # expect it at this point, but test setup may not have initialized tables by now.
+        # So, connect it to the test signal, then try to call it, and trap the exception
+        @db_init_post.connect
+        def sync_permissions():
             desired = set(app.auth_manager.permissions)
             current = {
                 permission.token for permission in db.session.query(Permission)
@@ -137,6 +140,14 @@ class AuthManager(object):
             for permission in current - desired:
                 Permission.query.filter_by(token=permission).delete()
             db.session.commit()
+
+        # if an exception happens during normal startup, raise it
+        # if an exception happens during testing startup, wait for the signal to fire
+        try:
+            sync_permissions()
+        except Exception:
+            if not app.config.get('TESTING'):
+                raise
 
     def add_navigation_menu(self, name, menu):
         self.menus[name] = menu
