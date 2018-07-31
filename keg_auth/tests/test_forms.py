@@ -17,9 +17,10 @@ class FormBase(object):
         return kwargs
 
     def make_form(self, **kwargs):
+        form_cls = kwargs.pop('form_cls', None) or self.form_cls
         obj = kwargs.pop('obj', None)
         data = MultiDict(self.ok_data(**kwargs))
-        return self.form_cls(data, obj=obj)
+        return form_cls(data, obj=obj)
 
     def assert_valid(self, **kwargs):
         form = self.make_form(**kwargs)
@@ -37,25 +38,31 @@ class FormBase(object):
 
 @mock.patch.dict(current_app.config, WTF_CSRF_ENABLED=False)
 class TestLogin(FormBase):
-    form_cls = forms.Login
+    form_cls = forms.login_form({'KEGAUTH_USER_IDENT_FIELD': 'email'})
 
     def ok_data(self, **kwargs):
         data = {
-            'email': 'foo@example.com',
+            'login_id': 'foo@example.com',
             'password': 'password123',
         }
         data.update(kwargs)
         return data
 
     def test_required(self):
-        form = self.assert_not_valid(email='', password='')
+        form = self.assert_not_valid(login_id='', password='')
         msg = ['This field is required.']
-        assert form.email.errors == msg
+        assert form.login_id.errors == msg
         assert form.password.errors == msg
 
     def test_valid_email(self):
-        form = self.assert_not_valid(email='foo')
-        assert form.email.errors == ['Invalid email address.']
+        form = self.assert_not_valid(login_id='foo')
+        assert form.login_id.errors == ['Invalid email address.']
+        assert form.login_id.label.text == 'Email'
+
+    def test_no_email_validation(self):
+        form_cls = forms.login_form({'KEGAUTH_USER_IDENT_FIELD': 'session_key'})
+        form = self.assert_valid(form_cls=form_cls, login_id='foo')
+        assert form.login_id.label.text == 'User ID'
 
 
 @mock.patch.dict(current_app.config, WTF_CSRF_ENABLED=False)
@@ -102,7 +109,9 @@ class TestSetPassword(FormBase):
 
 @mock.patch.dict(current_app.config, WTF_CSRF_ENABLED=False)
 class TestUser(FormBase):
-    form_cls = forms.user_form(allow_superuser=False, endpoint='auth.user:edit')
+    form_cls = forms.user_form({'KEGAUTH_USER_IDENT_FIELD': 'email',
+                                'KEGAUTH_EMAIL_OPS_ENABLED': True},
+                               allow_superuser=False, endpoint='auth.user:edit')
 
     @classmethod
     def setup_class(cls):
@@ -140,8 +149,29 @@ class TestUser(FormBase):
         form = self.make_form()
         assert not hasattr(form, 'is_superuser')
 
-        form = forms.user_form(True, endpoint='auth.user:edit')
+        form = forms.user_form({'KEGAUTH_USER_IDENT_FIELD': 'email',
+                                'KEGAUTH_EMAIL_OPS_ENABLED': True},
+                               allow_superuser=True, endpoint='auth.user:edit')
         assert hasattr(form, 'is_superuser')
+
+    def test_alternate_ident_field(self):
+        form_cls = forms.user_form({'KEGAUTH_USER_IDENT_FIELD': 'session_key',
+                                    'KEGAUTH_EMAIL_OPS_ENABLED': True},
+                                   allow_superuser=False, endpoint='auth.user:edit')
+        assert hasattr(form_cls, 'session_key')
+
+    def test_no_email(self):
+        form_cls = forms.user_form({'KEGAUTH_USER_IDENT_FIELD': 'session_key',
+                                    'KEGAUTH_EMAIL_OPS_ENABLED': False},
+                                   allow_superuser=False, endpoint='auth.user:edit')
+        assert hasattr(form_cls, 'session_key')
+        assert not hasattr(form_cls, 'email')
+        assert hasattr(form_cls, 'reset_password')
+        assert hasattr(form_cls, 'confirm')
+
+        form = self.assert_not_valid(form_cls=form_cls, reset_password='xyz', confirm='abc')
+        assert form.reset_password.errors == ['Passwords must match']
+        self.assert_valid(form_cls=form_cls, reset_password='xyz', confirm='xyz')
 
     def test_multi_select(self):
         form = self.assert_valid()
@@ -158,11 +188,24 @@ class TestUser(FormBase):
         usr = ents.User.testing_create(email='foo@example.com')
 
         form = self.assert_not_valid()
-        print(form.email.errors[0])
-        error = PyQuery(form.email.errors[0])
+        error = PyQuery(form.email.errors[1])
         assert 'This value must be unique' in error.text()
         assert error('a').attr('href').endswith('/users/{}/edit'.format(usr.id))
         assert error('a').text() == 'foo@example.com'
+
+        self.assert_valid(obj=usr)
+
+    def test_unique_alternate_ident_field(self):
+        form_cls = forms.user_form({'KEGAUTH_USER_IDENT_FIELD': 'session_key',
+                                    'KEGAUTH_EMAIL_OPS_ENABLED': True},
+                                   allow_superuser=False, endpoint='auth.user:edit')
+        usr = ents.User.testing_create(session_key='foobar')
+
+        form = self.assert_not_valid(form_cls=form_cls, session_key='foobar')
+        error = PyQuery(form.session_key.errors[1])
+        assert 'This value must be unique' in error.text()
+        assert error('a').attr('href').endswith('/users/{}/edit'.format(usr.id))
+        assert error('a').text() == 'foobar'
 
         self.assert_valid(obj=usr)
 

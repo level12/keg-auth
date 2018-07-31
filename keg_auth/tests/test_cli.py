@@ -22,7 +22,7 @@ class TestCLI(CLIBase):
 
         result = self.invoke('auth', 'create-user', 'foo@bar.com', 'abc', 'def')
 
-        assert 'User created.  Email sent with verification URL.' in result.output
+        assert 'User created.\nEmail sent with verification URL.' in result.output
         assert 'Verification URL: http://keg.example.com/verify-account/3/1234' in result.output
 
         m_cli_create_user.assert_called_once_with(email='foo@bar.com', extra_args=('abc', 'def'))
@@ -35,7 +35,7 @@ class TestCLI(CLIBase):
 
         result = self.invoke('auth', 'create-superuser', 'foo@bar.com')
 
-        assert 'User created.  Email sent with verification URL.' in result.output
+        assert 'User created.\nEmail sent with verification URL.' in result.output
         assert 'Verification URL: http://keg.example.com/verify-account/3/1234' in result.output
 
         m_cli_create_user.assert_called_once_with(email='foo@bar.com', extra_args=(),
@@ -44,7 +44,14 @@ class TestCLI(CLIBase):
     def test_create_user_integration(self):
         result = self.invoke('auth', 'create-user', 'foo@bar.com')
 
-        assert 'User created.  Email sent with verification URL.' in result.output
+        assert 'User created.\nEmail sent with verification URL.' in result.output
+
+    @mock.patch('keg.current_app.auth_manager.mail_manager', None)
+    def test_create_user_no_mail(self):
+        result = self.invoke('auth', 'create-user', 'foo@bar.com')
+
+        assert 'User created.' in result.output
+        assert 'Email sent with verification URL.' not in result.output
 
     def test_command_extension(self):
         result = self.invoke('auth', 'command-extension')

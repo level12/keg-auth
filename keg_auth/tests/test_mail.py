@@ -23,10 +23,10 @@ class TestMailTemplate(object):
         assert email.subject == 'Example Subject'
 
 
-class TestMailManager(object):
+class TestAuthMailManager(object):
     @classmethod
     def setup_class(cls):
-        cls.mb = mail.MailManager(mail_ext)
+        cls.mb = mail.AuthMailManager(mail_ext)
 
     def setup(self):
         ents.User.delete_cascaded()
@@ -34,7 +34,7 @@ class TestMailManager(object):
     def test_reset_password_message(self):
         user = ents.User.testing_create(email='foo@bar.com')
         user.token_generate()
-        link_url = flask.current_app.auth_manager.reset_password_url(user)
+        link_url = flask.current_app.auth_manager.mail_manager.reset_password_url(user)
 
         with flask.current_app.test_request_context():
             message = self.mb.reset_password_message(user)
@@ -49,7 +49,7 @@ class TestMailManager(object):
         user = ents.User.testing_create()
 
         with mail_ext.record_messages() as outbox:
-            flask.current_app.auth_mail_manager.send_reset_password(user)
+            flask.current_app.auth_manager.mail_manager.send_reset_password(user)
 
             assert len(outbox) == 1
             assert outbox[0].subject == '[KA Demo] Password Reset Link'
@@ -57,7 +57,7 @@ class TestMailManager(object):
     def test_new_user_message(self):
         user = ents.User.testing_create(email='foo@bar.com')
         user.token_generate()
-        link_url = flask.current_app.auth_manager.verify_account_url(user)
+        link_url = flask.current_app.auth_manager.mail_manager.verify_account_url(user)
 
         with flask.current_app.test_request_context():
             message = self.mb.new_user_message(user)
@@ -72,7 +72,7 @@ class TestMailManager(object):
         user = ents.User.testing_create()
 
         with mail_ext.record_messages() as outbox:
-            flask.current_app.auth_mail_manager.send_new_user(user)
+            flask.current_app.auth_manager.mail_manager.send_new_user(user)
 
             assert len(outbox) == 1
             assert outbox[0].subject == '[KA Demo] User Welcome & Verification'

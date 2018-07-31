@@ -258,6 +258,26 @@ class TestUser(object):
         assert user.session_key == original_session_key
 
 
+class TestUserNoEmail(object):
+    def setup(self):
+        ents.UserNoEmail.delete_cascaded()
+
+    def test_is_active_python_attribute(self):
+        user = ents.User.testing_create()
+        assert user.is_enabled
+        assert user.is_active
+
+        user = ents.User.testing_create(is_enabled=False)
+        assert not user.is_active
+
+    def test_is_active_sql_expression(self):
+        ents.User.testing_create(email='2', is_enabled=True)
+        ents.User.testing_create(email='3', is_enabled=False)
+
+        assert ents.User.query.filter_by(email='2', is_active=True).one()
+        assert ents.User.query.filter_by(email='3', is_active=False).one()
+
+
 class TestPermission(object):
     def setup(self):
         ents.Permission.delete_cascaded()

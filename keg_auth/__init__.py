@@ -3,8 +3,10 @@ from keg_auth.core import AuthManager
 from keg_auth.libs.authenticators import KegAuthenticator, JwtAuthenticator, LdapAuthenticator
 from keg_auth.libs.decorators import requires_permissions, requires_user
 from keg_auth.libs.navigation import Node, Route
+from keg_auth.mail import AuthMailManager
 from keg_auth.model import (
     UserMixin,
+    UserEmailMixin,
     PermissionMixin,
     GroupMixin,
     BundleMixin,

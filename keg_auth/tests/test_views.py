@@ -57,7 +57,7 @@ class TestViews(object):
         resp = client.get('/secret2', status=302)
 
         resp = resp.follow()
-        resp.form['email'] = 'foo@bar.com'
+        resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'pass'
         resp = resp.form.submit(status=302)
         assert resp.flashes == [('success', 'Login successful.')]
@@ -78,7 +78,7 @@ class TestViews(object):
         assert not doc.find('div#navigation a[href="/secret-nested"]')
 
         resp = client.get('/login')
-        resp.form['email'] = 'foo@bar.com'
+        resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'pass'
         resp = resp.form.submit(status=302)
 
@@ -117,7 +117,7 @@ class TestViews(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get('/secret1', status=302).follow()
 
-        resp.form['email'] = 'foo@bar.com'
+        resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'pass'
         resp = resp.form.submit()
 
@@ -132,7 +132,7 @@ class TestViews(object):
             client = flask_webtest.TestApp(flask.current_app)
             resp = client.get('/secret1', status=302).follow()
 
-            resp.form['email'] = 'foo@bar.com'
+            resp.form['login_id'] = 'foo@bar.com'
             resp.form['password'] = 'pass'
             resp = resp.form.submit()
 
@@ -172,6 +172,16 @@ class TestViews(object):
         assert doc('div#page-content a').text() == 'I forgot my password'
         assert doc('div#page-content a').attr('href') == '/forgot-password'
 
+    @mock.patch.dict('flask.current_app.config', {'KEGAUTH_EMAIL_OPS_ENABLED': False})
+    def test_login_template_no_mail(self):
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('/login')
+        doc = resp.pyquery
+        assert doc('title').text() == 'Log In | Keg Auth Demo'
+        assert doc('h1').text() == 'Log In'
+        assert doc('button').text() == 'Log In'
+        assert not doc('div#page-content a')
+
     def test_forgot_pw_template(self):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get('/forgot-password')
@@ -182,7 +192,7 @@ class TestViews(object):
         assert doc('div#page-content a').text() == 'Cancel'
         assert doc('div#page-content a').attr('href') == '/login'
 
-    @mock.patch('keg_auth.views.flask.current_app.auth_mail_manager.send_reset_password',
+    @mock.patch('keg_auth.views.flask.current_app.auth_manager.mail_manager.send_reset_password',
                 autospec=True, spec_set=True)
     def test_forget_pw_actions(self, m_send_reset_password):
         user = ents.User.testing_create(email='foo@bar.com')
@@ -200,10 +210,15 @@ class TestViews(object):
         assert user.token is not None
         assert user.token_created_utc is not None
 
+    @mock.patch('flask.current_app.auth_manager.mail_manager', None)
+    def test_forget_pw_actions_mail_disabled(self):
+        client = flask_webtest.TestApp(flask.current_app)
+        client.get('/forgot-password', status=404)
+
     def test_reset_pw_template(self):
         user = ents.User.testing_create()
         user.token_generate()
-        url = flask.current_app.auth_manager.reset_password_url(user)
+        url = flask.current_app.auth_manager.mail_manager.reset_password_url(user)
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(url)
@@ -228,10 +243,18 @@ class TestViews(object):
         assert user.token is None
         assert user.password == 'foobar'
 
+    @mock.patch('flask.current_app.auth_manager.mail_manager', None)
+    def test_reset_pw_actions_mail_disabled(self):
+        user = ents.User.testing_create()
+        token = user.token_generate()
+
+        client = flask_webtest.TestApp(flask.current_app)
+        client.get('/reset-password/{}/{}'.format(user.id, token), status=404)
+
     def test_verify_account_template(self):
         user = ents.User.testing_create()
         user.token_generate()
-        url = flask.current_app.auth_manager.verify_account_url(user)
+        url = flask.current_app.auth_manager.mail_manager.verify_account_url(user)
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(url)
@@ -486,6 +509,75 @@ class TestUserCrud(ViewTestBase):
         assert user.groups == [group_approve]
         assert user.bundles == [bundle_approve]
 
+    @mock.patch.dict('flask.current_app.config', {'KEGAUTH_EMAIL_OPS_ENABLED': False})
+    def test_add_no_email(self):
+        resp = self.client.get('/users/add')
+
+        resp.form['email'] = 'foobar@baz.com'
+        resp = resp.form.submit()
+
+        assert resp.pyquery('#reset_password').siblings('.help-block').text() == \
+            'This field is required.'
+        resp.form['reset_password'] = 'bleh'
+        resp.form['confirm'] = 'bleh'
+        resp = resp.form.submit()
+
+        assert resp.status_code == 302
+        assert resp.location.endswith('/users')
+        assert resp.flashes == [('success', 'Successfully created User')]
+
+        # be sure the password is stored. Force-verify the email so we can continue
+        user = self.user_ent.get_by(email='foobar@baz.com')
+        user.is_verified = True
+        db.session.commit()
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('/login')
+        resp.form['login_id'] = 'foobar@baz.com'
+        resp.form['password'] = 'bleh'
+        resp = resp.form.submit()
+        assert resp.status_code == 302
+        assert resp.location.endswith('/')
+
+    @mock.patch.dict('flask.current_app.config', {'KEGAUTH_EMAIL_OPS_ENABLED': False})
+    def test_edit_no_email_same_password(self):
+        user = self.user_ent.testing_create()
+        resp = self.client.get('/users/{}/edit'.format(user.id))
+
+        resp = resp.form.submit()
+        assert resp.status_code == 302
+        assert resp.location.endswith('/users')
+        assert resp.flashes == [('success', 'Successfully modified User')]
+
+        # be sure the password hasn't changed
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('/login')
+        resp.form['login_id'] = user.email
+        resp.form['password'] = user._plaintext_pass
+        resp = resp.form.submit()
+        assert resp.status_code == 302
+        assert resp.location.endswith('/')
+
+    @mock.patch.dict('flask.current_app.config', {'KEGAUTH_EMAIL_OPS_ENABLED': False})
+    def test_edit_no_email_reset_password(self):
+        user = self.user_ent.testing_create(password='foobar')
+        resp = self.client.get('/users/{}/edit'.format(user.id))
+
+        resp.form['reset_password'] = 'bleh'
+        resp.form['confirm'] = 'bleh'
+        resp = resp.form.submit()
+        assert resp.status_code == 302
+        assert resp.location.endswith('/users')
+        assert resp.flashes == [('success', 'Successfully modified User')]
+
+        # be sure the password hasn't changed
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('/login')
+        resp.form['login_id'] = user.email
+        resp.form['password'] = 'bleh'
+        resp = resp.form.submit()
+        assert resp.status_code == 302
+        assert resp.location.endswith('/')
+
     def test_add_with_session_key(self):
         resp = self.client.get('/users/add?session_key=foo')
         assert resp.pyquery('a.cancel').attr('href').endswith('/users?session_key=foo')
@@ -618,9 +710,16 @@ class TestUserCrud(ViewTestBase):
         assert self.user_ent.query.get(user_delete_id)
 
     def test_list(self):
-        ents.User.testing_create()
-        resp = self.client.get('/users')
-        assert 'datagrid' in resp
+        resp = self.client.get('/users?op(email)=eq&v1(email)=' + self.current_user.email)
+        assert resp.pyquery('.datagrid table.records thead th').eq(1).text() == 'User ID'
+        assert resp.pyquery('.datagrid table.records tbody td').eq(1).text() == self.current_user.email  # noqa
+
+    @mock.patch.dict('flask.current_app.config', {'KEGAUTH_USER_IDENT_FIELD': 'session_key'})
+    def test_list_alternate_ident_field(self):
+        resp = self.client.get('/users?op(session_key)=eq&v1(session_key)=' +
+                               self.current_user.session_key)
+        assert resp.pyquery('.datagrid table.records thead th').eq(1).text() == 'User ID'
+        assert resp.pyquery('.datagrid table.records tbody td').eq(1).text() == self.current_user.session_key  # noqa
 
     def test_list_export(self):
         ents.User.testing_create()

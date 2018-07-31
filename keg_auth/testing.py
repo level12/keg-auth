@@ -40,7 +40,7 @@ class AuthTests(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(self.login_url)
 
-        resp.form['email'] = 'foo'
+        resp.form['login_id'] = 'foo'
         resp = resp.form.submit(status=200)
 
         assert resp.flashes == [('error', 'The form has errors, please see below.')]
@@ -51,7 +51,7 @@ class AuthTests(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(self.login_url)
 
-        resp.form['email'] = 'foo@bar.com'
+        resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'pass'
         resp = resp.form.submit()
 
@@ -66,7 +66,7 @@ class AuthTests(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get('{}?next={}'.format(self.login_url, next))
 
-        resp.form['email'] = 'foo@bar.com'
+        resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'pass'
         resp = resp.form.submit()
 
@@ -84,7 +84,7 @@ class AuthTests(object):
                 sess['next'] = next
             resp = client.get(self.login_url)
 
-            resp.form['email'] = 'foo@bar.com'
+            resp.form['login_id'] = 'foo@bar.com'
             resp.form['password'] = 'pass'
             resp = resp.form.submit()
 
@@ -101,7 +101,7 @@ class AuthTests(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get('{}?next={}'.format(self.login_url, next))
 
-        resp.form['email'] = 'foo@bar.com'
+        resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'pass'
         resp = resp.form.submit()
 
@@ -114,7 +114,7 @@ class AuthTests(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get('{}?next={}'.format(self.login_url, urllib.parse.quote(next)))
 
-        resp.form['email'] = 'foo@bar.com'
+        resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'pass'
         resp = resp.form.submit()
 
@@ -129,7 +129,7 @@ class AuthTests(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(self.login_url)
 
-        resp.form['email'] = 'foo@bar.com'
+        resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'badpass'
         resp = resp.form.submit(status=200)
 
@@ -139,7 +139,7 @@ class AuthTests(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(self.login_url)
 
-        resp.form['email'] = 'foo@bar.com'
+        resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'badpass'
         resp = resp.form.submit(status=200)
 
@@ -151,7 +151,7 @@ class AuthTests(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(self.login_url)
 
-        resp.form['email'] = 'foo@bar.com'
+        resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'badpass'
         resp = resp.form.submit(status=200)
 
@@ -166,7 +166,7 @@ class AuthTests(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(self.login_url)
 
-        resp.form['email'] = 'foo@bar.com'
+        resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'badpass'
         resp = resp.form.submit(status=200)
 
@@ -184,7 +184,7 @@ class AuthTests(object):
         assert resp.headers['Location'].startswith(full_login_url)
 
         resp = resp.follow()
-        resp.form['email'] = 'foo@bar.com'
+        resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'pass'
         resp = resp.form.submit(status=302)
         assert resp.flashes == [('success', 'Login successful.')]
@@ -292,7 +292,7 @@ class AuthTests(object):
         assert not user.is_verified
 
         user.token_generate()
-        url = flask.current_app.auth_manager.verify_account_url(user)
+        url = flask.current_app.auth_manager.mail_manager.verify_account_url(user)
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(url, status=200)
@@ -312,7 +312,7 @@ class AuthTests(object):
     def test_verify_account_form_error(self):
         user = self.user_ent.testing_create()
         user.token_generate()
-        url = flask.current_app.auth_manager.verify_account_url(user)
+        url = flask.current_app.auth_manager.mail_manager.verify_account_url(user)
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(url, status=200)
@@ -322,7 +322,7 @@ class AuthTests(object):
 
     def test_verify_account_missing_user(self):
         user = LazyDict(id=9999999, _token_plain='123')
-        url = flask.current_app.auth_manager.verify_account_url(user)
+        url = flask.current_app.auth_manager.mail_manager.verify_account_url(user)
 
         client = flask_webtest.TestApp(flask.current_app)
         client.get(url, status=404)
@@ -330,7 +330,7 @@ class AuthTests(object):
     def test_verify_account_bad_token(self):
         user = self.user_ent.testing_create()
         user._token_plain = 'abc'
-        url = flask.current_app.auth_manager.verify_account_url(user)
+        url = flask.current_app.auth_manager.mail_manager.verify_account_url(user)
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(url, status=302)

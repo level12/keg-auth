@@ -9,7 +9,6 @@ import six
 import keg_auth.cli
 from keg_auth.libs.authenticators import KegAuthenticator
 from keg_auth import model
-from keg_auth.mail import MailManager
 
 
 class AuthManager(object):
@@ -26,13 +25,12 @@ class AuthManager(object):
         'verify-account': '{blueprint}.verify-account',
         'after-verify-account': '{blueprint}.login',
     }
-    mail_manager_cls = MailManager
     cli_group_name = 'auth'
 
-    def __init__(self, mail_ext, blueprint='auth', user_entity='User', endpoints=None,
+    def __init__(self, mail_manager=None, blueprint='auth', user_entity='User', endpoints=None,
                  cli_group_name=None, grid_cls=None, primary_authenticator_cls=KegAuthenticator,
                  secondary_authenticators=[], permissions=[]):
-        self.mail_ext = mail_ext
+        self.mail_manager = mail_manager
         self.blueprint_name = blueprint
         self.user_entity = user_entity
         self.endpoints = self.endpoints.copy()
@@ -61,6 +59,10 @@ class AuthManager(object):
     def init_config(self, app):
         _cc_kwargs = dict(schemes=['bcrypt', 'pbkdf2_sha256'], deprecated='auto')
         app.config.setdefault('PASSLIB_CRYPTCONTEXT_KWARGS', _cc_kwargs)
+
+        # config flag controls email ops such as sending verification emails, etc.
+        # Note: model mixin must be in place for email
+        app.config.setdefault('KEGAUTH_EMAIL_OPS_ENABLED', self.mail_manager is not None)
 
         site_name = app.config.get('SITE_NAME', 'UNKNOWN')
         app.config.setdefault('KEGAUTH_EMAIL_SITE_NAME', site_name)
@@ -96,7 +98,6 @@ class AuthManager(object):
 
     def init_managers(self, app):
         app.auth_manager = self
-        app.auth_mail_manager = self.mail_manager_cls(self.mail_ext)
 
         app.login_manager = login_manager = flask_login.LoginManager()
         login_manager.user_loader(self.user_loader)
@@ -199,20 +200,14 @@ class AuthManager(object):
         user.token_generate()
         db.session.add(user)
         db.session.flush()
-        flask.current_app.auth_mail_manager.send_new_user(user)
+
+        if self.mail_manager:
+            self.mail_manager.send_new_user(user)
 
         # use add + commit here instead of user_class.add() above so the user isn't actually
         # committed if mail isn't set.
         db.session.commit()
         return user
-
-    def verify_account_url(self, user):
-        return self.url_for(
-            'verify-account', user_id=user.id, token=user._token_plain, _external=True)
-
-    def reset_password_url(self, user):
-        return self.url_for(
-            'reset-password', user_id=user.id, token=user._token_plain, _external=True)
 
     def get_authenticator(self, identifier):
         return self.authenticators.get(identifier)

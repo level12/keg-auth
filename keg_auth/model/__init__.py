@@ -33,21 +33,20 @@ class UserMixin(object):
     is_anonymous = False
     is_authenticated = True
 
-    # Assume the user will need to verify their email address before they become active.
-    is_verified = sa.Column(sa.Boolean, nullable=False, default=False,
-                            server_default=sa.text('false'))
     is_enabled = sa.Column(sa.Boolean, nullable=False, default=True, server_default=sa.true())
     is_superuser = sa.Column(sa.Boolean, nullable=False, default=False, server_default=sa.false())
-    email = sa.Column(EmailType, nullable=False, unique=True)
     password = sa.Column(PasswordType(onload=_create_cryptcontext_kwargs))
-    token = sa.Column(PasswordType(onload=_create_cryptcontext_kwargs))
-    token_created_utc = sa.Column(ArrowType)
 
     # key used to identify the "id" for flask-login, which is expected to be a string. While we
     #   could return the user's db id cast to string, that would not give us a hook to reset
     #   sessions when permissions go stale
     session_key = sa.Column(sa.Unicode(36), nullable=False, unique=True,
                             default=_generate_session_key)
+
+    # is_active defines the complexities of how to determine what users are active. For instance,
+    #   if email is in scope, we need to have an additional flag to verify users, and that would
+    #   get included in is_active logic.
+    is_active = is_enabled
 
     def get_id(self):
         # Flask-Login requires that this return a string value for the session
@@ -56,65 +55,18 @@ class UserMixin(object):
     def reset_session_key(self):
         self.session_key = _generate_session_key()
 
-    @hybrid_property
-    def is_active(self):
-        return self.is_verified and self.is_enabled
-
-    @is_active.expression
-    def is_active(cls):
-        return sa_sql.and_(cls.is_verified == sa.true(), cls.is_enabled == sa.true())
+    @property
+    def _display_value(self):
+        # shortcut to return the value of the user ident attribute
+        return getattr(self, flask.current_app.config.get('KEGAUTH_USER_IDENT_FIELD'))
 
     @classmethod
     def testing_create(cls, **kwargs):
         kwargs['password'] = kwargs.get('password') or randchars()
 
-        # Most tests will want an active user by default, which is the opposite of what we want in
-        # production, so swap that logic.
-        kwargs.setdefault('is_verified', True)
-
         user = super(UserMixin, cls).testing_create(**kwargs)
         user._plaintext_pass = kwargs['password']
         return user
-
-    def token_verify(self, token):
-        # If a token isn't set, it's can't be verified.
-        if token is None or self.token is None or self.token_created_utc is None:
-            return False
-
-        # The token is invalid if it has expired.
-        expire_mins = flask.current_app.config['KEGAUTH_TOKEN_EXPIRE_MINS']
-        expire_at = self.token_created_utc.shift(minutes=expire_mins)
-        if arrow.get() >= expire_at:
-            return False
-
-        return self.token == token
-
-    @might_commit
-    def token_generate(self):
-        token = shortuuid.uuid()
-        self.token = token
-        self.token_created_utc = arrow.get()
-
-        # Store the plain text version on this instance for ease of use.  It will not get
-        # pesisted to the db, so no security conern.
-        self._token_plain = token
-
-        return token
-
-    @might_commit
-    def change_password(self, token, new_password):
-        """
-            Change a password based on token authorization.
-        """
-        # May want to throw a custom exception here eventually.  Right now, assume calling code
-        # will have verified the token before calling change_password() to provide a better UX
-        # if the token is invalid.
-        assert self.token_verify(token)
-
-        self.token = None
-        self.token_created_utc = None
-        self.password = new_password
-        self.is_verified = True
 
     def get_all_permissions(self):
         # Superusers are considered to have all permissions.
@@ -204,6 +156,72 @@ class UserMixin(object):
             group_mapping,
             group_mapping.c.group_id == group_cls.id
         )
+
+
+class UserEmailMixin(object):
+    # Assume the user will need to verify their email address before they become active.
+    is_verified = sa.Column(sa.Boolean, nullable=False, default=False,
+                            server_default=sa.text('false'))
+    email = sa.Column(EmailType, nullable=False, unique=True)
+    token = sa.Column(PasswordType(onload=_create_cryptcontext_kwargs))
+    token_created_utc = sa.Column(ArrowType)
+
+    @hybrid_property
+    def is_active(self):
+        return self.is_verified and self.is_enabled
+
+    @is_active.expression
+    def is_active(cls):
+        return sa_sql.and_(cls.is_verified == sa.true(), cls.is_enabled == sa.true())
+
+    @classmethod
+    def testing_create(cls, **kwargs):
+        # Most tests will want an active user by default, which is the opposite of what we want in
+        # production, so swap that logic.
+        kwargs.setdefault('is_verified', True)
+
+        user = super(UserEmailMixin, cls).testing_create(**kwargs)
+        return user
+
+    def token_verify(self, token):
+        # If a token isn't set, it's can't be verified.
+        if token is None or self.token is None or self.token_created_utc is None:
+            return False
+
+        # The token is invalid if it has expired.
+        expire_mins = flask.current_app.config['KEGAUTH_TOKEN_EXPIRE_MINS']
+        expire_at = self.token_created_utc.shift(minutes=expire_mins)
+        if arrow.get() >= expire_at:
+            return False
+
+        return self.token == token
+
+    @might_commit
+    def token_generate(self):
+        token = shortuuid.uuid()
+        self.token = token
+        self.token_created_utc = arrow.get()
+
+        # Store the plain text version on this instance for ease of use.  It will not get
+        # pesisted to the db, so no security conern.
+        self._token_plain = token
+
+        return token
+
+    @might_commit
+    def change_password(self, token, new_password):
+        """
+            Change a password based on token authorization.
+        """
+        # May want to throw a custom exception here eventually.  Right now, assume calling code
+        # will have verified the token before calling change_password() to provide a better UX
+        # if the token is invalid.
+        assert self.token_verify(token)
+
+        self.token = None
+        self.token_created_utc = None
+        self.password = new_password
+        self.is_verified = True
 
 
 class PermissionMixin(object):

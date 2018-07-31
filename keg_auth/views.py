@@ -85,17 +85,14 @@ class AuthFormView(_BaseView):
     def on_form_error(self, form):
         flask.flash(*self.flash_form_error)
 
-    def on_invalid_user(self, form):
+    def on_invalid_user(self, form, field):
         message, category = self.flash_invalid_user
-        email = form.email.data
-        flask.flash(message.format(email), category)
+        val = getattr(form, field).data
+        flask.flash(message.format(val), category)
 
-    def verify_user_enabled(self, user):
-        if not user.is_enabled:
-            message, category = self.flash_disabled_user
-            flask.flash(message.format(user.email), category)
-            return False
-        return True
+    def on_disabled_user(self, user):
+        message, category = self.flash_disabled_user
+        flask.flash(message.format(user._display_value), category)
 
 
 class CrudView(keg.web.BaseView):
@@ -284,7 +281,6 @@ class CrudView(keg.web.BaseView):
 class Login(AuthFormView):
     url = '/login'
     template_name = 'keg_auth/login.html'
-    form_cls = forms.Login
     page_title = 'Log In'
     flash_success = 'Login successful.', 'success'
     flash_invalid_password = 'Invalid password.', 'error'
@@ -292,14 +288,18 @@ class Login(AuthFormView):
         ' your email for a verification link from this website.  Or, use the "forgot' \
         ' password" link to verify the account.', 'error'
 
+    @property
+    def form_cls(self):
+        return forms.login_form(flask.current_app.config)
+
     def on_form_valid(self, form):
         try:
-            user = self.get_user(login_id=form.email.data, password=form.password.data)
+            user = self.get_user(login_id=form.login_id.data, password=form.password.data)
 
             # User is active and password is verified
             return self.on_success(user)
         except authenticators.UserNotFound:
-            self.on_invalid_user(form)
+            self.on_invalid_user(form, 'login_id')
         except authenticators.UserInactive as exc:
             self.on_inactive_user(exc.user)
         except authenticators.UserInvalidAuth:
@@ -309,10 +309,11 @@ class Login(AuthFormView):
         flask.flash(*self.flash_invalid_password)
 
     def on_inactive_user(self, user):
-        if not user.is_verified:
+        if flask.current_app.auth_manager.mail_manager and not user.is_verified:
             message, category = self.flash_unverified_user
             flask.flash(message.format(user.email), category)
-        self.verify_user_enabled(user)
+        if not user.is_enabled:
+            self.on_disabled_user(user)
 
     def on_success(self, user):
         flask_login.login_user(user)
@@ -337,6 +338,10 @@ class ForgotPassword(AuthFormView):
     template_name = 'keg_auth/forgot-password.html'
     flash_success = 'Please check your email for the link to change your password.', 'success'
 
+    def check_auth(self):
+        if not flask.current_app.auth_manager.mail_manager:
+            flask.abort(404)
+
     def on_form_valid(self, form):
         try:
             user = self.get_user(login_id=form.email.data)
@@ -344,9 +349,9 @@ class ForgotPassword(AuthFormView):
             # User is active, take action to initiate password reset
             return self.on_success(user)
         except authenticators.UserNotFound:
-            self.on_invalid_user(form)
+            self.on_invalid_user(form, 'email')
         except authenticators.UserInactive as exc:
-            self.verify_user_enabled(exc.user)
+            self.on_disabled_user(exc.user)
 
     def on_success(self, user):
         self.send_email(user)
@@ -356,7 +361,7 @@ class ForgotPassword(AuthFormView):
 
     def send_email(self, user):
         user.token_generate()
-        flask.current_app.auth_mail_manager.send_reset_password(user)
+        flask.current_app.auth_manager.mail_manager.send_reset_password(user)
 
 
 class SetPasswordBaseView(AuthFormView):
@@ -364,6 +369,10 @@ class SetPasswordBaseView(AuthFormView):
     template_name = 'keg_auth/set-password.html'
     flash_invalid_token = 'Authentication token was invalid or expired.  Please fill out the' \
         ' form below to get a new token.', 'error'
+
+    def check_auth(self):
+        if not flask.current_app.auth_manager.mail_manager:
+            flask.abort(404)
 
     def user_loader(self, user_id):
         user_ent = flask.current_app.auth_manager.get_user_entity()
@@ -427,7 +436,8 @@ class User(CrudView):
     form_cls = staticmethod(forms.user_form)
 
     def create_form(self, obj):
-        form_cls = self.form_cls(allow_superuser=flask_login.current_user.is_superuser,
+        form_cls = self.form_cls(flask.current_app.config,
+                                 allow_superuser=flask_login.current_user.is_superuser,
                                  endpoint=self.endpoint_for_action('edit'))
         return form_cls(obj=obj)
 
@@ -447,6 +457,11 @@ class User(CrudView):
     def update_obj(self, obj, form):
         obj = obj or self.add_orm_obj()
         form.populate_obj(obj)
+
+        # only reset a password if it is on the form and populated
+        if hasattr(form, 'reset_password') and form.reset_password.data:
+            obj.password = form.reset_password.data
+
         obj.permissions = form.get_selected_permissions()
         obj.bundles = form.get_selected_bundles()
         obj.groups = form.get_selected_groups()

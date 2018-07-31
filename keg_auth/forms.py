@@ -1,27 +1,38 @@
 from keg_elements.forms import Form, ModelForm, FieldMeta
 from keg_elements.forms.validators import ValidateUnique
+from sqlalchemy_utils import EmailType
 from webhelpers2.html.tags import link_to
 from wtforms.fields import (
     HiddenField,
     PasswordField,
     StringField,
     SelectMultipleField)
-from wtforms import validators
-from wtforms_components import EmailField
+from wtforms import ValidationError, validators
+from wtforms_components.widgets import EmailInput
 
 from keg_auth.model import entity_registry
 
 
-class Login(Form):
-    next = HiddenField()
+def login_form(config):
+    login_id_label = u'User ID'
+    login_id_validators = [validators.DataRequired()]
 
-    email = StringField(u'Email', validators=[
-        validators.DataRequired(),
-        validators.Email(),
-    ])
-    password = PasswordField('Password', validators=[
-        validators.DataRequired(),
-    ])
+    if isinstance(
+        getattr(entity_registry.registry.user_cls, config.get('KEGAUTH_USER_IDENT_FIELD')).type,
+        EmailType
+    ):
+        login_id_label = u'Email'
+        login_id_validators.append(validators.Email())
+
+    class Login(Form):
+        next = HiddenField()
+
+        login_id = StringField(login_id_label, validators=login_id_validators)
+        password = PasswordField('Password', validators=[
+            validators.DataRequired(),
+        ])
+
+    return Login
 
 
 class ForgotPassword(Form):
@@ -74,18 +85,28 @@ class BundlesMixin(object):
         return entities_from_ids(entity_registry.registry.bundle_cls, self.bundle_ids.data)
 
 
-def user_form(allow_superuser=False, endpoint='', fields=['email', 'is_enabled']):
+class _ValidatePasswordRequired(object):
+    def __call__(self, form, field):
+        if not form.obj and not field.data:
+            raise ValidationError('This field is required.')
+        return True
+
+
+def user_form(config, allow_superuser=False, endpoint='', fields=['is_enabled']):
     user_cls = entity_registry.registry.user_cls
 
     # create a copy of fields for internal use. In python 2, if we use this as a static method,
     #   the kwarg value would get modified in the wrong scope
-    _fields = fields[:]
+    _fields = [config.get('KEGAUTH_USER_IDENT_FIELD')] + fields[:]
     if allow_superuser and 'is_superuser' not in _fields:
         _fields.append('is_superuser')
 
     def html_link(obj):
         import flask
-        return link_to(obj.email, flask.url_for(endpoint, objid=obj.id))
+        return link_to(
+            getattr(obj, config.get('KEGAUTH_USER_IDENT_FIELD')),
+            flask.url_for(endpoint, objid=obj.id)
+        )
 
     class User(ModelForm, PermissionsMixin, BundlesMixin):
         class Meta:
@@ -97,9 +118,27 @@ def user_form(allow_superuser=False, endpoint='', fields=['email', 'is_enabled']
             is_superuser = FieldMeta('Superuser')
             __default__ = FieldMeta
 
-        email = EmailField('Email', validators=[validators.data_required(),
-                                                validators.email(),
-                                                ValidateUnique(html_link)])
+        field_order = tuple(_fields + ['group_ids', 'bundle_ids', 'permission_ids'])
+
+        setattr(FieldsMeta, config.get('KEGAUTH_USER_IDENT_FIELD'), FieldMeta(
+            extra_validators=[validators.data_required(),
+                              ValidateUnique(html_link)]
+        ))
+
+        if isinstance(
+            getattr(entity_registry.registry.user_cls, config.get('KEGAUTH_USER_IDENT_FIELD')).type,
+            EmailType
+        ):
+            meta_field = getattr(FieldsMeta, config.get('KEGAUTH_USER_IDENT_FIELD'))
+            meta_field.widget = EmailInput()
+
+        if not config.get('KEGAUTH_EMAIL_OPS_ENABLED'):
+            reset_password = PasswordField('New Password', validators=[
+                _ValidatePasswordRequired(),
+                validators.EqualTo('confirm', message='Passwords must match')
+            ])
+            confirm = PasswordField('Confirm Password')
+            field_order = field_order + ('reset_password', 'confirm')
 
         group_ids = SelectMultipleField('Groups')
 
@@ -112,13 +151,11 @@ def user_form(allow_superuser=False, endpoint='', fields=['email', 'is_enabled']
             return entities_from_ids(entity_registry.registry.group_cls, self.group_ids.data)
 
         def get_object_by_field(self, field):
-            return user_cls.get_by(email=field.data)
+            return user_cls.get_by(**{config.get('KEGAUTH_USER_IDENT_FIELD'): field.data})
 
         @property
         def obj(self):
             return self._obj
-
-        field_order = tuple(_fields + ['group_ids', 'bundle_ids', 'permission_ids'])
 
         def __iter__(self):
             order = ('csrf_token', ) + self.field_order

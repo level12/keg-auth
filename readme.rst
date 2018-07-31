@@ -16,6 +16,12 @@ https://github.com/level12/keg-app-cookiecutter
 Usage
 -----
 
+-  Installation
+   - bare functionality: `pip install keg-auth`
+   - mail (i.e. with a mail manager configured, see below): `pip install keg-auth[mail]`
+   - JWT (for using JWT tokens as authenticators): `pip install keg-auth[jwt]`
+   - LDAP (for using LDAP target for authentication): `pip install keg-auth[ldap]`
+
 -  Configuration
 
    -  `SERVER_NAME = 'somehost'`: required for Keg Auth when generating URL in create-user CLI command
@@ -23,8 +29,14 @@ Usage
    -  `PREFERRED_URL_SCHEME = 'https'`: this is important so that generated auth related URLS are
         secure.  You could have an SSL redirect but by the time that would fire, the key would
         have already been sent in the URL.
-   -  `KEGAUTH_EMAIL_SITE_NAME = 'Some Thing'`: used in email templates
-   -  `KEGAUTH_EMAIL_SITE_ABBR = 'Some Thing'`: used in email templates
+   -  `KEGAUTH_EMAIL_SITE_NAME = 'Some Thing'`: used in email templates if mail is enabled
+   -  `KEGAUTH_EMAIL_SITE_ABBR = 'Some Thing'`: used in email templates if mail is enabled
+   -  `KEGAUTH_TOKEN_EXPIRE_MINS`: integer, defaults to 240 minutes (4 hours)
+      -  if mail functions are enabled and tokens in the model, affects the time a verification token remains valid
+   -  `KEGAUTH_CLI_USER_ARGS`: list of strings, defaults to `['email']`
+      -  names arguments to be accepted by CLI user commands and passed to the model
+   -  `KEGAUTH_USER_IDENT_FIELD`: string, defaults to `email`
+      -  identifies the field in the model that is the user ID used for logging in
 
 -  Blueprints
 
@@ -39,13 +51,20 @@ Usage
 -  Extensions
 
    -  set up an auth manager (in app setup or extensions)
+   -  note that the mail_manager is optional. If a mail_manager is not given, no mail will be sent
 
 .. code-block:: python
 
+          from flask_mail import Mail
+          from keg_auth import AuthManager, AuthMailManager
+
           mail_ext = Mail()
+          auth_mail_manager = AuthMailManager(mail_ext)
+
           _endpoints = {'after-login': 'public.home'}
           permissions = ('auth-manage', 'app-permission1', 'app-permission2')
-          auth_manager = AuthManager(mail_ext, endpoints=_endpoints, permissions=permissions)
+
+          auth_manager = AuthManager(mail_manager=auth_mail_manager, endpoints=_endpoints, permissions=permissions)
           auth_manager.init_app(app)
 ..
 
@@ -108,12 +127,15 @@ Usage
       will have a PK id
    -  the User entity should have an attribute matching the KEGAUTH_USER_IDENT_FIELD setting, as
       that field will be used for authentication purposes
+      - the default KEGAUTH_USER_IDENT_FIELD is `email`
+   -  email address and token verification by email are in `UserEmailMixin`
+      - i.e. if your app will not use email token verification for passwords, leave that mixin out
 
 .. code-block:: python
 
           from keg.db import db
           from keg_elements.db.mixins import DefaultColsMixin, MethodsMixin
-          from keg_auth import UserMixin, PermissionMixin, BundleMixin, GroupMixin, auth_entity_registry
+          from keg_auth import UserMixin, UserEmailMixin, PermissionMixin, BundleMixin, GroupMixin, auth_entity_registry
 
 
           class EntityMixin(DefaultColsMixin, MethodsMixin):
@@ -121,7 +143,7 @@ Usage
 
 
           @auth_entity_registry.register_user
-          class User(db.Model, UserMixin, EntityMixin):
+          class User(db.Model, UserEmailMixin, UserMixin, EntityMixin):
               __tablename__ = 'users'
 
 
@@ -300,3 +322,21 @@ permissions specified on the class definition:
 
         def test_get(self):
             self.client.get('/foo')
+
+
+Using Without Email Functions
+-------------------------
+
+Keg Auth is designed out of the box to use emailed tokens to:
+
+- verify the email addresses on user records
+- provide a method of initially setting passwords without the admin setting a known password
+
+While this provides good security in many scenarios, there may be times when the email methods
+are not desired (for example, if an app will run in an environment where the internet is not
+accessible). Only a few changes are necessary from the examples above to achieve this:
+
+- leave `UserEmailMixin` out of the `User` model
+  - instead, define a field for the user identifier (e.g. `username = sa.Column(sa.Unicode(255), nullable=False, unique=True)`)
+  - update the `KEGAUTH_USER_IDENT_FIELD` setting accordingly in your config (e.g. `username`)
+- do not specify a mail_manager when setting up `AuthManager`
