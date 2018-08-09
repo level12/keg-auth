@@ -9,14 +9,37 @@ from keg_auth.libs.authenticators import Authenticator
 from keg_auth.model import utils as model_utils
 
 
+def get_authenticator_instance(authenticator):
+    return authenticator if isinstance(authenticator, Authenticator) else \
+        flask.current_app.auth_manager.get_authenticator(authenticator)
+
+
 class RequiresUser(object):
-    def __init__(self, authenticators=[], on_authentication_failure=None,
+    """ Require a user to be authenticated before proceeding to decorated target. May be
+        used as a class decorator or method decorator.
+
+        Usage: @requires_user
+
+        Note: if using along with a route decorator (e.g. Blueprint.route), requires_user
+            should be the closest decorator to the method
+
+        Examples:
+        - @requires_user
+        - @requires_user()
+        - @requires_user(authenticators=JwtAthenticator)
+        - @requires_user(authenticators=[LdapAuthenticator, JwtAthenticator])
+    """
+    def __init__(self, authenticators=None, on_authentication_failure=None,
                  on_authorization_failure=None):
-        self.authenticators = tolist(authenticators)
+        self._authenticators = tolist(authenticators or [])
 
         # defaults for these handlers are provided, but may be overridden here
         self._on_authentication_failure = on_authentication_failure
         self._on_authorization_failure = on_authorization_failure
+
+    @property
+    def authenticators(self):
+        return self._authenticators or [flask.current_app.auth_manager.primary_authenticator]
 
     def __call__(self, class_or_function):
         # decorator may be applied to a class or a function, but the effect is different
@@ -93,13 +116,11 @@ class RequiresUser(object):
         if self._on_authentication_failure:
             self._on_authentication_failure()
 
+        # redirect if one or more authenticators registered on the view require it
         should_redirect = False
 
-        for authenticator in (
-            self.authenticators or [flask.current_app.auth_manager.primary_authenticator]
-        ):
-            auth_instance = authenticator if isinstance(authenticator, Authenticator) else \
-                flask.current_app.auth_manager.get_authenticator(authenticator)
+        for authenticator in self.authenticators:
+            auth_instance = get_authenticator_instance(authenticator)
             should_redirect = should_redirect or auth_instance.authentication_failure_redirect
 
         if should_redirect:
@@ -114,11 +135,8 @@ class RequiresUser(object):
         flask.abort(403)
 
     def check_auth(self):
-        for authenticator in (
-            self.authenticators or [flask.current_app.auth_manager.primary_authenticator]
-        ):
-            auth_instance = authenticator if isinstance(authenticator, Authenticator) else \
-                flask.current_app.auth_manager.get_authenticator(authenticator)
+        for authenticator in self.authenticators:
+            auth_instance = get_authenticator_instance(authenticator)
             user = auth_instance.get_authenticated_user()
             if user:
                 break

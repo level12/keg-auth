@@ -56,7 +56,7 @@ class UserMixin(object):
         self.session_key = _generate_session_key()
 
     @property
-    def _display_value(self):
+    def display_value(self):
         # shortcut to return the value of the user ident attribute
         return getattr(self, flask.current_app.config.get('KEGAUTH_USER_IDENT_FIELD'))
 

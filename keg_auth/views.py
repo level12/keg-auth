@@ -92,7 +92,7 @@ class AuthFormView(_BaseView):
 
     def on_disabled_user(self, user):
         message, category = self.flash_disabled_user
-        flask.flash(message.format(user._display_value), category)
+        flask.flash(message.format(user.display_value), category)
 
 
 class CrudView(keg.web.BaseView):

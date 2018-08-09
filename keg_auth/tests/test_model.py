@@ -590,6 +590,10 @@ class TestPermissionsConditions:
         ents.Permission.delete_cascaded()
         ents.User.delete_cascaded()
 
+    def test_no_conditions(self):
+        with pytest.raises(ValueError):
+            utils.PermissionCondition()
+
     def test_simple_string(self):
         user = ents.User.testing_create(
             permissions=[ents.Permission.testing_create(token='perm1')]

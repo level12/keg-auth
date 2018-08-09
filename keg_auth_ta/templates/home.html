@@ -5,7 +5,7 @@
         <h1>Keg Auth Demo</h1>
     </div>
     {% if current_user.is_authenticated %}
-        <p>Hi {{current_user._display_value}}!</p>
+        <p>Hi {{current_user.display_value}}!</p>
         <p><a href="{{auth_manager.url_for('logout')}}">Logout.</a>
     {% else %}
         <p>You probably want to head to the <a href="{{auth_manager.url_for('login')}}">login page.</a></p>

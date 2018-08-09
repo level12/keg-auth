@@ -1,6 +1,7 @@
 class PermissionCondition(object):
     def __init__(self, *conditions):
-        assert len(conditions) >= 1, 'At least one permission or condition is required'
+        if len(conditions) < 1:
+            raise ValueError('At least one permission or condition is required')
         self.conditions = conditions
 
     @staticmethod
@@ -9,13 +10,14 @@ class PermissionCondition(object):
             return condition.check(user)
         if callable(condition):
             return condition(user)
-        if not hasattr(user, 'has_all_permissions'):
-            # probably an anonymous user in the session after logout
-            return False
-        return user.has_all_permissions(condition)
+        if hasattr(user, 'has_all_permissions'):
+            return user.has_all_permissions(condition)
+
+        # probably an anonymous user in the session after logout
+        return False
 
     def check(self, user):
-        raise Exception('fill in the check method in the subclass')  # pragma: no cover
+        raise NotImplementedError  # pragma: no cover
 
 
 class AllCondition(PermissionCondition):

@@ -29,7 +29,7 @@ class AuthManager(object):
 
     def __init__(self, mail_manager=None, blueprint='auth', user_entity='User', endpoints=None,
                  cli_group_name=None, grid_cls=None, primary_authenticator_cls=KegAuthenticator,
-                 secondary_authenticators=[], permissions=[]):
+                 secondary_authenticators=None, permissions=None):
         self.mail_manager = mail_manager
         self.blueprint_name = blueprint
         self.user_entity = user_entity
@@ -40,10 +40,10 @@ class AuthManager(object):
         self.cli_group = None
         self.grid_cls = grid_cls
         self.primary_authenticator_cls = primary_authenticator_cls
-        self.secondary_authenticators = tolist(secondary_authenticators)
-        self.authenticators = {}
+        self.secondary_authenticators = tolist(secondary_authenticators or [])
+        self.authenticators = dict()
         self.menus = dict()
-        self.permissions = permissions
+        self.permissions = tolist(permissions or [])
         self._model_initialized = False
         self._authenticators_initialized = False
 
@@ -193,6 +193,8 @@ class AuthManager(object):
         return self.create_user(user_kwargs)
 
     def create_user(self, user_kwargs):
+        mail_enabled = user_kwargs.pop('mail_enabled', True)
+
         from passlib.pwd import genword
         user_kwargs.setdefault('password', genword(entropy='secure'))
         user_class = self.get_user_entity()
@@ -201,7 +203,7 @@ class AuthManager(object):
         db.session.add(user)
         db.session.flush()
 
-        if self.mail_manager:
+        if mail_enabled and self.mail_manager:
             self.mail_manager.send_new_user(user)
 
         # use add + commit here instead of user_class.add() above so the user isn't actually
