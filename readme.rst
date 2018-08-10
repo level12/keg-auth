@@ -29,14 +29,18 @@ Usage
    -  `PREFERRED_URL_SCHEME = 'https'`: this is important so that generated auth related URLS are
         secure.  You could have an SSL redirect but by the time that would fire, the key would
         have already been sent in the URL.
-   -  `KEGAUTH_EMAIL_SITE_NAME = 'Some Thing'`: used in email templates if mail is enabled
-   -  `KEGAUTH_EMAIL_SITE_ABBR = 'Some Thing'`: used in email templates if mail is enabled
    -  `KEGAUTH_TOKEN_EXPIRE_MINS`: integer, defaults to 240 minutes (4 hours)
       -  if mail functions are enabled and tokens in the model, affects the time a verification token remains valid
    -  `KEGAUTH_CLI_USER_ARGS`: list of strings, defaults to `['email']`
       -  names arguments to be accepted by CLI user commands and passed to the model
    -  `KEGAUTH_USER_IDENT_FIELD`: string, defaults to `email`
       -  identifies the field in the model that is the user ID used for logging in
+   -  Email settings
+      -  `KEGAUTH_EMAIL_SITE_NAME = 'Keg Application'`: used in email body if mail is enabled
+      -  `KEGAUTH_EMAIL_SITE_ABBR = 'Keg App'`: used in email subject if mail is enabled
+      - Example message:
+         - Subject: [Keg App] Password Reset Link
+         - Body: Somebody asked to reset your password on Keg Application. If this was not you...
 
 -  Blueprints
 

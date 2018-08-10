@@ -30,6 +30,26 @@ class AuthManager(object):
     def __init__(self, mail_manager=None, blueprint='auth', user_entity='User', endpoints=None,
                  cli_group_name=None, grid_cls=None, primary_authenticator_cls=KegAuthenticator,
                  secondary_authenticators=None, permissions=None):
+        """Set up an auth management extension
+
+        Main manager for keg-auth authentication/authorization functions, and provides a central
+        location and handle on the flask app to access CLI setup, navigation, authenticators, etc.
+
+        :param mail_manager: AuthMailManager instance used for mail functions. Can be None.
+        :param blueprint: name to use for the blueprint containing auth views
+        :param user_entity: name of the SQLAlchemy ORM entity representing a user
+        :param endpoints: dict of overrides to auth view endpoints
+        :param cli_group_name: name of the CLI group under which auth commands appear
+        :param grid_cls: webgrid class to serve as a base class to auth CRUD grids
+        :param primary_authenticator_cls: authenticator class used by login view, and for any view
+            requiring a user (if the requirement does not specify authenticators)
+            default: KegAuthenticator
+        :param secondary_authenticators: authenticator classes initialized by this manager and
+            registered by key for reference (e.g. 'jwt' for JwtAuthenticator). Can be scalar or
+            an iterable
+        :param permissions: permission strings defined for the app, which will be synced to the
+            database on app init. Can be a single string or an iterable
+        """
         self.mail_manager = mail_manager
         self.blueprint_name = blueprint
         self.user_entity = user_entity

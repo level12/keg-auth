@@ -6,6 +6,7 @@ from keg_elements.db.mixins import might_commit, might_flush
 import shortuuid
 import six
 import sqlalchemy as sa
+from sqlalchemy.dialects import mssql
 import sqlalchemy.orm as sa_orm
 import sqlalchemy.sql as sa_sql
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -28,14 +29,25 @@ def _generate_session_key():
     return six.text_type(shortuuid.uuid())
 
 
+class InvalidToken(Exception):
+    pass
+
+
+class KAPasswordType(PasswordType):
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'mssql':
+            return mssql.VARCHAR(self.length)
+        return super(KAPasswordType, self).load_dialect_impl(dialect)
+
+
 class UserMixin(object):
     # These two attributes are needed by Flask-Login.
     is_anonymous = False
     is_authenticated = True
 
-    is_enabled = sa.Column(sa.Boolean, nullable=False, default=True, server_default=sa.true())
-    is_superuser = sa.Column(sa.Boolean, nullable=False, default=False, server_default=sa.false())
-    password = sa.Column(PasswordType(onload=_create_cryptcontext_kwargs))
+    is_enabled = sa.Column(sa.Boolean, nullable=False, default=True)
+    is_superuser = sa.Column(sa.Boolean, nullable=False, default=False)
+    password = sa.Column(KAPasswordType(onload=_create_cryptcontext_kwargs))
 
     # key used to identify the "id" for flask-login, which is expected to be a string. While we
     #   could return the user's db id cast to string, that would not give us a hook to reset
@@ -160,10 +172,9 @@ class UserMixin(object):
 
 class UserEmailMixin(object):
     # Assume the user will need to verify their email address before they become active.
-    is_verified = sa.Column(sa.Boolean, nullable=False, default=False,
-                            server_default=sa.text('false'))
+    is_verified = sa.Column(sa.Boolean, nullable=False, default=False)
     email = sa.Column(EmailType, nullable=False, unique=True)
-    token = sa.Column(PasswordType(onload=_create_cryptcontext_kwargs))
+    token = sa.Column(KAPasswordType(onload=_create_cryptcontext_kwargs))
     token_created_utc = sa.Column(ArrowType)
 
     @hybrid_property
@@ -172,7 +183,9 @@ class UserEmailMixin(object):
 
     @is_active.expression
     def is_active(cls):
-        return sa_sql.and_(cls.is_verified == sa.true(), cls.is_enabled == sa.true())
+        # need to wrap the expression in a case to work with MSSQL
+        expr = sa_sql.and_(cls.is_verified == sa.true(), cls.is_enabled == sa.true())
+        return sa.sql.case([(expr, sa.true())], else_=sa.false())
 
     @classmethod
     def testing_create(cls, **kwargs):
@@ -213,10 +226,8 @@ class UserEmailMixin(object):
         """
             Change a password based on token authorization.
         """
-        # May want to throw a custom exception here eventually.  Right now, assume calling code
-        # will have verified the token before calling change_password() to provide a better UX
-        # if the token is invalid.
-        assert self.token_verify(token)
+        if not self.token_verify(token):
+            raise InvalidToken
 
         self.token = None
         self.token_created_utc = None
@@ -225,7 +236,7 @@ class UserEmailMixin(object):
 
 
 class PermissionMixin(object):
-    token = sa.Column(sa.Unicode, nullable=False, unique=True)
+    token = sa.Column(sa.Unicode(1024), nullable=False, unique=True)
     description = sa.Column(sa.Unicode)
 
     @classmethod
@@ -241,7 +252,7 @@ class PermissionMixin(object):
 
 
 class BundleMixin(object):
-    name = sa.Column(sa.Unicode, nullable=False, unique=True)
+    name = sa.Column(sa.Unicode(1024), nullable=False, unique=True)
 
     @might_commit
     @might_flush
@@ -271,7 +282,7 @@ class BundleMixin(object):
 
 
 class GroupMixin(object):
-    name = sa.Column(sa.Unicode, nullable=False, unique=True)
+    name = sa.Column(sa.Unicode(1024), nullable=False, unique=True)
 
     def get_all_permissions(self):
         perm_cls = entity_registry.registry.permission_cls

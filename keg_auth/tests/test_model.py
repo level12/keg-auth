@@ -8,7 +8,7 @@ import pytest
 from freezegun import freeze_time
 import sqlalchemy as sa
 
-from keg_auth.model import entity_registry, utils
+from keg_auth.model import InvalidToken, entity_registry, utils
 from keg_auth_ta.model import entities as ents
 import mock
 
@@ -94,6 +94,11 @@ class TestUser(object):
         assert not user.token_verify(token)
         assert user.password == 'abc123'
         assert user.is_verified
+
+    def test_change_password_invalid_token(self):
+        user = ents.User.testing_create(is_verified=False)
+        with pytest.raises(InvalidToken):
+            user.change_password('bad-token', 'abc123')
 
     def test_permissions_mapping(self):
         perm1 = ents.Permission.testing_create()
