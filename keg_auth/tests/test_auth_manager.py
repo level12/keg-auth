@@ -24,7 +24,6 @@ class TestAuthManager(object):
         assert outbox[0].subject == '[KA Demo] User Welcome & Verification'
 
         assert user.email == 'foo@bar.com'
-        assert user.token
         assert user._token_plain
         assert ents.User.query.count() == 1
 

@@ -219,9 +219,12 @@ class AuthManager(object):
         user_kwargs.setdefault('password', genword(entropy='secure'))
         user_class = self.get_user_entity()
         user = user_class(**user_kwargs)
-        user.token_generate()
         db.session.add(user)
         db.session.flush()
+
+        # generate the token AFTER flush, because the token may depend on things like timestamps
+        # which may not be available earlier
+        user.token_generate()
 
         if mail_enabled and self.mail_manager:
             self.mail_manager.send_new_user(user)

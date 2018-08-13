@@ -1,6 +1,9 @@
-import arrow
+import hashlib
+import json
+
 from blazeutils.strings import randchars
 import flask
+import itsdangerous
 from keg.db import db
 from keg_elements.db.mixins import might_commit, might_flush
 import shortuuid
@@ -10,7 +13,7 @@ from sqlalchemy.dialects import mssql
 import sqlalchemy.orm as sa_orm
 import sqlalchemy.sql as sa_sql
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy_utils import ArrowType, EmailType, PasswordType, force_auto_coercion
+from sqlalchemy_utils import EmailType, PasswordType, force_auto_coercion
 
 from . import entity_registry
 
@@ -174,8 +177,6 @@ class UserEmailMixin(object):
     # Assume the user will need to verify their email address before they become active.
     is_verified = sa.Column(sa.Boolean, nullable=False, default=False)
     email = sa.Column(EmailType, nullable=False, unique=True)
-    token = sa.Column(KAPasswordType(onload=_create_cryptcontext_kwargs))
-    token_created_utc = sa.Column(ArrowType)
 
     @hybrid_property
     def is_active(self):
@@ -187,6 +188,40 @@ class UserEmailMixin(object):
         expr = sa_sql.and_(cls.is_verified == sa.true(), cls.is_enabled == sa.true())
         return sa.sql.case([(expr, sa.true())], else_=sa.false())
 
+    def get_token_salt(self):
+        """
+        Create salt data for password reset token signing. The return value will be hashed
+        together with the signing key. This ensures that changes to any of the fields included
+        in the salt invalidates any tokens produced with the old values
+        Values included:
+            * flask-login session key
+            * user login identifier
+            * is_active
+            * current password hash or empty string if no password has been set
+            * most recent update time or empty string if user has not been updated
+        :return: JSON string of list containing the values listed above
+        """
+        return json.dumps([
+            str(self.get_id()),
+            self.display_value,
+            str(self.is_active),
+            self.password.hash.decode() if self.password is not None else '',
+            self.updated_utc.isoformat(),
+        ])
+
+    def get_token_serializer(self, expires_in):
+        """
+        Create a JWT serializer using itsdangerous
+        :param expires_in: seconds from token creation until expiration
+        :return: TimedJSONWebSignatureSerializer instance
+        """
+        return itsdangerous.TimedJSONWebSignatureSerializer(
+            flask.current_app.config['SECRET_KEY'],
+            algorithm_name='HS512',
+            expires_in=expires_in,
+            signer_kwargs={'digest_method': hashlib.sha512}
+        )
+
     @classmethod
     def testing_create(cls, **kwargs):
         # Most tests will want an active user by default, which is the opposite of what we want in
@@ -197,23 +232,42 @@ class UserEmailMixin(object):
         return user
 
     def token_verify(self, token):
-        # If a token isn't set, it's can't be verified.
-        if token is None or self.token is None or self.token_created_utc is None:
+        """
+        Verify a password reset token. The token is validated for:
+            * user identity
+            * tampering
+            * expiration
+            * password was not already reset since token was generated
+            * user has not signed in since token was generated
+        :param token: string representation of token to verify
+        :return: bool indicating token validity
+        """
+        if not token:
             return False
+        if isinstance(token, six.text_type):
+            token = token.encode()
 
-        # The token is invalid if it has expired.
-        expire_mins = flask.current_app.config['KEGAUTH_TOKEN_EXPIRE_MINS']
-        expire_at = self.token_created_utc.shift(minutes=expire_mins)
-        if arrow.get() >= expire_at:
+        serializer = self.get_token_serializer(None)
+        try:
+            payload = serializer.loads(token, salt=self.get_token_salt())
+        except itsdangerous.BadSignature:
             return False
+        return payload['user_id'] == self.id
 
-        return self.token == token
-
-    @might_commit
     def token_generate(self):
-        token = shortuuid.uuid()
-        self.token = token
-        self.token_created_utc = arrow.get()
+        """
+        Create a new token for this user. The returned value is an expiring JWT
+        signed with the application's crypto key. Externally this token should be treated as opaque.
+        The value returned by this function must not be persisted.
+        :return: a string representation of the generated token
+        """
+        serializer = self.get_token_serializer(
+            flask.current_app.config['KEGAUTH_TOKEN_EXPIRE_MINS'] * 60
+        )
+        payload = {
+            'user_id': self.id,
+        }
+        token = serializer.dumps(payload, salt=self.get_token_salt()).decode()
 
         # Store the plain text version on this instance for ease of use.  It will not get
         # pesisted to the db, so no security conern.

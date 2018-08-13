@@ -205,11 +205,6 @@ class TestViews(object):
         # email should be sent
         m_send_reset_password.assert_called_once_with(user)
 
-        # Make sure db updates got committed
-        db.session.expire(user)
-        assert user.token is not None
-        assert user.token_created_utc is not None
-
     @mock.patch('flask.current_app.auth_manager.mail_manager', None)
     def test_forget_pw_actions_mail_disabled(self):
         client = flask_webtest.TestApp(flask.current_app)

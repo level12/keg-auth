@@ -1,6 +1,8 @@
 # Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
 from __future__ import unicode_literals
 
+from datetime import datetime
+
 import arrow
 import flask
 from keg.db import db
@@ -54,37 +56,53 @@ class TestUser(object):
         assert ents.User.query.filter_by(email='2', is_active=True).one()
         assert ents.User.query.filter_by(email='3', is_active=False).one()
 
-    def test_token_validation_null_fields(self):
-        # Make sure verification doesn't fail when both token related fields are NULL.
-        user = ents.User.add(email='f', password='p')
-        assert not user.token_verify('foo')
-
     def test_token_validation(self):
-        user = ents.User.testing_create(token_created_utc=None)
+        user = ents.User.testing_create()
 
-        assert user.token is None
+        assert not hasattr(user, '_token_plain')
         assert not user.token_verify(None)
 
         token = user.token_generate()
         assert token
-        assert user.token is not None
         assert not user.token_verify('foo')
         assert user.token_verify(token)
-        assert user.token_verify(token)
+        assert user.token_verify(user._token_plain)
+
+    def test_token_salt_info_changed(self):
+        def check_field(field, new_value):
+            # this can be tricky - the database will set our update timestamp, which will also kill
+            # a token. To test this, set what we expect to kill the token, then reset the update
+            # timestamp, so we're verifying the desired field
+            user = ents.User.testing_create()
+            token = user.token_generate()
+            setattr(user, field, new_value)
+            db.session.flush()
+            if field != 'updated_utc':
+                db.session.execute('update users set updated_utc = created_utc')
+            db.session.commit()
+            db.session.refresh(user)
+            assert not user.token_verify(token)
+
+        check_field('session_key', 'foobar')
+        check_field('email', 'foobar')
+        check_field('is_enabled', False)
+        check_field('is_verified', False)
+        check_field('password', 'foobar')
+        check_field('updated_utc', arrow.get(datetime(2013, 5, 5)))
 
     def test_token_expiration(self):
         user = ents.User.add(email='foo', password='bar')
-        assert user.token_created_utc is None
-        token = user.token_generate()
-        now = arrow.get()
-        assert user.token_created_utc <= now
 
         with mock.patch.dict(flask.current_app.config, KEGAUTH_TOKEN_EXPIRE_MINS=10):
+            token = user.token_generate()
+            now = arrow.get()
+            assert user.token_verify(token)
+
             plus_9_58 = now.shift(minutes=9, seconds=58).datetime
             with freeze_time(plus_9_58):
                 assert user.token_verify(token)
-            plus_10 = now.shift(minutes=10).datetime
-            with freeze_time(plus_10):
+            plus_10_01 = now.shift(minutes=10, seconds=1).datetime
+            with freeze_time(plus_10_01):
                 assert not user.token_verify(token)
 
     def test_change_password(self):
