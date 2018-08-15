@@ -108,8 +108,8 @@ class TestViews(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get('/secret1', status=302)
         assert '/login' in resp.location
-        resp = client.get('/secret1-class', status=302)
-        assert '/login' in resp.location
+        # decorated class has its own authentication failure handler
+        client.get('/secret1-class', status=405)
 
     def test_login_field_success_next_parameter(self):
         ents.User.testing_create(email='foo@bar.com', password='pass')
@@ -235,7 +235,6 @@ class TestViews(object):
 
         # Make sure db updates got committed
         db.session.expire(user)
-        assert user.token is None
         assert user.password == 'foobar'
 
     @mock.patch('flask.current_app.auth_manager.mail_manager', None)
@@ -339,8 +338,10 @@ class TestPermissionsRequired:
         client = AuthTestApp(flask.current_app, user=disallowed1)
         client.get('/secret4', {}, status=403)
 
+        # missing the class-level permission requirement triggers the class's custom auth
+        # failure handler
         client = AuthTestApp(flask.current_app, user=disallowed2)
-        client.get('/secret4', {}, status=403)
+        client.get('/secret4', {}, status=405)
 
         client = flask_webtest.TestApp(flask.current_app)
         client.get('/secret4', status=302)
@@ -424,8 +425,9 @@ class TestPermissionsRequired:
         client = AuthTestApp(flask.current_app, user=disallowed)
         client.get('/protected-class', {}, status=403)
 
+        # blueprint has custom authentication failure hander
         client = flask_webtest.TestApp(flask.current_app)
-        client.get('/protected-class', status=302)
+        client.get('/protected-class', status=405)
 
 
 class TestAuthenticators(object):

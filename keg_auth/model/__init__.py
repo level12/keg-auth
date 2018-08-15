@@ -172,22 +172,6 @@ class UserMixin(object):
             group_mapping.c.group_id == group_cls.id
         )
 
-
-class UserEmailMixin(object):
-    # Assume the user will need to verify their email address before they become active.
-    is_verified = sa.Column(sa.Boolean, nullable=False, default=False)
-    email = sa.Column(EmailType, nullable=False, unique=True)
-
-    @hybrid_property
-    def is_active(self):
-        return self.is_verified and self.is_enabled
-
-    @is_active.expression
-    def is_active(cls):
-        # need to wrap the expression in a case to work with MSSQL
-        expr = sa_sql.and_(cls.is_verified == sa.true(), cls.is_enabled == sa.true())
-        return sa.sql.case([(expr, sa.true())], else_=sa.false())
-
     def get_token_salt(self):
         """
         Create salt data for password reset token signing. The return value will be hashed
@@ -198,7 +182,7 @@ class UserEmailMixin(object):
             * user login identifier
             * is_active
             * current password hash or empty string if no password has been set
-            * most recent update time or empty string if user has not been updated
+            * most recent update time
         :return: JSON string of list containing the values listed above
         """
         return json.dumps([
@@ -221,15 +205,6 @@ class UserEmailMixin(object):
             expires_in=expires_in,
             signer_kwargs={'digest_method': hashlib.sha512}
         )
-
-    @classmethod
-    def testing_create(cls, **kwargs):
-        # Most tests will want an active user by default, which is the opposite of what we want in
-        # production, so swap that logic.
-        kwargs.setdefault('is_verified', True)
-
-        user = super(UserEmailMixin, cls).testing_create(**kwargs)
-        return user
 
     def token_verify(self, token):
         """
@@ -275,6 +250,31 @@ class UserEmailMixin(object):
 
         return token
 
+
+class UserEmailMixin(object):
+    # Assume the user will need to verify their email address before they become active.
+    is_verified = sa.Column(sa.Boolean, nullable=False, default=False)
+    email = sa.Column(EmailType, nullable=False, unique=True)
+
+    @hybrid_property
+    def is_active(self):
+        return self.is_verified and self.is_enabled
+
+    @is_active.expression
+    def is_active(cls):
+        # need to wrap the expression in a case to work with MSSQL
+        expr = sa_sql.and_(cls.is_verified == sa.true(), cls.is_enabled == sa.true())
+        return sa.sql.case([(expr, sa.true())], else_=sa.false())
+
+    @classmethod
+    def testing_create(cls, **kwargs):
+        # Most tests will want an active user by default, which is the opposite of what we want in
+        # production, so swap that logic.
+        kwargs.setdefault('is_verified', True)
+
+        user = super(UserEmailMixin, cls).testing_create(**kwargs)
+        return user
+
     @might_commit
     def change_password(self, token, new_password):
         """
@@ -283,8 +283,6 @@ class UserEmailMixin(object):
         if not self.token_verify(token):
             raise InvalidToken
 
-        self.token = None
-        self.token_created_utc = None
         self.password = new_password
         self.is_verified = True
 

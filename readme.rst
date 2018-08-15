@@ -172,7 +172,7 @@ Usage
 
    -  Keg-Auth provides navigation helpers to set up a menu tree, for which nodes on the tree are
       restricted according to the authentication/authorization requirements of the target endpoint
-   -  Usage involves setting up a menu structure with Node/Route objects. Note that permissions on
+   -  Usage involves setting up a menu structure with NavItem/NavURL objects. Note that permissions on
       a route may be overridden for navigation purposes
    -  Menus may be tracked on the auth manager, which will reset their cached access on
       login/logout
@@ -185,27 +185,27 @@ Usage
 
           from keg.signals import init_complete
 
-          from keg_auth import Node, Route
+          from keg_auth import NavItem, NavURL
 
           @init_complete.connect
           def init_navigation(app):
               app.auth_manager.add_navigation_menu(
                   'main',
-                  Node(
-                      Node('Home', Route('public.home')),
-                      Node(
+                  NavItem(
+                      NavItem('Home', NavURL('public.home')),
+                      NavItem(
                           'Nesting',
-                          Node('Secret1', Route('private.secret1')),
-                          Node('Secret1 Class', Route('private.secret1-class')),
+                          NavItem('Secret1', NavURL('private.secret1')),
+                          NavItem('Secret1 Class', NavURL('private.secret1-class')),
                       ),
-                      Node('Permissions On Stock Methods', Route('private.secret2')),
-                      Node('Permissions On Methods', Route('private.someroute')),
-                      Node('Permissions On Class And Method', Route('private.secret4')),
-                      Node('Permissions On Route',
-                           Route(
+                      NavItem('Permissions On Stock Methods', NavURL('private.secret2')),
+                      NavItem('Permissions On Methods', NavURL('private.someroute')),
+                      NavItem('Permissions On Class And Method', NavURL('private.secret4')),
+                      NavItem('Permissions On NavURL',
+                           NavURL(
                                'private.secret3', requires_permissions='permission3'
                            )),
-                      Node('User Manage', Route('auth.user:add')),
+                      NavItem('User Manage', NavURL('auth.user:add')),
                   )
               )
 
@@ -231,7 +231,11 @@ Usage
       -  usage: ``@requires_user`` or ``@requires_user()`` (both usage
          patterns are identical if no secondary authenticators are needed)
       -  note: this is similar to ``flask_login.login_required``, but
-         can be used as a class decorator
+         can be used as a class/blueprint decorator
+      -  you may pass a custom `on_authentication_failure` callable to the decorator, else it will
+         redirect to the login page
+      -  a decorated class/blueprint may have a custom `on_authentication_failure` instance method instead
+         of passing one to the decorator
       -  the decorator uses authenticators to determine whether a user is logged in
          -  the primary authenticator is used by default
          -  control a view/blueprint's authenticators by specifying them on the decorator:
@@ -245,6 +249,10 @@ Usage
       -  ``has_any`` and ``has_all`` helpers can be used to construct
          complex conditions, using string permission tokens, nested
          helpers, and callable methods
+      -  you may pass a custom `on_authorization_failure` callable to the decorator, else it will
+         respond 403 Unauthorized
+      -  a decorated class/blueprint may have a custom `on_authorization_failure` instance method instead
+         of passing one to the decorator
       -  authenticators are used as in `requires_user`
       -  usage:
 

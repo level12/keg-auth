@@ -23,7 +23,7 @@ def get_defining_class(func):
         return getattr(inspect.getmodule(func), parse_def[0])
 
 
-class Route(object):
+class NavURL(object):
     def __init__(self, route_string, *args, **kwargs):
         self.route_string = route_string
         self.route_args = args
@@ -116,8 +116,8 @@ class Route(object):
         return check_auth(view_obj) and check_auth(parent_class) and check_auth(blueprint)
 
 
-class Node(object):
-    class NodeType(object):
+class NavItem(object):
+    class NavItemType(object):
         STEM = 0
         LEAF = 1
 
@@ -134,9 +134,9 @@ class Node(object):
         self._permitted_sub_nodes = None
 
         if len(args) == 0:
-            raise Exception('must provide a Route or a list of Nodes')
+            raise Exception('must provide a NavURL or a list of NavItems')
 
-        if isinstance(args[0], Route):
+        if isinstance(args[0], NavURL):
             self.route = args[0]
             if len(args) > 1:
                 args = args[1:]
@@ -155,13 +155,13 @@ class Node(object):
     @property
     def node_type(self):
         if self.sub_nodes:
-            return Node.NodeType.STEM
-        return Node.NodeType.LEAF
+            return NavItem.NavItemType.STEM
+        return NavItem.NavItemType.LEAF
 
     @property
     def is_permitted(self):
         if self._is_permitted is None:
-            if self.node_type == Node.NodeType.LEAF:
+            if self.node_type == NavItem.NavItemType.LEAF:
                 # checks the route for requirements, or the target view/class
                 self._is_permitted = self.route.is_permitted
             else:

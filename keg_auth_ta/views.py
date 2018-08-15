@@ -11,7 +11,8 @@ log = logging.getLogger(__name__)
 
 @requires_permissions('permission1')
 class ProtectedBlueprint(flask.Blueprint):
-    pass
+    def on_authentication_failure(self):
+        flask.abort(405)
 
 
 public_bp = flask.Blueprint('public', __name__)
@@ -49,6 +50,9 @@ class Secret1Class(keg.web.BaseView):
 
     def get(self):
         return 'secret1-class'
+
+    def on_authentication_failure(self):
+        flask.abort(405)
 
 
 class Secret2(keg.web.BaseView):
@@ -100,6 +104,9 @@ class Secret4(keg.web.BaseView):
     def get(self):
         return 'secret4'
 
+    def on_authorization_failure(self):
+        flask.abort(405)
+
 
 @private_bp.route('/secret-nested')
 @requires_permissions(has_any(has_all('permission1', 'permission2'), 'permission3'))
@@ -120,7 +127,7 @@ def secret_nested_callable():
     return 'secret_nested_callable'
 
 
-class SecretRouteOnClass(keg.web.BaseView):
+class SecretNavURLOnClass(keg.web.BaseView):
     blueprint = private_bp
 
     @private_bp.route('/secret-route-on-class')

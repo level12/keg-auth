@@ -147,7 +147,7 @@ class AuthManager(object):
         except RegistryError:
             return
 
-        # the tricky thing here is that the db may not be ready. Normal app startup should
+        # The tricky thing here is that the db may not be ready. Normal app startup should
         # expect it at this point, but test setup may not have initialized tables by now.
         # So, connect it to the test signal, then try to call it, and trap the exception
         @db_init_post.connect
@@ -163,9 +163,13 @@ class AuthManager(object):
             db.session.commit()
 
         try:
+            # This call works during normal app startup, but NOT during testing. Testing requires
+            # the model to be set up first, after which we get the signal that sync_permissions
+            # is attached to
             sync_permissions()
-        except Exception:
-            pass
+        except RuntimeError as exc:
+            if 'No application found' not in str(exc):
+                raise
 
     def add_navigation_menu(self, name, menu):
         self.menus[name] = menu

@@ -60,7 +60,7 @@ class RequiresUser(object):
             old_init(*args, **kwargs)
 
             this = args[0]
-            this.before_request(self.check_auth)
+            this.before_request(lambda: self.check_auth(instance=this))
 
         bp.__init__ = new_init
         self.store_auth_info(bp)
@@ -73,7 +73,7 @@ class RequiresUser(object):
         old_check_auth = getattr(cls, 'check_auth', lambda: None)
 
         def new_check_auth(*args, **kwargs):
-            self.check_auth()
+            self.check_auth(instance=args[0])
 
             # the original check_auth method on the view may take any number of args/kwargs. Use
             #   logic similar to keg.web's _call_with_expected_args, except that method does not
@@ -134,13 +134,15 @@ class RequiresUser(object):
             self._on_authorization_failure()
         flask.abort(403)
 
-    def check_auth(self):
+    def check_auth(self, instance=None):
         for authenticator in self.authenticators:
             auth_instance = get_authenticator_instance(authenticator)
             user = auth_instance.get_authenticated_user()
             if user:
                 break
         if not user or not user.is_authenticated:
+            if instance and callable(getattr(instance, 'on_authentication_failure', None)):
+                instance.on_authentication_failure()
             self.on_authentication_failure()
 
 
@@ -173,11 +175,13 @@ class RequiresPermissions(RequiresUser):
         super(RequiresPermissions, self).store_auth_info(obj)
         obj.__keg_auth_requires_permissions__ = self.condition
 
-    def check_auth(self):
-        super(RequiresPermissions, self).check_auth()
+    def check_auth(self, instance=None):
+        super(RequiresPermissions, self).check_auth(instance=instance)
 
         user = flask_login.current_user
         if self.condition and not model_utils.has_permissions(self.condition, user):
+            if instance and callable(getattr(instance, 'on_authorization_failure', None)):
+                instance.on_authorization_failure()
             self.on_authorization_failure()
 
 

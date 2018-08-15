@@ -1,3 +1,4 @@
+import flask
 from keg_elements.forms import Form, ModelForm, FieldMeta
 from keg_elements.forms.validators import ValidateUnique
 from sqlalchemy_utils import EmailType
@@ -102,7 +103,6 @@ def user_form(config, allow_superuser=False, endpoint='', fields=['is_enabled'])
         _fields.append('is_superuser')
 
     def html_link(obj):
-        import flask
         return link_to(
             getattr(obj, config.get('KEGAUTH_USER_IDENT_FIELD')),
             flask.url_for(endpoint, objid=obj.id)
