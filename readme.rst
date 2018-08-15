@@ -53,16 +53,20 @@ Usage
 -  Extensions
 
    -  set up an auth manager (in app setup or extensions)
+   -  the entity registry hooks up user, group, bundle, and permission entities. You will need to
+      create a registry to associate with the auth manager, and register your entities from the
+      model (see model notes)
    -  note that the mail_manager is optional. If a mail_manager is not given, no mail will be sent
    -  permissions may be passed as simple string tokens, or as tuples of `(token, description)`
 
 .. code-block:: python
 
           from flask_mail import Mail
-          from keg_auth import AuthManager, AuthMailManager
+          from keg_auth import AuthManager, AuthMailManager, AuthEntityRegistry
 
           mail_ext = Mail()
           auth_mail_manager = AuthMailManager(mail_ext)
+          auth_entity_registry = AuthEntityRegistry()
 
           _endpoints = {'after-login': 'public.home'}
           permissions = (
@@ -71,7 +75,8 @@ Usage
               ('app-permission2', 'access the Bar area'),
           )
 
-          auth_manager = AuthManager(mail_manager=auth_mail_manager, endpoints=_endpoints, permissions=permissions)
+          auth_manager = AuthManager(mail_manager=auth_mail_manager, endpoints=_endpoints,
+                                     entity_registry=auth_entity_registry, permissions=permissions)
           auth_manager.init_app(app)
 ..
 
@@ -139,7 +144,9 @@ Usage
 
           from keg.db import db
           from keg_elements.db.mixins import DefaultColsMixin, MethodsMixin
-          from keg_auth import UserMixin, UserEmailMixin, PermissionMixin, BundleMixin, GroupMixin, auth_entity_registry
+          from keg_auth import UserMixin, UserEmailMixin, PermissionMixin, BundleMixin, GroupMixin
+
+          from my_app.extensions import auth_entity_registry
 
 
           class EntityMixin(DefaultColsMixin, MethodsMixin):

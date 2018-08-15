@@ -76,5 +76,3 @@ class EntityRegistry(object):
 # @registry.register_user
 # class User(db.EntityBase, UserMixin):
 #     pass
-
-registry = EntityRegistry()

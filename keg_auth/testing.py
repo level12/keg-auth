@@ -441,8 +441,8 @@ class ViewTestBase:
 
     @classmethod
     def setup_class(cls):
-        cls.user_ent = entity_registry.registry.user_cls
-        cls.permission_ent = entity_registry.registry.permission_cls
+        cls.user_ent = flask.current_app.auth_manager.entity_registry.user_cls
+        cls.permission_ent = flask.current_app.auth_manager.entity_registry.permission_cls
         cls.user_ent.delete_cascaded()
 
         # ensure all of the tokens exists

@@ -18,7 +18,7 @@ def login_form():
     login_id_label = u'User ID'
     login_id_validators = [validators.DataRequired()]
 
-    if isinstance(entity_registry.registry.user_cls.username.type, EmailType):
+    if isinstance(flask.current_app.auth_manager.entity_registry.user_cls.username.type, EmailType):
         login_id_label = u'Email'
         login_id_validators.append(validators.Email())
 
@@ -49,17 +49,17 @@ class SetPassword(Form):
 
 
 def get_permission_options():
-    perm_cls = entity_registry.registry.permission_cls
+    perm_cls = flask.current_app.auth_manager.entity_registry.permission_cls
     return [(str(perm.id), perm.description) for perm in perm_cls.query.order_by('description')]
 
 
 def get_bundle_options():
-    bundle_cls = entity_registry.registry.bundle_cls
+    bundle_cls = flask.current_app.auth_manager.entity_registry.bundle_cls
     return [(str(bundle.id), bundle.name) for bundle in bundle_cls.query.order_by('name')]
 
 
 def get_group_options():
-    group_cls = entity_registry.registry.group_cls
+    group_cls = flask.current_app.auth_manager.entity_registry.group_cls
     return [(str(group.id), group.name) for group in group_cls.query.order_by('name')]
 
 
@@ -73,14 +73,14 @@ class PermissionsMixin(object):
     permission_ids = SelectMultipleField('Permissions')
 
     def get_selected_permissions(self):
-        return entities_from_ids(entity_registry.registry.permission_cls, self.permission_ids.data)
+        return entities_from_ids(flask.current_app.auth_manager.entity_registry.permission_cls, self.permission_ids.data)
 
 
 class BundlesMixin(object):
     bundle_ids = SelectMultipleField('Bundles')
 
     def get_selected_bundles(self):
-        return entities_from_ids(entity_registry.registry.bundle_cls, self.bundle_ids.data)
+        return entities_from_ids(flask.current_app.auth_manager.entity_registry.bundle_cls, self.bundle_ids.data)
 
 
 class _ValidatePasswordRequired(object):
@@ -92,12 +92,12 @@ class _ValidatePasswordRequired(object):
 
 def user_form(config=None, allow_superuser=False, endpoint='', fields=['is_enabled']):
     config = config or {}
-    user_cls = entity_registry.registry.user_cls
+    user_cls = flask.current_app.auth_manager.entity_registry.user_cls
 
     # The model can be assumed to have a `username` attribute. However, it may not be settable,
     # depending on whether it is actually a column, or is instead a proxy to another column
     # (e.g. email). So, we will need to grab a key to use for it that matches the data column.
-    username_key = get_username_key(entity_registry.registry.user_cls)
+    username_key = get_username_key(flask.current_app.auth_manager.entity_registry.user_cls)
 
     # create a copy of fields for internal use. In python 2, if we use this as a static method,
     #   the kwarg value would get modified in the wrong scope
@@ -128,7 +128,7 @@ def user_form(config=None, allow_superuser=False, endpoint='', fields=['is_enabl
                               ValidateUnique(html_link)]
         ))
 
-        if isinstance(entity_registry.registry.user_cls.username.type, EmailType):
+        if isinstance(flask.current_app.auth_manager.entity_registry.user_cls.username.type, EmailType):
             getattr(FieldsMeta, username_key).widget = EmailInput()
 
         if not config.get('KEGAUTH_EMAIL_OPS_ENABLED'):
@@ -147,7 +147,7 @@ def user_form(config=None, allow_superuser=False, endpoint='', fields=['is_enabl
             self.group_ids.choices = get_group_options()
 
         def get_selected_groups(self):
-            return entities_from_ids(entity_registry.registry.group_cls, self.group_ids.data)
+            return entities_from_ids(flask.current_app.auth_manager.entity_registry.group_cls, self.group_ids.data)
 
         def get_object_by_field(self, field):
             return user_cls.get_by(username=field.data)
@@ -164,7 +164,7 @@ def user_form(config=None, allow_superuser=False, endpoint='', fields=['is_enabl
 
 
 def group_form(endpoint):
-    group_cls = entity_registry.registry.group_cls
+    group_cls = flask.current_app.auth_manager.entity_registry.group_cls
 
     def html_link(obj):
         import flask
@@ -192,7 +192,7 @@ def group_form(endpoint):
 
 
 def bundle_form(endpoint):
-    bundle_cls = entity_registry.registry.bundle_cls
+    bundle_cls = flask.current_app.auth_manager.entity_registry.bundle_cls
 
     def html_link(obj):
         import flask

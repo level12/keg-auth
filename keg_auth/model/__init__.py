@@ -13,13 +13,14 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import mssql
 import sqlalchemy.orm as sa_orm
 import sqlalchemy.sql as sa_sql
-from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy_utils import EmailType, PasswordType, force_auto_coercion
 
-from . import entity_registry
-
 force_auto_coercion()
+
+
+def registry():
+    return flask.current_app.auth_manager.entity_registry
 
 
 def _create_cryptcontext_kwargs(**column_kwargs):
@@ -84,7 +85,7 @@ class UserMixin(object):
         kwargs['password'] = kwargs.get('password') or randchars()
 
         if 'permissions' in kwargs:
-            perm_cls = entity_registry.registry.permission_cls
+            perm_cls = registry().permission_cls
             kwargs['permissions'] = [
                 perm_cls.get_by_token(perm)
                 if not isinstance(perm, perm_cls) else perm
@@ -98,9 +99,9 @@ class UserMixin(object):
     def get_all_permissions(self):
         # Superusers are considered to have all permissions.
         if self.is_superuser:
-            return set(entity_registry.registry.permission_cls.query)
+            return set(registry().permission_cls.query)
 
-        perm_cls = entity_registry.registry.permission_cls
+        perm_cls = registry().permission_cls
         mapping = self._query_permission_mapping().alias('user_permission_mapping')
         q = db.session.query(
             perm_cls
@@ -142,7 +143,7 @@ class UserMixin(object):
 
     @classmethod
     def _query_direct_permissions(cls):
-        perm_cls = entity_registry.registry.permission_cls
+        perm_cls = registry().permission_cls
         return db.session.query(
             cls.id.label('user_id'),
             perm_cls.id.label('perm_id'),
@@ -154,8 +155,8 @@ class UserMixin(object):
 
     @classmethod
     def _query_bundle_permissions(cls):
-        perm_cls = entity_registry.registry.permission_cls
-        bundle_cls = entity_registry.registry.bundle_cls
+        perm_cls = registry().permission_cls
+        bundle_cls = registry().bundle_cls
         return db.session.query(
             cls.id.label('user_id'),
             perm_cls.id.label('perm_id'),
@@ -169,7 +170,7 @@ class UserMixin(object):
 
     @classmethod
     def _query_group_permissions(cls):
-        group_cls = entity_registry.registry.group_cls
+        group_cls = registry().group_cls
 
         group_mapping = group_cls._query_permission_mapping().alias('group_permissions_mapping')
         return db.session.query(
@@ -342,7 +343,7 @@ class BundleMixin(object):
         """# if any users were added or removed, reset their session keys
         # if any groups were added or removed, reset their users' session keys
         # if this bundle's rights changed, reset all of the assigned users and group users
-        user_cls = entity_registry.registry.user_cls
+        user_cls = registry().user_cls
         reset_user_ids = original_users ^ {user.id for user in obj.users}
         if original_rights != _rights_as_dict(obj, *rights_keys):
             reset_user_ids |= {user.id for user in obj.users}
@@ -357,7 +358,7 @@ class GroupMixin(object):
     name = sa.Column(sa.Unicode(1024), nullable=False, unique=True)
 
     def get_all_permissions(self):
-        perm_cls = entity_registry.registry.permission_cls
+        perm_cls = registry().permission_cls
         mapping = self._query_permission_mapping().alias('group_permissions_mapping')
         q = db.session.query(
             perm_cls
@@ -373,8 +374,8 @@ class GroupMixin(object):
 
     @classmethod
     def _query_permission_mapping(cls):
-        perm_cls = entity_registry.registry.permission_cls
-        bundle_cls = entity_registry.registry.bundle_cls
+        perm_cls = registry().permission_cls
+        bundle_cls = registry().bundle_cls
 
         direct = db.session.query(
             cls.id.label('group_id'),
@@ -511,7 +512,7 @@ def group_bundle_mapping(group_cls, bundle_cls, table_name='group_bundles',
     return table
 
 
-def initialize_mappings(namespace='keg_auth', registry=entity_registry.registry):
+def initialize_mappings(namespace='keg_auth', registry=None):
     def _make_table_name(default_name):
         return '{}_{}'.format(namespace, default_name) if namespace else default_name
 
@@ -533,7 +534,7 @@ def initialize_mappings(namespace='keg_auth', registry=entity_registry.registry)
     return tables
 
 
-def initialize_events(registry=entity_registry.registry):
+def initialize_events(registry=None):
     # look for changes to rights throughout users, groups, and bundles before flush. Reset the
     #   session key when there is a change
 

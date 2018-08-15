@@ -60,7 +60,7 @@ class TestLogin(FormBase):
         assert form.login_id.label.text == 'Email'
 
     def test_no_email_validation(self):
-        with mock.patch('keg_auth.auth_entity_registry._user_cls', ents.UserNoEmail):
+        with mock.patch('keg_auth_ta.extensions.auth_entity_registry._user_cls', ents.UserNoEmail):
             form_cls = forms.login_form()
             form = self.assert_valid(form_cls=form_cls, login_id='foo')
             assert form.login_id.label.text == 'User ID'
@@ -154,13 +154,13 @@ class TestUser(FormBase):
         assert hasattr(form, 'is_superuser')
 
     def test_alternate_ident_field(self):
-        with mock.patch('keg_auth.auth_entity_registry._user_cls', ents.UserNoEmail):
+        with mock.patch('keg_auth_ta.extensions.auth_entity_registry._user_cls', ents.UserNoEmail):
             form_cls = forms.user_form({'KEGAUTH_EMAIL_OPS_ENABLED': True},
                                        allow_superuser=False, endpoint='auth.user:edit')
             assert hasattr(form_cls, 'username')
 
     def test_no_email(self):
-        with mock.patch('keg_auth.auth_entity_registry._user_cls', ents.UserNoEmail):
+        with mock.patch('keg_auth_ta.extensions.auth_entity_registry._user_cls', ents.UserNoEmail):
             form_cls = forms.user_form({'KEGAUTH_EMAIL_OPS_ENABLED': False},
                                        allow_superuser=False, endpoint='auth.user:edit')
             assert hasattr(form_cls, 'username')
@@ -196,7 +196,7 @@ class TestUser(FormBase):
         self.assert_valid(obj=usr)
 
     def test_unique_alternate_ident_field(self):
-        with mock.patch('keg_auth.auth_entity_registry._user_cls', ents.UserNoEmail):
+        with mock.patch('keg_auth_ta.extensions.auth_entity_registry._user_cls', ents.UserNoEmail):
             form_cls = forms.user_form({'KEGAUTH_EMAIL_OPS_ENABLED': True},
                                        allow_superuser=False, endpoint='auth.user:edit')
             usr = ents.UserNoEmail.testing_create(username='foobar')

@@ -34,7 +34,7 @@ class Authenticator(object):
     authentication_failure_redirect = True
 
     def __init__(self, app):
-        self.user_ent = app.auth_manager.get_user_entity()
+        self.user_ent = app.auth_manager.entity_registry.user_cls
 
     @staticmethod
     def get_authenticated_user():

@@ -67,7 +67,7 @@ class TestNavItem(object):
     """
 
     def setup(self):
-        self.Permission = entity_registry.registry.permission_cls
+        self.Permission = flask.current_app.auth_manager.entity_registry.permission_cls
         self.Permission.delete_cascaded()
 
     def test_no_args(self):
@@ -88,7 +88,7 @@ class TestNavItem(object):
             flask_login.logout_user()
             assert node.is_permitted
 
-            user = entity_registry.registry.user_cls.testing_create()
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create()
             flask_login.login_user(user)
             node.clear_authorization()
             assert node.is_permitted
@@ -100,7 +100,7 @@ class TestNavItem(object):
             flask_login.logout_user()
             assert not node.is_permitted
 
-            user = entity_registry.registry.user_cls.testing_create()
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create()
             flask_login.login_user(user)
             node.clear_authorization()
             assert node.is_permitted
@@ -112,7 +112,7 @@ class TestNavItem(object):
             flask_login.logout_user()
             assert not node.is_permitted
 
-            user = entity_registry.registry.user_cls.testing_create()
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create()
             flask_login.login_user(user)
             node.clear_authorization()
             assert node.is_permitted
@@ -124,14 +124,14 @@ class TestNavItem(object):
             flask_login.logout_user()
             assert not node.is_permitted
 
-            user = entity_registry.registry.user_cls.testing_create()
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create()
             flask_login.login_user(user)
             node.clear_authorization()
             assert not node.is_permitted
 
             perm1 = self.Permission.testing_create(token='permission1')
             perm2 = self.Permission.testing_create(token='permission2')
-            user = entity_registry.registry.user_cls.testing_create(permissions=[perm1, perm2])
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create(permissions=[perm1, perm2])
             flask_login.login_user(user)
             node.clear_authorization()
             assert node.is_permitted
@@ -143,14 +143,14 @@ class TestNavItem(object):
             flask_login.logout_user()
             assert not node.is_permitted
 
-            user = entity_registry.registry.user_cls.testing_create()
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create()
             flask_login.login_user(user)
             node.clear_authorization()
             assert not node.is_permitted
 
             perm1 = self.Permission.testing_create(token='permission1')
             perm2 = self.Permission.testing_create(token='permission2')
-            user = entity_registry.registry.user_cls.testing_create(permissions=[perm1, perm2])
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create(permissions=[perm1, perm2])
             flask_login.login_user(user)
             node.clear_authorization()
             assert node.is_permitted
@@ -162,24 +162,24 @@ class TestNavItem(object):
             flask_login.logout_user()
             assert not node.is_permitted
 
-            user = entity_registry.registry.user_cls.testing_create()
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create()
             flask_login.login_user(user)
             node.clear_authorization()
             assert not node.is_permitted
 
             perm1 = self.Permission.testing_create(token='permission1')
             perm2 = self.Permission.testing_create(token='permission2')
-            user = entity_registry.registry.user_cls.testing_create(permissions=[perm1])
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create(permissions=[perm1])
             flask_login.login_user(user)
             node.clear_authorization()
             assert not node.is_permitted
 
-            user = entity_registry.registry.user_cls.testing_create(permissions=[perm2])
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create(permissions=[perm2])
             flask_login.login_user(user)
             node.clear_authorization()
             assert not node.is_permitted
 
-            user = entity_registry.registry.user_cls.testing_create(permissions=[perm1, perm2])
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create(permissions=[perm1, perm2])
             flask_login.login_user(user)
             node.clear_authorization()
             assert node.is_permitted
@@ -191,13 +191,13 @@ class TestNavItem(object):
             flask_login.logout_user()
             assert not node.is_permitted
 
-            user = entity_registry.registry.user_cls.testing_create()
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create()
             flask_login.login_user(user)
             node.clear_authorization()
             assert not node.is_permitted
 
             perm1 = self.Permission.testing_create(token='permission1')
-            user = entity_registry.registry.user_cls.testing_create(permissions=[perm1])
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create(permissions=[perm1])
             flask_login.login_user(user)
             node.clear_authorization()
             assert node.is_permitted
@@ -209,13 +209,13 @@ class TestNavItem(object):
             flask_login.logout_user()
             assert not node.is_permitted
 
-            user = entity_registry.registry.user_cls.testing_create()
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create()
             flask_login.login_user(user)
             node.clear_authorization()
             assert not node.is_permitted
 
             perm1 = self.Permission.testing_create(token='permission1')
-            user = entity_registry.registry.user_cls.testing_create(permissions=[perm1])
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create(permissions=[perm1])
             flask_login.login_user(user)
             node.clear_authorization()
             assert node.is_permitted
@@ -227,13 +227,13 @@ class TestNavItem(object):
             flask_login.logout_user()
             assert not node.is_permitted
 
-            user = entity_registry.registry.user_cls.testing_create()
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create()
             flask_login.login_user(user)
             node.clear_authorization()
             assert not node.is_permitted
 
             perm1 = self.Permission.testing_create(token='permission1')
-            user = entity_registry.registry.user_cls.testing_create(permissions=[perm1])
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create(permissions=[perm1])
             flask_login.login_user(user)
             node.clear_authorization()
             assert node.is_permitted
@@ -245,7 +245,7 @@ class TestNavItem(object):
             flask_login.logout_user()
             assert not node.is_permitted
 
-            user = entity_registry.registry.user_cls.testing_create()
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create()
             flask_login.login_user(user)
             node.clear_authorization()
             assert node.is_permitted
@@ -257,7 +257,7 @@ class TestNavItem(object):
             flask_login.logout_user()
             assert not node.is_permitted
 
-            user = entity_registry.registry.user_cls.testing_create()
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create()
             flask_login.login_user(user)
             node.clear_authorization()
             assert node.is_permitted
@@ -279,7 +279,7 @@ class TestNavItem(object):
             flask_login.logout_user()
             assert not node.permitted_sub_nodes
 
-            user = entity_registry.registry.user_cls.testing_create(permissions=[perm1])
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create(permissions=[perm1])
             flask_login.login_user(user)
             node.clear_authorization()
             assert len(node.permitted_sub_nodes) == 1

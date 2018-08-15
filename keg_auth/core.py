@@ -27,9 +27,9 @@ class AuthManager(object):
     }
     cli_group_name = 'auth'
 
-    def __init__(self, mail_manager=None, blueprint='auth', user_entity='User', endpoints=None,
+    def __init__(self, mail_manager=None, blueprint='auth', endpoints=None,
                  cli_group_name=None, grid_cls=None, primary_authenticator_cls=KegAuthenticator,
-                 secondary_authenticators=None, permissions=None):
+                 secondary_authenticators=None, permissions=None, entity_registry=None):
         """Set up an auth management extension
 
         Main manager for keg-auth authentication/authorization functions, and provides a central
@@ -37,7 +37,6 @@ class AuthManager(object):
 
         :param mail_manager: AuthMailManager instance used for mail functions. Can be None.
         :param blueprint: name to use for the blueprint containing auth views
-        :param user_entity: name of the SQLAlchemy ORM entity representing a user
         :param endpoints: dict of overrides to auth view endpoints
         :param cli_group_name: name of the CLI group under which auth commands appear
         :param grid_cls: webgrid class to serve as a base class to auth CRUD grids
@@ -49,10 +48,11 @@ class AuthManager(object):
             an iterable
         :param permissions: permission strings defined for the app, which will be synced to the
             database on app init. Can be a single string or an iterable
+        :param entity_registry: EntityRegistry instance on which User, Group, etc. are registered
         """
         self.mail_manager = mail_manager
         self.blueprint_name = blueprint
-        self.user_entity = user_entity
+        self.entity_registry = entity_registry
         self.endpoints = self.endpoints.copy()
         if endpoints:
             self.endpoints.update(endpoints)
@@ -111,8 +111,8 @@ class AuthManager(object):
 
     def init_model(self, app):
         if not self._model_initialized:
-            model.initialize_mappings()
-            model.initialize_events()
+            model.initialize_mappings(registry=self.entity_registry)
+            model.initialize_events(registry=self.entity_registry)
             self._model_initialized = True
 
     def init_managers(self, app):
@@ -140,9 +140,13 @@ class AuthManager(object):
 
     def init_permissions(self, app):
         # add permissions to the database
-        from keg_auth.model.entity_registry import RegistryError, registry
+        from keg_auth.model.entity_registry import RegistryError
+
+        if not self.entity_registry:
+            return
+
         try:
-            Permission = registry.permission_cls
+            Permission = self.entity_registry.permission_cls
         except RegistryError:
             return
 
@@ -201,11 +205,8 @@ class AuthManager(object):
     def url_for(self, ident, **kwargs):
         return flask.url_for(self.endpoint(ident), **kwargs)
 
-    def get_user_entity(self):
-        return db.Model._decl_class_registry[self.user_entity]
-
     def user_loader(self, session_key):
-        user_class = self.get_user_entity()
+        user_class = self.entity_registry.user_cls
         return user_class.get_by(session_key=six.text_type(session_key))
 
     def test_request_loader(self, request):
@@ -242,7 +243,7 @@ class AuthManager(object):
 
         from passlib.pwd import genword
         user_kwargs.setdefault('password', genword(entropy='secure'))
-        user_class = self.get_user_entity()
+        user_class = self.entity_registry.user_cls
         user = user_class(**user_kwargs)
         db.session.add(user)
         db.session.flush()

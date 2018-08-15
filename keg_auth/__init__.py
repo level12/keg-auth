@@ -12,7 +12,7 @@ from keg_auth.model import (
     BundleMixin,
     initialize_mappings
 )
-from keg_auth.model.entity_registry import registry as auth_entity_registry
+from keg_auth.model.entity_registry import EntityRegistry as AuthEntityRegistry
 from keg_auth.model.utils import (
     has_permissions,
     has_all,

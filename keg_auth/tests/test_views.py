@@ -716,9 +716,13 @@ class TestUserCrud(ViewTestBase):
         assert resp.pyquery('.datagrid table.records tbody td').eq(1).text() == self.current_user.email  # noqa
 
     def test_list_alternate_ident_field(self):
-        user = ents.UserNoEmail.testing_create()
-        with mock.patch('keg_auth.auth_entity_registry._user_cls', ents.UserNoEmail):
-            resp = self.client.get('/users?op(username)=eq&v1(username)=' + user.username)
+        # with the mock here, authentication/authorization will also be happening on the alternate
+        # class, which doesn't have relationships like permissions. So, to make this easy, make it
+        # a superuser.
+        user = ents.UserNoEmail.testing_create(is_superuser=True)
+        client = AuthTestApp(flask.current_app, user=user)
+        with mock.patch('keg_auth_ta.extensions.auth_entity_registry._user_cls', ents.UserNoEmail):
+            resp = client.get('/users?op(username)=eq&v1(username)=' + user.username)
             assert resp.pyquery('.datagrid table.records thead th').eq(1).text() == 'User ID'
             assert resp.pyquery('.datagrid table.records tbody td').eq(1).text() == user.username
 

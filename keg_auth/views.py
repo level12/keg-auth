@@ -373,7 +373,7 @@ class SetPasswordBaseView(AuthFormView):
             flask.abort(404)
 
     def user_loader(self, user_id):
-        user_ent = flask.current_app.auth_manager.get_user_entity()
+        user_ent = flask.current_app.auth_manager.entity_registry.user_cls
         return user_ent.query.get(user_id)
 
     def pre_method(self, user, token):
@@ -441,7 +441,7 @@ class User(CrudView):
 
     @property
     def orm_cls(self):
-        return entity_registry.registry.user_cls
+        return flask.current_app.auth_manager.entity_registry.user_cls
 
     @property
     def grid_cls(self):
@@ -484,7 +484,7 @@ class Group(CrudView):
 
     @property
     def orm_cls(self):
-        return entity_registry.registry.group_cls
+        return flask.current_app.auth_manager.entity_registry.group_cls
 
     @property
     def grid_cls(self):
@@ -515,7 +515,7 @@ class Bundle(CrudView):
 
     @property
     def orm_cls(self):
-        return entity_registry.registry.bundle_cls
+        return flask.current_app.auth_manager.entity_registry.bundle_cls
 
     @property
     def grid_cls(self):

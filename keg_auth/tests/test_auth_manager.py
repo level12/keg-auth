@@ -7,6 +7,7 @@ from keg_auth.core import AuthManager
 from keg_auth.libs.authenticators import KegAuthenticator, JwtAuthenticator
 
 from keg_auth_ta.app import mail_ext
+from keg_auth_ta.extensions import auth_entity_registry
 from keg_auth_ta.model import entities as ents
 
 
@@ -64,7 +65,8 @@ class TestAuthManager(object):
     @mock.patch('keg_auth.core.AuthManager.init_model')
     def test_authenticators_initialized(self, m_model):
         app = mock.MagicMock()
-        manager = AuthManager(None, secondary_authenticators=[JwtAuthenticator])
+        manager = AuthManager(None, secondary_authenticators=[JwtAuthenticator],
+                              entity_registry=auth_entity_registry)
         manager.init_app(app)
         assert isinstance(manager.primary_authenticator, KegAuthenticator)
         assert isinstance(manager.get_authenticator('jwt'), JwtAuthenticator)

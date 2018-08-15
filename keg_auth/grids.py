@@ -1,6 +1,5 @@
 import flask
 import flask_login
-import keg
 import webgrid
 from webgrid import filters
 from webhelpers2.html import literal
@@ -102,8 +101,8 @@ class ActionColumn(webgrid.Column):
 
 def make_user_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permission,
                    grid_cls=None):
-    user_cls = entity_registry.registry.user_cls
-    grid_cls = grid_cls or keg.current_app.auth_manager.grid_cls
+    user_cls = flask.current_app.auth_manager.entity_registry.user_cls
+    grid_cls = grid_cls or flask.current_app.auth_manager.grid_cls
 
     class User(grid_cls):
         ActionColumn(
@@ -128,8 +127,8 @@ def make_user_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permi
 
 def make_group_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permission,
                     grid_cls=None):
-    group_cls = entity_registry.registry.group_cls
-    grid_cls = grid_cls or keg.current_app.auth_manager.grid_cls
+    group_cls = flask.current_app.auth_manager.entity_registry.group_cls
+    grid_cls = grid_cls or flask.current_app.auth_manager.grid_cls
 
     class Group(grid_cls):
         ActionColumn(
@@ -151,8 +150,8 @@ def make_group_grid(edit_endpoint, edit_permission, delete_endpoint, delete_perm
 
 def make_bundle_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permission,
                      grid_cls=None):
-    bundle_cls = entity_registry.registry.bundle_cls
-    grid_cls = grid_cls or keg.current_app.auth_manager.grid_cls
+    bundle_cls = flask.current_app.auth_manager.entity_registry.bundle_cls
+    grid_cls = grid_cls or flask.current_app.auth_manager.grid_cls
 
     class Bundle(grid_cls):
         ActionColumn(
@@ -173,8 +172,8 @@ def make_bundle_grid(edit_endpoint, edit_permission, delete_endpoint, delete_per
 
 
 def make_permission_grid(grid_cls=None):
-    permission_cls = entity_registry.registry.permission_cls
-    grid_cls = grid_cls or keg.current_app.auth_manager.grid_cls
+    permission_cls = flask.current_app.auth_manager.entity_registry.permission_cls
+    grid_cls = grid_cls or flask.current_app.auth_manager.grid_cls
 
     class Permission(grid_cls):
         webgrid.Column('Name', permission_cls.token, filters.TextFilter)
