@@ -23,9 +23,9 @@ nav_menu = NavItem(
     NavItem('Permissions On Methods', NavURL('private.someroute')),
     NavItem('Permissions On Class And Method', NavURL('private.secret4')),
     NavItem('Permissions On NavURL',
-         NavURL(
-             'private.secret3', requires_permissions='permission3'
-         )),
+            NavURL(
+                'private.secret3', requires_permissions='permission3'
+            )),
     NavItem('User Manage', NavURL('auth.user:add')),
 )
 
@@ -270,7 +270,7 @@ class TestNavItem(object):
             NavItem(
                 'Submenu',
                 NavItem('Profile', NavURL('private.secret1', requires_permissions='permission1')),
-                NavItem('Control Panel', NavURL('private.secret2', requires_permissions='permission2')),
+                NavItem('Control Panel', NavURL('private.secret2', requires_permissions='permission2')),  # noqa
                 NavItem('Accounts', NavURL('private.secret3', requires_permissions='permission1')),
             ),
             NavItem('History', NavURL('private.secret4', requires_permissions='permission2')),
