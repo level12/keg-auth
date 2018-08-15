@@ -56,6 +56,7 @@ Usage
 
    -  set up an auth manager (in app setup or extensions)
    -  note that the mail_manager is optional. If a mail_manager is not given, no mail will be sent
+   -  permissions may be passed as simple string tokens, or as tuples of `(token, description)`
 
 .. code-block:: python
 
@@ -66,7 +67,11 @@ Usage
           auth_mail_manager = AuthMailManager(mail_ext)
 
           _endpoints = {'after-login': 'public.home'}
-          permissions = ('auth-manage', 'app-permission1', 'app-permission2')
+          permissions = (
+              ('auth-manage', 'manage users, groups, bundles, and view permissions'),
+              ('app-permission1', 'access view Foo'),
+              ('app-permission2', 'access the Bar area'),
+          )
 
           auth_manager = AuthManager(mail_manager=auth_mail_manager, endpoints=_endpoints, permissions=permissions)
           auth_manager.init_app(app)
@@ -299,7 +304,7 @@ logged-in user during testing:
             """
                 Demonstrate logging in at the request level.  The login will only apply to one request.
             """
-            user = ents.User.testing_create()
+            user = ents.User.testing_create(permissions=('permission1', 'permission2'))
             client = AuthTestApp(flask.current_app)
 
             resp = client.get('/secret-page', status=200, user=user)
@@ -308,19 +313,6 @@ logged-in user during testing:
             # User should only stick around for a single request (and will get a 302 redirect to the)
             # login view.
             client.get('/secret-page', status=302)
-
-For having a user with permissions logged in for tests, the
-``login_client_with_permissions`` helper is provided. Note: the
-developer is responsible to ensure token strings provided are in the
-database.
-
-.. code-block:: python
-
-    from keg_auth.testing import login_client_with_permissions
-
-    # can be called with token strings, Permission instances, or both
-    # returns a tuple with an AuthTestApp instance and a User instance
-    client, user = login_client_with_permissions('permission1', 'permission2', ...)
 
 A helper class is also provided to set up a client and user, given the
 permissions specified on the class definition:

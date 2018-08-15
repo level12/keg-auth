@@ -258,18 +258,16 @@ class CrudView(keg.web.BaseView):
         grid.apply_qs_args()
         return grid
 
-    def render_grid_xls(self, grid):
-        return grid.xls.as_response()
-
-    def render_grid(self, xls_sheet_name=None):
+    def render_grid(self):
         grid = self.make_grid()
 
-        if grid.export_to == 'xls':
-            return self.render_grid_xls(grid)
+        if grid.export_to:
+            return grid.export_as_response()
 
         return flask.render_template(
             self.grid_template,
-            add_url=flask.url_for(self.endpoint_for_action('add')),
+            add_url=flask.url_for(self.endpoint_for_action('add'),
+                                  session_key=grid.session_key),
             page_title=self.page_title('list'),
             grid=grid
         )
@@ -535,9 +533,33 @@ class Bundle(CrudView):
         return obj
 
 
+@requires_permissions('auth-manage')
+class Permission(keg.web.BaseView):
+    url = '/permissions'
+    grid_template = 'keg_auth/crud-list.html'
+
+    @property
+    def grid_cls(self):
+        return grids.make_permission_grid()
+
+    def get(self):
+        grid = self.grid_cls()
+        grid.apply_qs_args()
+
+        if grid.export_to:
+            return grid.export_as_response()
+
+        return flask.render_template(
+            self.grid_template,
+            page_title='Permissions',
+            grid=grid
+        )
+
+
 def make_blueprint(import_name, bp_name='auth', login_cls=Login, forgot_cls=ForgotPassword,
                    reset_cls=ResetPassword, logout_cls=Logout, verify_cls=VerifyAccount,
-                   user_crud_cls=User, group_crud_cls=Group, bundle_crud_cls=Bundle):
+                   user_crud_cls=User, group_crud_cls=Group, bundle_crud_cls=Bundle,
+                   permission_cls=Permission):
 
     _blueprint = flask.Blueprint(bp_name, import_name)
 
@@ -566,6 +588,9 @@ def make_blueprint(import_name, bp_name='auth', login_cls=Login, forgot_cls=Forg
         blueprint = _blueprint
 
     class Bundle(bundle_crud_cls):
+        blueprint = _blueprint
+
+    class Permission(permission_cls):
         blueprint = _blueprint
 
     return _blueprint

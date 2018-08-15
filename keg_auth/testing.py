@@ -426,23 +426,6 @@ class AuthTestApp(flask_webtest.TestApp):
         return super(AuthTestApp, self).delete_json(*args, **kwargs)
 
 
-def login_client_with_permissions(*permissions):
-    """ Get an AuthTestApp instance and a User instance having the specified permissions
-
-        Usage: permissions can be scalar or list, giving either tokens or Permission instances
-        Returns: (AuthTestApp, User) tuple
-    """
-    perm_cls = entity_registry.registry.permission_cls
-    perm_ents = [
-        perm_cls.get_by_token(perm)
-        if not isinstance(perm, perm_cls) else perm
-        for perm in tolist(permissions)
-    ]
-    current_user = entity_registry.registry.user_cls.testing_create(permissions=perm_ents)
-    client = AuthTestApp(flask.current_app, user=current_user)
-    return client, current_user
-
-
 class ViewTestBase:
     """ Simple helper class that will set up Permission tokens as specified, log in a user, and
         provide the test app client on the class for use in tests.
@@ -466,4 +449,5 @@ class ViewTestBase:
         for perm in tolist(cls.permissions):
             cls.permission_ent.testing_create(token=perm)
 
-        cls.client, cls.current_user = login_client_with_permissions(*tolist(cls.permissions))
+        cls.current_user = cls.user_ent.testing_create(permissions=cls.permissions)
+        cls.client = AuthTestApp(flask.current_app, user=cls.current_user)

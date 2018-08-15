@@ -8,7 +8,7 @@ import mock
 import pytest
 import sqlalchemy as sa
 
-from keg_auth.testing import AuthTests, AuthTestApp, ViewTestBase, login_client_with_permissions
+from keg_auth.testing import AuthTests, AuthTestApp, ViewTestBase
 
 from keg_auth_ta.model import entities as ents
 
@@ -609,7 +609,8 @@ class TestUserCrud(ViewTestBase):
         assert resp.location.endswith('/users?session_key=foo')
 
     def test_edit_triggers_user_session_key_refresh(self):
-        target_user_client, target_user = login_client_with_permissions('auth-manage')
+        target_user = ents.User.testing_create(permissions='auth-manage')
+        target_user_client = AuthTestApp(flask.current_app, user=target_user)
         new_perm = ents.Permission.testing_create()
         original_session_key = target_user.session_key
 
@@ -656,13 +657,15 @@ class TestUserCrud(ViewTestBase):
             ].view_class.permissions,
             {action: 'permission1'}
         ):
-            client, _ = login_client_with_permissions('auth-manage')
+            user = ents.User.testing_create(permissions='auth-manage')
+            client = AuthTestApp(flask.current_app, user=user)
             client.get(url(action), status=403)
             for url_action in actions.difference({action}):
                 print(url_action, url(url_action))
                 client.get(url(url_action))
 
-            client, _ = login_client_with_permissions('auth-manage', 'permission1')
+            user = ents.User.testing_create(permissions=('auth-manage', 'permission1'))
+            client = AuthTestApp(flask.current_app, user=user)
             client.get(url(action))
 
     def test_delete(self):
@@ -708,6 +711,7 @@ class TestUserCrud(ViewTestBase):
 
     def test_list(self):
         resp = self.client.get('/users?op(email)=eq&v1(email)=' + self.current_user.email)
+        assert resp.pyquery('.grid-header-add-link a').attr('href').startswith('/users/add')
         assert resp.pyquery('.datagrid table.records thead th').eq(1).text() == 'User ID'
         assert resp.pyquery('.datagrid table.records tbody td').eq(1).text() == self.current_user.email  # noqa
 
@@ -720,8 +724,8 @@ class TestUserCrud(ViewTestBase):
 
     def test_list_export(self):
         ents.User.testing_create()
-        resp = self.client.get('/users?export_to=xls')
-        assert resp.content_type == 'application/vnd.ms-excel'
+        resp = self.client.get('/users?export_to=xlsx')
+        assert resp.content_type == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'  # noqa
 
 
 class TestGroupCrud(ViewTestBase):
@@ -793,13 +797,15 @@ class TestGroupCrud(ViewTestBase):
             ].view_class.permissions,
             {action: 'permission1'}
         ):
-            client, _ = login_client_with_permissions('auth-manage')
+            user = ents.User.testing_create(permissions='auth-manage')
+            client = AuthTestApp(flask.current_app, user=user)
             client.get(url(action), status=403)
             for url_action in actions.difference({action}):
                 print(url_action, url(url_action))
                 client.get(url(url_action))
 
-            client, _ = login_client_with_permissions('auth-manage', 'permission1')
+            user = ents.User.testing_create(permissions=('auth-manage', 'permission1'))
+            client = AuthTestApp(flask.current_app, user=user)
             client.get(url(action))
 
     def test_delete(self):
@@ -830,12 +836,13 @@ class TestGroupCrud(ViewTestBase):
     def test_list(self):
         ents.Group.testing_create()
         resp = self.client.get('/groups')
+        assert resp.pyquery('.grid-header-add-link a').attr('href').startswith('/groups/add')
         assert 'datagrid' in resp
 
     def test_list_export(self):
         ents.Group.testing_create()
-        resp = self.client.get('/groups?export_to=xls')
-        assert resp.content_type == 'application/vnd.ms-excel'
+        resp = self.client.get('/groups?export_to=xlsx')
+        assert resp.content_type == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'  # noqa
 
 
 class TestBundleCrud(ViewTestBase):
@@ -903,13 +910,15 @@ class TestBundleCrud(ViewTestBase):
             ].view_class.permissions,
             {action: 'permission1'}
         ):
-            client, _ = login_client_with_permissions('auth-manage')
+            user = ents.User.testing_create(permissions='auth-manage')
+            client = AuthTestApp(flask.current_app, user=user)
             client.get(url(action), status=403)
             for url_action in actions.difference({action}):
                 print(url_action, url(url_action))
                 client.get(url(url_action))
 
-            client, _ = login_client_with_permissions('auth-manage', 'permission1')
+            user = ents.User.testing_create(permissions=('auth-manage', 'permission1'))
+            client = AuthTestApp(flask.current_app, user=user)
             client.get(url(action))
 
     def test_delete(self):
@@ -940,9 +949,25 @@ class TestBundleCrud(ViewTestBase):
     def test_list(self):
         ents.Bundle.testing_create()
         resp = self.client.get('/bundles')
+        assert resp.pyquery('.grid-header-add-link a').attr('href').startswith('/bundles/add')
         assert 'datagrid' in resp
 
     def test_list_export(self):
         ents.Bundle.testing_create()
-        resp = self.client.get('/bundles?export_to=xls')
-        assert resp.content_type == 'application/vnd.ms-excel'
+        resp = self.client.get('/bundles?export_to=xlsx')
+        assert resp.content_type == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'  # noqa
+
+
+class TestPermissionsView(ViewTestBase):
+    permissions = 'auth-manage'
+
+    def test_list(self):
+        ents.Permission.testing_create()
+        resp = self.client.get('/permissions')
+        assert not resp.pyquery('.grid-header-add-link')
+        assert 'datagrid' in resp
+
+    def test_list_export(self):
+        ents.Permission.testing_create()
+        resp = self.client.get('/permissions?export_to=xlsx')
+        assert resp.content_type == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'  # noqa

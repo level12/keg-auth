@@ -152,14 +152,36 @@ class AuthManager(object):
         # So, connect it to the test signal, then try to call it, and trap the exception
         @db_init_post.connect
         def sync_permissions():
-            desired = set(app.auth_manager.permissions)
-            current = {
-                permission.token for permission in db.session.query(Permission)
+            db_permissions = db.session.query(Permission).all()
+
+            # sync permission presence
+            desired_tokens = set(
+                tolist(perm)[0] for perm in app.auth_manager.permissions
+            )
+            current_tokens = {
+                permission.token for permission in db_permissions
             }
-            for permission in desired - current:
-                Permission.add(token=permission)
-            for permission in current - desired:
+            for permission in desired_tokens - current_tokens:
+                db_permissions.append(Permission.add(token=permission, _commit=False))
+            for permission in current_tokens - desired_tokens:
                 Permission.query.filter_by(token=permission).delete()
+
+            # sync permission description
+            permission_descriptions = dict(
+                [perm for perm in app.auth_manager.permissions if isinstance(perm, (list, tuple))]
+            )
+            for db_permission in db_permissions:
+                if (
+                    db_permission.token in permission_descriptions and
+                    db_permission.description != permission_descriptions[db_permission.token]
+                ):
+                    db_permission.description = permission_descriptions[db_permission.token]
+                elif (
+                    db_permission.token not in permission_descriptions and
+                    db_permission.description
+                ):
+                    db_permission.description = None
+
             db.session.commit()
 
         try:

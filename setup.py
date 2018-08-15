@@ -64,7 +64,7 @@ setup(
             'pytest',
             'pytest-cov',
             'tox',
-            'xlwt',
+            'xlsxwriter',
         ],
         'jwt': [
             'flask-jwt-extended',

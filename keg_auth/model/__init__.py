@@ -1,6 +1,7 @@
 import hashlib
 import json
 
+from blazeutils import tolist
 from blazeutils.strings import randchars
 import flask
 import itsdangerous
@@ -78,6 +79,14 @@ class UserMixin(object):
     @classmethod
     def testing_create(cls, **kwargs):
         kwargs['password'] = kwargs.get('password') or randchars()
+
+        if 'permissions' in kwargs:
+            perm_cls = entity_registry.registry.permission_cls
+            kwargs['permissions'] = [
+                perm_cls.get_by_token(perm)
+                if not isinstance(perm, perm_cls) else perm
+                for perm in tolist(kwargs['permissions'])
+            ]
 
         user = super(UserMixin, cls).testing_create(**kwargs)
         user._plaintext_pass = kwargs['password']

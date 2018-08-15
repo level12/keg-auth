@@ -171,3 +171,18 @@ def make_bundle_grid(edit_endpoint, edit_permission, delete_endpoint, delete_per
                 query = query.order_by(bundle_cls.name)
             return query
     return Bundle
+
+
+def make_permission_grid(grid_cls=None):
+    permission_cls = entity_registry.registry.permission_cls
+    grid_cls = grid_cls or keg.current_app.auth_manager.grid_cls
+
+    class Permission(grid_cls):
+        webgrid.Column('Name', permission_cls.token, filters.TextFilter)
+        webgrid.Column('Description', permission_cls.description, filters.TextFilter)
+
+        def query_prep(self, query, has_sort, has_filters):
+            if not has_sort:
+                query = query.order_by(permission_cls.token)
+            return query
+    return Permission

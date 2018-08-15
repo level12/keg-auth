@@ -6,6 +6,16 @@
 <h1>{{ page_heading }}</h1>
 
 <section class="grid-body">
+    {% block add_button %}
+        {% if add_url %}
+            <div class="grid-header-add-link">
+                <a href="{{ add_url }}">
+                    <span class="fa fa-plus-circle"></span>
+                    Create {{ object_name }}
+                </a>
+            </div>
+        {% endif %}
+    {% endblock %}
     <div class="preamble">
         {% block preamble %}
         {% endblock %}

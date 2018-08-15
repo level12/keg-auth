@@ -39,17 +39,21 @@ class TestAuthManager(object):
         ents.Bundle.testing_create(permissions=[permission_to_delete])
         ents.User.testing_create(permissions=[permission_to_delete])
 
-        # token should not be duplicated during sync
+        # token should not be duplicated during sync, but description should be set
         ents.Permission.add(token='bar')
 
         # define the app permissions
-        permissions = ('foo', 'bar', 'baz')
+        permissions = (
+            'foo',
+            ('bar', 'location for libations'),
+            ('baz', 'nonsense word'),
+        )
         with mock.patch.object(self.am, 'permissions', permissions):
             self.am.init_app(flask.current_app)
 
         assert ents.Permission.get_by(token='foo')
-        assert ents.Permission.get_by(token='bar')
-        assert ents.Permission.get_by(token='baz')
+        assert ents.Permission.get_by(token='bar').description == 'location for libations'
+        assert ents.Permission.get_by(token='baz').description == 'nonsense word'
         assert not ents.Permission.get_by(token='snoopy')
 
     @mock.patch('keg_auth.core.KegAuthenticator')
