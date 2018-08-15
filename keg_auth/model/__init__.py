@@ -13,6 +13,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import mssql
 import sqlalchemy.orm as sa_orm
 import sqlalchemy.sql as sa_sql
+from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy_utils import EmailType, PasswordType, force_auto_coercion
 
@@ -53,6 +54,8 @@ class UserMixin(object):
     is_superuser = sa.Column(sa.Boolean, nullable=False, default=False)
     password = sa.Column(KAPasswordType(onload=_create_cryptcontext_kwargs))
 
+    username = sa.Column(sa.Unicode(512), nullable=False, unique=True)
+
     # key used to identify the "id" for flask-login, which is expected to be a string. While we
     #   could return the user's db id cast to string, that would not give us a hook to reset
     #   sessions when permissions go stale
@@ -74,7 +77,7 @@ class UserMixin(object):
     @property
     def display_value(self):
         # shortcut to return the value of the user ident attribute
-        return getattr(self, flask.current_app.config.get('KEGAUTH_USER_IDENT_FIELD'))
+        return self.username
 
     @classmethod
     def testing_create(cls, **kwargs):
@@ -266,6 +269,14 @@ class UserEmailMixin(object):
     email = sa.Column(EmailType, nullable=False, unique=True)
 
     @hybrid_property
+    def username(self):
+        return self.email
+
+    @username.expression
+    def username(cls):
+        return cls.email
+
+    @hybrid_property
     def is_active(self):
         return self.is_verified and self.is_enabled
 
@@ -381,6 +392,13 @@ class GroupMixin(object):
             bundle_cls.permissions
         )
         return sa.union(direct, via_bundle)
+
+
+def get_username_key(user_cls):
+    obj = user_cls.username
+    if not isinstance(obj, (sa.Column, sa_orm.attributes.InstrumentedAttribute)):
+        obj = obj.descriptor.expr(user_cls)
+    return obj.key
 
 
 def _make_mapping_table(table_name, **foreign_cols):
@@ -520,7 +538,12 @@ def initialize_events(registry=entity_registry.registry):
     #   session key when there is a change
 
     def _sa_attr_has_changes(target, attr):
-        return sa_orm.attributes.get_history(target, attr).has_changes()
+        try:
+            return sa_orm.attributes.get_history(target, attr).has_changes()
+        except KeyError as exc:
+            if attr not in str(exc):
+                raise
+        return False
 
     @sa.event.listens_for(db.session, 'before_flush')
     def changed_users(session, *args):

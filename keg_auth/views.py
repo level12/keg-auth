@@ -288,7 +288,7 @@ class Login(AuthFormView):
 
     @property
     def form_cls(self):
-        return forms.login_form(flask.current_app.config)
+        return forms.login_form()
 
     def on_form_valid(self, form):
         try:

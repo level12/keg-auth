@@ -710,17 +710,17 @@ class TestUserCrud(ViewTestBase):
         assert self.user_ent.query.get(user_delete_id)
 
     def test_list(self):
-        resp = self.client.get('/users?op(email)=eq&v1(email)=' + self.current_user.email)
+        resp = self.client.get('/users?op(username)=eq&v1(username)=' + self.current_user.email)
         assert resp.pyquery('.grid-header-add-link a').attr('href').startswith('/users/add')
         assert resp.pyquery('.datagrid table.records thead th').eq(1).text() == 'User ID'
         assert resp.pyquery('.datagrid table.records tbody td').eq(1).text() == self.current_user.email  # noqa
 
-    @mock.patch.dict('flask.current_app.config', {'KEGAUTH_USER_IDENT_FIELD': 'session_key'})
     def test_list_alternate_ident_field(self):
-        resp = self.client.get('/users?op(session_key)=eq&v1(session_key)=' +
-                               self.current_user.session_key)
-        assert resp.pyquery('.datagrid table.records thead th').eq(1).text() == 'User ID'
-        assert resp.pyquery('.datagrid table.records tbody td').eq(1).text() == self.current_user.session_key  # noqa
+        user = ents.UserNoEmail.testing_create()
+        with mock.patch('keg_auth.auth_entity_registry._user_cls', ents.UserNoEmail):
+            resp = self.client.get('/users?op(username)=eq&v1(username)=' + user.username)
+            assert resp.pyquery('.datagrid table.records thead th').eq(1).text() == 'User ID'
+            assert resp.pyquery('.datagrid table.records tbody td').eq(1).text() == user.username
 
     def test_list_export(self):
         ents.User.testing_create()

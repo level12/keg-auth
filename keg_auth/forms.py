@@ -11,17 +11,14 @@ from wtforms.fields import (
 from wtforms import ValidationError, validators
 from wtforms_components.widgets import EmailInput
 
-from keg_auth.model import entity_registry
+from keg_auth.model import entity_registry, get_username_key
 
 
-def login_form(config):
+def login_form():
     login_id_label = u'User ID'
     login_id_validators = [validators.DataRequired()]
 
-    if isinstance(
-        getattr(entity_registry.registry.user_cls, config.get('KEGAUTH_USER_IDENT_FIELD')).type,
-        EmailType
-    ):
+    if isinstance(entity_registry.registry.user_cls.username.type, EmailType):
         login_id_label = u'Email'
         login_id_validators.append(validators.Email())
 
@@ -93,18 +90,24 @@ class _ValidatePasswordRequired(object):
         return True
 
 
-def user_form(config, allow_superuser=False, endpoint='', fields=['is_enabled']):
+def user_form(config=None, allow_superuser=False, endpoint='', fields=['is_enabled']):
+    config = config or {}
     user_cls = entity_registry.registry.user_cls
+
+    # The model can be assumed to have a `username` attribute. However, it may not be settable,
+    # depending on whether it is actually a column, or is instead a proxy to another column
+    # (e.g. email). So, we will need to grab a key to use for it that matches the data column.
+    username_key = get_username_key(entity_registry.registry.user_cls)
 
     # create a copy of fields for internal use. In python 2, if we use this as a static method,
     #   the kwarg value would get modified in the wrong scope
-    _fields = [config.get('KEGAUTH_USER_IDENT_FIELD')] + fields[:]
+    _fields = [username_key] + fields[:]
     if allow_superuser and 'is_superuser' not in _fields:
         _fields.append('is_superuser')
 
     def html_link(obj):
         return link_to(
-            getattr(obj, config.get('KEGAUTH_USER_IDENT_FIELD')),
+            obj.username,
             flask.url_for(endpoint, objid=obj.id)
         )
 
@@ -120,17 +123,13 @@ def user_form(config, allow_superuser=False, endpoint='', fields=['is_enabled'])
 
         field_order = tuple(_fields + ['group_ids', 'bundle_ids', 'permission_ids'])
 
-        setattr(FieldsMeta, config.get('KEGAUTH_USER_IDENT_FIELD'), FieldMeta(
+        setattr(FieldsMeta, username_key, FieldMeta(
             extra_validators=[validators.data_required(),
                               ValidateUnique(html_link)]
         ))
 
-        if isinstance(
-            getattr(entity_registry.registry.user_cls, config.get('KEGAUTH_USER_IDENT_FIELD')).type,
-            EmailType
-        ):
-            meta_field = getattr(FieldsMeta, config.get('KEGAUTH_USER_IDENT_FIELD'))
-            meta_field.widget = EmailInput()
+        if isinstance(entity_registry.registry.user_cls.username.type, EmailType):
+            getattr(FieldsMeta, username_key).widget = EmailInput()
 
         if not config.get('KEGAUTH_EMAIL_OPS_ENABLED'):
             reset_password = PasswordField('New Password', validators=[
@@ -151,7 +150,7 @@ def user_form(config, allow_superuser=False, endpoint='', fields=['is_enabled'])
             return entities_from_ids(entity_registry.registry.group_cls, self.group_ids.data)
 
         def get_object_by_field(self, field):
-            return user_cls.get_by(**{config.get('KEGAUTH_USER_IDENT_FIELD'): field.data})
+            return user_cls.get_by(username=field.data)
 
         @property
         def obj(self):

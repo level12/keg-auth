@@ -20,8 +20,6 @@ class User(db.Model, keg_auth.UserEmailMixin, keg_auth.UserMixin, EntityMixin):
 class UserNoEmail(db.Model, keg_auth.UserMixin, EntityMixin):
     __tablename__ = 'users_no_email'
 
-    username = sa.Column(sa.Unicode(255), nullable=False, unique=True)
-
 
 @keg_auth.auth_entity_registry.register_permission
 class Permission(db.Model, keg_auth.PermissionMixin, EntityMixin):

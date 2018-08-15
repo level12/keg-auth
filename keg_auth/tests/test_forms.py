@@ -38,7 +38,7 @@ class FormBase(object):
 
 @mock.patch.dict(current_app.config, WTF_CSRF_ENABLED=False)
 class TestLogin(FormBase):
-    form_cls = forms.login_form({'KEGAUTH_USER_IDENT_FIELD': 'email'})
+    form_cls = forms.login_form()
 
     def ok_data(self, **kwargs):
         data = {
@@ -60,9 +60,10 @@ class TestLogin(FormBase):
         assert form.login_id.label.text == 'Email'
 
     def test_no_email_validation(self):
-        form_cls = forms.login_form({'KEGAUTH_USER_IDENT_FIELD': 'session_key'})
-        form = self.assert_valid(form_cls=form_cls, login_id='foo')
-        assert form.login_id.label.text == 'User ID'
+        with mock.patch('keg_auth.auth_entity_registry._user_cls', ents.UserNoEmail):
+            form_cls = forms.login_form()
+            form = self.assert_valid(form_cls=form_cls, login_id='foo')
+            assert form.login_id.label.text == 'User ID'
 
 
 @mock.patch.dict(current_app.config, WTF_CSRF_ENABLED=False)
@@ -109,8 +110,7 @@ class TestSetPassword(FormBase):
 
 @mock.patch.dict(current_app.config, WTF_CSRF_ENABLED=False)
 class TestUser(FormBase):
-    form_cls = forms.user_form({'KEGAUTH_USER_IDENT_FIELD': 'email',
-                                'KEGAUTH_EMAIL_OPS_ENABLED': True},
+    form_cls = forms.user_form({'KEGAUTH_EMAIL_OPS_ENABLED': True},
                                allow_superuser=False, endpoint='auth.user:edit')
 
     @classmethod
@@ -149,29 +149,29 @@ class TestUser(FormBase):
         form = self.make_form()
         assert not hasattr(form, 'is_superuser')
 
-        form = forms.user_form({'KEGAUTH_USER_IDENT_FIELD': 'email',
-                                'KEGAUTH_EMAIL_OPS_ENABLED': True},
+        form = forms.user_form({'KEGAUTH_EMAIL_OPS_ENABLED': True},
                                allow_superuser=True, endpoint='auth.user:edit')
         assert hasattr(form, 'is_superuser')
 
     def test_alternate_ident_field(self):
-        form_cls = forms.user_form({'KEGAUTH_USER_IDENT_FIELD': 'session_key',
-                                    'KEGAUTH_EMAIL_OPS_ENABLED': True},
-                                   allow_superuser=False, endpoint='auth.user:edit')
-        assert hasattr(form_cls, 'session_key')
+        with mock.patch('keg_auth.auth_entity_registry._user_cls', ents.UserNoEmail):
+            form_cls = forms.user_form({'KEGAUTH_EMAIL_OPS_ENABLED': True},
+                                       allow_superuser=False, endpoint='auth.user:edit')
+            assert hasattr(form_cls, 'username')
 
     def test_no_email(self):
-        form_cls = forms.user_form({'KEGAUTH_USER_IDENT_FIELD': 'session_key',
-                                    'KEGAUTH_EMAIL_OPS_ENABLED': False},
-                                   allow_superuser=False, endpoint='auth.user:edit')
-        assert hasattr(form_cls, 'session_key')
-        assert not hasattr(form_cls, 'email')
-        assert hasattr(form_cls, 'reset_password')
-        assert hasattr(form_cls, 'confirm')
+        with mock.patch('keg_auth.auth_entity_registry._user_cls', ents.UserNoEmail):
+            form_cls = forms.user_form({'KEGAUTH_EMAIL_OPS_ENABLED': False},
+                                       allow_superuser=False, endpoint='auth.user:edit')
+            assert hasattr(form_cls, 'username')
+            assert not hasattr(form_cls, 'email')
+            assert hasattr(form_cls, 'reset_password')
+            assert hasattr(form_cls, 'confirm')
 
-        form = self.assert_not_valid(form_cls=form_cls, reset_password='xyz', confirm='abc')
-        assert form.reset_password.errors == ['Passwords must match']
-        self.assert_valid(form_cls=form_cls, reset_password='xyz', confirm='xyz')
+            form = self.assert_not_valid(form_cls=form_cls, reset_password='xyz', confirm='abc')
+            assert form.reset_password.errors == ['Passwords must match']
+            self.assert_valid(form_cls=form_cls, username='foobar', reset_password='xyz',
+                              confirm='xyz')
 
     def test_multi_select(self):
         form = self.assert_valid()
@@ -196,18 +196,18 @@ class TestUser(FormBase):
         self.assert_valid(obj=usr)
 
     def test_unique_alternate_ident_field(self):
-        form_cls = forms.user_form({'KEGAUTH_USER_IDENT_FIELD': 'session_key',
-                                    'KEGAUTH_EMAIL_OPS_ENABLED': True},
-                                   allow_superuser=False, endpoint='auth.user:edit')
-        usr = ents.User.testing_create(session_key='foobar')
+        with mock.patch('keg_auth.auth_entity_registry._user_cls', ents.UserNoEmail):
+            form_cls = forms.user_form({'KEGAUTH_EMAIL_OPS_ENABLED': True},
+                                       allow_superuser=False, endpoint='auth.user:edit')
+            usr = ents.UserNoEmail.testing_create(username='foobar')
 
-        form = self.assert_not_valid(form_cls=form_cls, session_key='foobar')
-        error = PyQuery(form.session_key.errors[1])
-        assert 'This value must be unique' in error.text()
-        assert error('a').attr('href').endswith('/users/{}/edit'.format(usr.id))
-        assert error('a').text() == 'foobar'
+            form = self.assert_not_valid(form_cls=form_cls, username='foobar')
+            error = PyQuery(form.username.errors[1])
+            assert 'This value must be unique' in error.text()
+            assert error('a').attr('href').endswith('/users/{}/edit'.format(usr.id))
+            assert error('a').text() == 'foobar'
 
-        self.assert_valid(obj=usr)
+            self.assert_valid(form_cls=form_cls, obj=usr, username='foobar')
 
 
 @mock.patch.dict(current_app.config, WTF_CSRF_ENABLED=False)

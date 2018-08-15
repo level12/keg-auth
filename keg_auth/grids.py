@@ -104,7 +104,6 @@ def make_user_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permi
                    grid_cls=None):
     user_cls = entity_registry.registry.user_cls
     grid_cls = grid_cls or keg.current_app.auth_manager.grid_cls
-    user_id_field = getattr(user_cls, flask.current_app.config.get('KEGAUTH_USER_IDENT_FIELD'))
 
     class User(grid_cls):
         ActionColumn(
@@ -115,14 +114,14 @@ def make_user_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permi
             edit_permission_for=lambda _: edit_permission,
             delete_permission_for=lambda _: delete_permission
         )
-        webgrid.Column('User ID', user_id_field, filters.TextFilter)
-        if flask.current_app.auth_manager.mail_manager:
+        webgrid.Column('User ID', user_cls.username, filters.TextFilter)
+        if flask.current_app.auth_manager.mail_manager and hasattr(user_cls, 'is_verified'):
             webgrid.YesNoColumn('Verified', user_cls.is_verified, filters.YesNoFilter)
         webgrid.YesNoColumn('Superuser', user_cls.is_superuser, filters.YesNoFilter)
 
         def query_prep(self, query, has_sort, has_filters):
             if not has_sort:
-                query = query.order_by(user_id_field)
+                query = query.order_by(user_cls.username)
             return query
     return User
 

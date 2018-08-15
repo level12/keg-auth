@@ -33,8 +33,6 @@ Usage
       -  if mail functions are enabled and tokens in the model, affects the time a verification token remains valid
    -  `KEGAUTH_CLI_USER_ARGS`: list of strings, defaults to `['email']`
       -  names arguments to be accepted by CLI user commands and passed to the model
-   -  `KEGAUTH_USER_IDENT_FIELD`: string, defaults to `email`
-      -  identifies the field in the model that is the user ID used for logging in
    -  Email settings
       -  `KEGAUTH_EMAIL_SITE_NAME = 'Keg Application'`: used in email body if mail is enabled
       -  `KEGAUTH_EMAIL_SITE_ABBR = 'Keg App'`: used in email subject if mail is enabled
@@ -134,9 +132,6 @@ Usage
       keg_auth
    -  note: the User model assumes that the entity mixed with UserMixin
       will have a PK id
-   -  the User entity should have an attribute matching the KEGAUTH_USER_IDENT_FIELD setting, as
-      that field will be used for authentication purposes
-      - the default KEGAUTH_USER_IDENT_FIELD is `email`
    -  email address and token verification by email are in `UserEmailMixin`
       - i.e. if your app will not use email token verification for passwords, leave that mixin out
 
@@ -341,6 +336,4 @@ are not desired (for example, if an app will run in an environment where the int
 accessible). Only a few changes are necessary from the examples above to achieve this:
 
 - leave `UserEmailMixin` out of the `User` model
-  - instead, define a field for the user identifier (e.g. `username = sa.Column(sa.Unicode(255), nullable=False, unique=True)`)
-  - update the `KEGAUTH_USER_IDENT_FIELD` setting accordingly in your config (e.g. `username`)
 - do not specify a mail_manager when setting up `AuthManager`
