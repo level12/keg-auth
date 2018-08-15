@@ -149,15 +149,9 @@ def protected_method():
 
 
 @private_bp.route('/jwt-required')
-@requires_user(authenticators='jwt')
+@requires_user
 def jwt_required():
     return 'jwt-required'
-
-
-@private_bp.route('/multiple-authenticators')
-@requires_user(authenticators=['keg', 'jwt'])
-def multiple_authenticators():
-    return 'multiple-authenticators'
 
 
 @private_bp.route('/custom-auth-failure')

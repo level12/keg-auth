@@ -4,7 +4,7 @@ import flask
 import mock
 
 from keg_auth.core import AuthManager
-from keg_auth.libs.authenticators import KegAuthenticator, JwtAuthenticator
+from keg_auth.libs.authenticators import KegAuthenticator, JwtRequestLoader
 
 from keg_auth_ta.app import mail_ext
 from keg_auth_ta.extensions import auth_entity_registry
@@ -58,16 +58,15 @@ class TestAuthManager(object):
         assert not ents.Permission.get_by(token='snoopy')
 
     @mock.patch('keg_auth.core.KegAuthenticator')
-    def test_authenticators_initialized_only_once(self, m_init):
+    def test_request_loaders_initialized_only_once(self, m_init):
         self.am.init_app(flask.current_app)
         assert not m_init.called
 
     @mock.patch('keg_auth.core.AuthManager.init_model')
-    def test_authenticators_initialized(self, m_model):
+    def test_request_loaders_initialized(self, m_model):
         app = mock.MagicMock()
-        manager = AuthManager(None, secondary_authenticators=[JwtAuthenticator],
+        manager = AuthManager(None, request_loaders=[JwtRequestLoader],
                               entity_registry=auth_entity_registry)
         manager.init_app(app)
-        assert isinstance(manager.primary_authenticator, KegAuthenticator)
-        assert isinstance(manager.get_authenticator('jwt'), JwtAuthenticator)
-        assert manager.primary_authenticator is manager.get_authenticator('keg')
+        assert isinstance(manager.login_manager, KegAuthenticator)
+        assert isinstance(manager.get_request_loader('jwt'), JwtRequestLoader)

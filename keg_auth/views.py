@@ -5,11 +5,9 @@ import keg.web
 import sqlalchemy as sa
 from blazeutils.strings import case_cw2dash
 from keg.db import db
-from six.moves import urllib
 
 from keg_auth import forms, grids, requires_permissions
 from keg_auth.libs import authenticators
-from keg_auth.model import entity_registry
 
 
 class _BaseView(keg.web.BaseView):
@@ -29,7 +27,7 @@ class AuthFormView(_BaseView):
     def __init__(self, *args, **kwargs):
         super(AuthFormView, self).__init__(*args, **kwargs)
 
-        self.authenticator = flask.current_app.auth_manager.primary_authenticator
+        self.authenticator = flask.current_app.auth_manager.login_manager
 
     @property
     def form_action_text(self):
@@ -64,17 +62,6 @@ class AuthFormView(_BaseView):
         self.assign('form_action_text', self.form_action_text)
         self.assign('page_title', self.page_title)
         self.assign('page_heading', self.page_heading)
-
-    @staticmethod
-    def is_safe_url(target):
-        """Returns `True` if the target is a valid URL for redirect"""
-        # from http://flask.pocoo.org/snippets/62/
-        ref_url = urllib.parse.urlparse(flask.request.host_url)
-        test_url = urllib.parse.urlparse(urllib.parse.urljoin(flask.request.host_url, target))
-        return (
-            test_url.scheme in ('http', 'https') and
-            ref_url.netloc == test_url.netloc
-        )
 
     def make_form(self):
         return self.form_cls()
@@ -278,55 +265,13 @@ class CrudView(keg.web.BaseView):
 
 class Login(AuthFormView):
     url = '/login'
-    template_name = 'keg_auth/login.html'
-    page_title = 'Log In'
-    flash_success = 'Login successful.', 'success'
-    flash_invalid_password = 'Invalid password.', 'error'
-    flash_unverified_user = 'The user account "{}" has an unverified email address.  Please check' \
-        ' your email for a verification link from this website.  Or, use the "forgot' \
-        ' password" link to verify the account.', 'error'
 
-    @property
-    def form_cls(self):
-        return forms.login_form()
+    def responder(self, *args, **kwargs):
+        return flask.current_app.auth_manager.login_manager(*args, **kwargs)
 
-    def on_form_valid(self, form):
-        try:
-            user = self.get_user(login_id=form.login_id.data, password=form.password.data)
-
-            # User is active and password is verified
-            return self.on_success(user)
-        except authenticators.UserNotFound:
-            self.on_invalid_user(form, 'login_id')
-        except authenticators.UserInactive as exc:
-            self.on_inactive_user(exc.user)
-        except authenticators.UserInvalidAuth:
-            self.on_invalid_password()
-
-    def on_invalid_password(self):
-        flask.flash(*self.flash_invalid_password)
-
-    def on_inactive_user(self, user):
-        if flask.current_app.auth_manager.mail_manager and not user.is_verified:
-            message, category = self.flash_unverified_user
-            flask.flash(message.format(user.email), category)
-        if not user.is_enabled:
-            self.on_disabled_user(user)
-
-    def on_success(self, user):
-        flask_login.login_user(user)
-        flask.flash(*self.flash_success)
-
-        # support Flask-Login "next" parameter
-        next_parameter = flask.request.values.get('next')
-        if flask.current_app.config.get('USE_SESSION_FOR_NEXT'):
-            next_parameter = flask.session.get('next')
-        if next_parameter and self.is_safe_url(next_parameter):
-            redirect_to = next_parameter
-        else:
-            redirect_to = flask.current_app.auth_manager.url_for('after-login')
-
-        return flask.redirect(redirect_to)
+    def __init__(self):
+        super(Login, self).__init__()
+        self.responding_method = 'responder'
 
 
 class ForgotPassword(AuthFormView):

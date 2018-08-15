@@ -28,8 +28,8 @@ class AuthManager(object):
     cli_group_name = 'auth'
 
     def __init__(self, mail_manager=None, blueprint='auth', endpoints=None,
-                 cli_group_name=None, grid_cls=None, primary_authenticator_cls=KegAuthenticator,
-                 secondary_authenticators=None, permissions=None, entity_registry=None):
+                 cli_group_name=None, grid_cls=None, login_manager=KegAuthenticator,
+                 request_loaders=None, permissions=None, entity_registry=None):
         """Set up an auth management extension
 
         Main manager for keg-auth authentication/authorization functions, and provides a central
@@ -40,12 +40,11 @@ class AuthManager(object):
         :param endpoints: dict of overrides to auth view endpoints
         :param cli_group_name: name of the CLI group under which auth commands appear
         :param grid_cls: webgrid class to serve as a base class to auth CRUD grids
-        :param primary_authenticator_cls: authenticator class used by login view, and for any view
-            requiring a user (if the requirement does not specify authenticators)
+        :param login_manager: login manager class used by login view
             default: KegAuthenticator
-        :param secondary_authenticators: authenticator classes initialized by this manager and
-            registered by key for reference (e.g. 'jwt' for JwtAuthenticator). Can be scalar or
-            an iterable
+        :param request_loaders: registered loaders used for loading a user at request time from
+            information not contained in the session (e.g. with an authorization header token).
+            Can be scalar or an iterable
         :param permissions: permission strings defined for the app, which will be synced to the
             database on app init. Can be a single string or an iterable
         :param entity_registry: EntityRegistry instance on which User, Group, etc. are registered
@@ -59,13 +58,13 @@ class AuthManager(object):
         self.cli_group_name = cli_group_name or self.cli_group_name
         self.cli_group = None
         self.grid_cls = grid_cls
-        self.primary_authenticator_cls = primary_authenticator_cls
-        self.secondary_authenticators = tolist(secondary_authenticators or [])
-        self.authenticators = dict()
+        self.login_manager_cls = login_manager
+        self.request_loader_cls = tolist(request_loaders or [])
+        self.request_loaders = dict()
         self.menus = dict()
         self.permissions = tolist(permissions or [])
         self._model_initialized = False
-        self._authenticators_initialized = False
+        self._loaders_initialized = False
 
     def init_app(self, app):
         self.init_model(app)
@@ -73,7 +72,7 @@ class AuthManager(object):
         self.init_managers(app)
         self.init_cli(app)
         self.init_jinja(app)
-        self.init_authenticators(app)
+        self.init_loaders(app)
         self.init_permissions(app)
 
     def init_config(self, app):
@@ -125,18 +124,16 @@ class AuthManager(object):
         login_manager.login_view = self.endpoint('login')
         login_manager.init_app(app)
 
-    def init_authenticators(self, app):
-        if self._authenticators_initialized:
+    def init_loaders(self, app):
+        if self._loaders_initialized:
             return
 
-        primary = self.primary_authenticator_cls(app)
-        self.authenticators['__primary__'] = primary
-        self.authenticators[primary.get_identifier()] = primary
+        self.login_manager = self.login_manager_cls(app)
 
-        for authenticator_cls in self.secondary_authenticators:
-            self.authenticators[authenticator_cls.get_identifier()] = authenticator_cls(app)
+        for loader_cls in self.request_loader_cls:
+            self.request_loaders[loader_cls.get_identifier()] = loader_cls(app)
 
-        self._authenticators_initialized = True
+        self._loaders_initialized = True
 
     def init_permissions(self, app):
         # add permissions to the database
@@ -260,12 +257,8 @@ class AuthManager(object):
         db.session.commit()
         return user
 
-    def get_authenticator(self, identifier):
-        return self.authenticators.get(identifier)
-
-    @property
-    def primary_authenticator(self):
-        return self.get_authenticator('__primary__')
+    def get_request_loader(self, identifier):
+        return self.request_loaders.get(identifier)
 
 
 # ensure that any manager-attached menus are reset for auth requirements on login/logout

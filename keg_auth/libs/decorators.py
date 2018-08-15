@@ -1,17 +1,10 @@
 import inspect
 
-from blazeutils import tolist
 import flask
 import flask_login
 from keg.web import validate_arguments, ArgumentValidationError, ViewArgumentError
 
-from keg_auth.libs.authenticators import Authenticator
 from keg_auth.model import utils as model_utils
-
-
-def get_authenticator_instance(authenticator):
-    return authenticator if isinstance(authenticator, Authenticator) else \
-        flask.current_app.auth_manager.get_authenticator(authenticator)
 
 
 class RequiresUser(object):
@@ -26,20 +19,11 @@ class RequiresUser(object):
         Examples:
         - @requires_user
         - @requires_user()
-        - @requires_user(authenticators=JwtAthenticator)
-        - @requires_user(authenticators=[LdapAuthenticator, JwtAthenticator])
+        - @requires_user(on_authentication_failure=lambda: flask.abort(400))
     """
-    def __init__(self, authenticators=None, on_authentication_failure=None,
-                 on_authorization_failure=None):
-        self._authenticators = tolist(authenticators or [])
-
+    def __init__(self, on_authentication_failure=None):
         # defaults for these handlers are provided, but may be overridden here
         self._on_authentication_failure = on_authentication_failure
-        self._on_authorization_failure = on_authorization_failure
-
-    @property
-    def authenticators(self):
-        return self._authenticators or [flask.current_app.auth_manager.primary_authenticator]
 
     def __call__(self, class_or_function):
         # decorator may be applied to a class or a function, but the effect is different
@@ -116,30 +100,24 @@ class RequiresUser(object):
         if self._on_authentication_failure:
             self._on_authentication_failure()
 
-        # redirect if one or more authenticators registered on the view require it
-        should_redirect = False
-
-        for authenticator in self.authenticators:
-            auth_instance = get_authenticator_instance(authenticator)
-            should_redirect = should_redirect or auth_instance.authentication_failure_redirect
-
-        if should_redirect:
+        # redirect if app's login manager requires it
+        if flask.current_app.auth_manager.login_manager.authentication_failure_redirect:
             redirect_resp = flask.current_app.login_manager.unauthorized()
             flask.abort(redirect_resp)
         else:
             flask.abort(401)
 
-    def on_authorization_failure(self):
-        if self._on_authorization_failure:
-            self._on_authorization_failure()
-        flask.abort(403)
-
     def check_auth(self, instance=None):
-        for authenticator in self.authenticators:
-            auth_instance = get_authenticator_instance(authenticator)
-            user = auth_instance.get_authenticated_user()
+        # if flask_login has an authenticated user in session, that's who we want
+        if flask_login.current_user.is_authenticated:
+            return flask_login.current_user
+
+        # no user in session right now, so we need to run request loaders to see if any match
+        for loader in flask.current_app.auth_manager.request_loaders.values():
+            user = loader.get_authenticated_user()
             if user:
                 break
+
         if not user or not user.is_authenticated:
             if instance and callable(getattr(instance, 'on_authentication_failure', None)):
                 instance.on_authentication_failure()
@@ -161,19 +139,23 @@ class RequiresPermissions(RequiresUser):
         - @requires_permissions(has_all('token1', 'token2'))
         - @requires_permissions(has_all(has_any('token1', 'token2'), 'token3'))
         - @requires_permissions(custom_authorization_callable that takes user arg)
+        - @requires_permissions('token1', on_authorization_failure=lambda: flask.abort(404))
     """
-    def __init__(self, condition, authenticators=[], on_authentication_failure=None,
-                 on_authorization_failure=None):
+    def __init__(self, condition, on_authentication_failure=None, on_authorization_failure=None):
         super(RequiresPermissions, self).__init__(
-            authenticators=authenticators,
             on_authentication_failure=on_authentication_failure,
-            on_authorization_failure=on_authorization_failure,
         )
         self.condition = condition
+        self._on_authorization_failure = on_authorization_failure
 
     def store_auth_info(self, obj):
         super(RequiresPermissions, self).store_auth_info(obj)
         obj.__keg_auth_requires_permissions__ = self.condition
+
+    def on_authorization_failure(self):
+        if self._on_authorization_failure:
+            self._on_authorization_failure()
+        flask.abort(403)
 
     def check_auth(self, instance=None):
         super(RequiresPermissions, self).check_auth(instance=instance)
@@ -191,10 +173,8 @@ def requires_user(arg=None, *args, **kwargs):
 
         Usage: @requires_user OR @requires_user() (both usage forms are identical)
         Parameters:
-            authenticators: identifiers for authenticators registered on the auth_manager. The
-                primary authenticator on auth_manager will be used by default
             on_authentication_failure: method called on authentication failures. If one is not
-                specified, behavior is derived from authenticators (redirect or 401)
+                specified, behavior is derived from login manager (redirect or 401)
             on_authorization_failure: method called on authorization failures. If one is not
                 specified, response will be 403
     """

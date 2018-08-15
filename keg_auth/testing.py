@@ -9,8 +9,6 @@ import flask_webtest
 import mock
 import wrapt
 
-from keg_auth.model import entity_registry
-
 
 class AuthTests(object):
     """

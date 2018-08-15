@@ -433,44 +433,17 @@ class TestPermissionsRequired:
 class TestAuthenticators(object):
     def test_token_auth_no_token(self):
         client = flask_webtest.TestApp(flask.current_app)
-        client.get('/jwt-required', status=401)
+        client.get('/jwt-required', status=302)
 
     def test_token_auth_with_token(self):
         user = ents.User.testing_create()
-        jwt_auth = flask.current_app.auth_manager.get_authenticator('jwt')
+        jwt_auth = flask.current_app.auth_manager.get_request_loader('jwt')
         token = jwt_auth.create_access_token(user)
 
         client = flask_webtest.TestApp(flask.current_app)
         client.set_authorization(('Bearer', token))
         resp = client.get('/jwt-required', status=200)
         assert resp.text == 'jwt-required'
-
-    def test_keg_authenticator_not_applied(self):
-        user = ents.User.testing_create()
-        client = AuthTestApp(flask.current_app, user=user)
-        client.get('/jwt-required', status=401)
-
-    def test_multiple_authenticator_no_auth(self):
-        # at least one of the authenticators allows a redirect, so redirect
-        client = flask_webtest.TestApp(flask.current_app)
-        client.get('/multiple-authenticators', status=302)
-
-    def test_multiple_authenticator_keg_auth(self):
-        user = ents.User.testing_create()
-
-        client = AuthTestApp(flask.current_app, user=user)
-        resp = client.get('/multiple-authenticators', status=200)
-        assert resp.text == 'multiple-authenticators'
-
-    def test_multiple_authenticator_token_auth(self):
-        user = ents.User.testing_create()
-        jwt_auth = flask.current_app.auth_manager.get_authenticator('jwt')
-        token = jwt_auth.create_access_token(user)
-
-        client = flask_webtest.TestApp(flask.current_app)
-        client.set_authorization(('Bearer', token))
-        resp = client.get('/multiple-authenticators', status=200)
-        assert resp.text == 'multiple-authenticators'
 
 
 class TestUserCrud(ViewTestBase):

@@ -1,6 +1,6 @@
 # flake8: noqa
 from keg_auth.core import AuthManager
-from keg_auth.libs.authenticators import KegAuthenticator, JwtAuthenticator, LdapAuthenticator
+from keg_auth.libs.authenticators import KegAuthenticator, JwtRequestLoader, LdapAuthenticator
 from keg_auth.libs.decorators import requires_permissions, requires_user
 from keg_auth.libs.navigation import NavItem, NavURL
 from keg_auth.mail import AuthMailManager
