@@ -537,6 +537,9 @@ def initialize_mappings(namespace='keg_auth', registry=None):
 def initialize_events(registry=None):
     # look for changes to rights throughout users, groups, and bundles before flush. Reset the
     #   session key when there is a change
+    def _isinstance(target, cls):
+        # use a more simplistic method of determining type for performance
+        return type(target) is cls
 
     def _sa_attr_has_changes(target, attr):
         try:
@@ -549,7 +552,7 @@ def initialize_events(registry=None):
     @sa.event.listens_for(db.session, 'before_flush')
     def changed_users(session, *args):
         for target in session.new | session.dirty:
-            if not isinstance(target, registry.user_cls):
+            if not _isinstance(target, registry.user_cls):
                 continue
 
             if (
@@ -564,7 +567,7 @@ def initialize_events(registry=None):
     @sa.event.listens_for(db.session, 'before_flush')
     def changed_groups(session, *args):
         for target in session.new | session.dirty:
-            if not isinstance(target, registry.group_cls):
+            if not _isinstance(target, registry.group_cls):
                 continue
 
             if (
@@ -578,7 +581,7 @@ def initialize_events(registry=None):
                 user.reset_session_key()
 
         for target in session.deleted:
-            if not isinstance(target, registry.group_cls):
+            if not _isinstance(target, registry.group_cls):
                 continue
 
             for user in target.users:
@@ -587,7 +590,7 @@ def initialize_events(registry=None):
     @sa.event.listens_for(db.session, 'before_flush')
     def changed_bundles(session, *args):
         for target in session.new | session.dirty:
-            if not isinstance(target, registry.bundle_cls):
+            if not _isinstance(target, registry.bundle_cls):
                 continue
 
             if _sa_attr_has_changes(target, 'permissions'):
@@ -607,7 +610,7 @@ def initialize_events(registry=None):
                 user.reset_session_key()
 
         for target in session.deleted:
-            if not isinstance(target, registry.bundle_cls):
+            if not _isinstance(target, registry.bundle_cls):
                 continue
 
             update_users = target.users

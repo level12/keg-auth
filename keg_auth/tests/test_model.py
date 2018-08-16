@@ -697,3 +697,16 @@ class TestPermissionsConditions:
 
         condition = utils.has_all(utils.has_any('perm4', lambda _: False), 'perm1')
         assert condition.check(user) is False
+
+
+"""class TestPerformance(object):
+    # check how long the SA events add to the process
+    def test_performance(self):
+        import time
+        start = time.time()
+        for _ in range(1000):
+            ents.User.testing_create()
+            ents.Group.testing_create()
+            ents.Bundle.testing_create()
+        assert False, time.time() - start
+"""
