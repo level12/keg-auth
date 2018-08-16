@@ -104,30 +104,13 @@ class ViewResponder(object):
         return resp or self.render()
 
 
-class LoginResponderMixin(object):
-    """ Wrap user authentication view-layer logic
-
-        Flash messages, what to do when a user has been authenticated (by whatever method the
-        parent authenticator uses), redirects to a safe URL after login, etc.
-    """
-    flash_success = 'Login successful.', 'success'
+class UserResponderMixin(object):
     flash_invalid_user = 'No user account matches: {}', 'error'
     flash_unverified_user = 'The user account "{}" has an unverified email address.  Please check' \
         ' your email for a verification link from this website.  Or, use the "forgot' \
         ' password" link to verify the account.', 'error'
     flash_disabled_user = 'The user account "{}" has been disabled.  Please contact this' \
         ' site\'s administrators for more information.', 'error'
-
-    @staticmethod
-    def is_safe_url(target):
-        """Returns `True` if the target is a valid URL for redirect"""
-        # from http://flask.pocoo.org/snippets/62/
-        ref_url = urllib.parse.urlparse(flask.request.host_url)
-        test_url = urllib.parse.urlparse(urllib.parse.urljoin(flask.request.host_url, target))
-        return (
-            test_url.scheme in ('http', 'https') and
-            ref_url.netloc == test_url.netloc
-        )
 
     def on_inactive_user(self, user):
         if flask.current_app.auth_manager.mail_manager and not user.is_verified:
@@ -143,6 +126,26 @@ class LoginResponderMixin(object):
     def on_disabled_user(self, user):
         message, category = self.flash_disabled_user
         flask.flash(message.format(user.display_value), category)
+
+
+class LoginResponderMixin(UserResponderMixin):
+    """ Wrap user authentication view-layer logic
+
+        Flash messages, what to do when a user has been authenticated (by whatever method the
+        parent authenticator uses), redirects to a safe URL after login, etc.
+    """
+    flash_success = 'Login successful.', 'success'
+
+    @staticmethod
+    def is_safe_url(target):
+        """Returns `True` if the target is a valid URL for redirect"""
+        # from http://flask.pocoo.org/snippets/62/
+        ref_url = urllib.parse.urlparse(flask.request.host_url)
+        test_url = urllib.parse.urlparse(urllib.parse.urljoin(flask.request.host_url, target))
+        return (
+            test_url.scheme in ('http', 'https') and
+            ref_url.netloc == test_url.netloc
+        )
 
     def on_success(self, user):
         flask_login.login_user(user)
@@ -164,6 +167,7 @@ class FormResponderMixin(object):
     """ Wrap form usage for auth responders, contains GET and POST handlers"""
     flash_form_error = 'The form has errors, please see below.', 'error'
     form_cls = None
+    page_title = None
 
     def on_form_error(self, form):
         flask.flash(*self.flash_form_error)
@@ -172,7 +176,10 @@ class FormResponderMixin(object):
         raise NotImplementedError  # pragma: no cover
 
     def assign_template_vars(self, form):
-        raise NotImplementedError  # pragma: no cover
+        self.assign('form', form)
+        self.assign('form_action_text', self.page_title)
+        self.assign('page_title', self.page_title)
+        self.assign('page_heading', self.page_title)
 
     def get(self):
         form = self.form_cls()
@@ -216,11 +223,40 @@ class PasswordFormViewResponder(LoginResponderMixin, FormResponderMixin, ViewRes
     def on_invalid_password(self):
         flask.flash(*self.flash_invalid_password)
 
-    def assign_template_vars(self, form):
-        self.assign('form', form)
-        self.assign('form_action_text', self.page_title)
-        self.assign('page_title', self.page_title)
-        self.assign('page_heading', self.page_title)
+
+class ForgotPasswordViewResponder(UserResponderMixin, FormResponderMixin, ViewResponder):
+    """ Master responder for keg-integrated logins, using an email form"""
+    form_cls = forms.ForgotPassword
+    page_title = 'Initiate Password Reset'
+    template_name = 'keg_auth/forgot-password.html'
+    flash_success = 'Please check your email for the link to change your password.', 'success'
+
+    def __call__(self, *args, **kwargs):
+        if not flask.current_app.auth_manager.mail_manager:
+            flask.abort(404)
+
+        return super(ForgotPasswordViewResponder, self).__call__(*args, **kwargs)
+
+    def on_form_valid(self, form):
+        try:
+            user = self.parent.verify_user(login_id=form.email.data)
+
+            # User is active, take action to initiate password reset
+            return self.on_success(user)
+        except UserNotFound:
+            self.on_invalid_user(form.email.data)
+        except UserInactive as exc:
+            self.on_disabled_user(exc.user)
+
+    def on_success(self, user):
+        self.send_email(user)
+        flask.flash(*self.flash_success)
+        redirect_to = flask.current_app.auth_manager.url_for('after-forgot')
+        return flask.redirect(redirect_to)
+
+    def send_email(self, user):
+        user.token_generate()
+        flask.current_app.auth_manager.mail_manager.send_reset_password(user)
 
 
 class PasswordAuthenticatorMixin(object):
@@ -248,6 +284,11 @@ class TokenLoaderMixin(object):
 
 class KegAuthenticator(PasswordAuthenticatorMixin, LoginAuthenticator):
     """ Uses username/password authentication with a login form, validates against keg-auth db"""
+    responder_cls = {
+        'login': PasswordFormViewResponder,
+        'forgot-password': ForgotPasswordViewResponder,
+    }
+
     def verify_user(self, login_id=None, password=None):
         user = self.user_ent.query.filter_by(username=login_id).one_or_none()
 
@@ -269,10 +310,6 @@ class LdapAuthenticator(KegAuthenticator):
 
         Most responder types won't be relevant here.
     """
-    responder_cls = {
-        'login': PasswordFormViewResponder
-    }
-
     def verify_password(self, user, password):
         """
         Check the given username/password combination at the

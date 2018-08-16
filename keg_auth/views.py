@@ -300,37 +300,9 @@ class Login(AuthRespondedView):
     responder_key = 'login'
 
 
-class ForgotPassword(AuthFormView):
+class ForgotPassword(AuthRespondedView):
     url = '/forgot-password'
-    form_cls = forms.ForgotPassword
-    page_title = 'Initiate Password Reset'
-    template_name = 'keg_auth/forgot-password.html'
-    flash_success = 'Please check your email for the link to change your password.', 'success'
-
-    def check_auth(self):
-        if not flask.current_app.auth_manager.mail_manager:
-            flask.abort(404)
-
-    def on_form_valid(self, form):
-        try:
-            user = self.get_user(login_id=form.email.data)
-
-            # User is active, take action to initiate password reset
-            return self.on_success(user)
-        except authenticators.UserNotFound:
-            self.on_invalid_user(form, 'email')
-        except authenticators.UserInactive as exc:
-            self.on_disabled_user(exc.user)
-
-    def on_success(self, user):
-        self.send_email(user)
-        flask.flash(*self.flash_success)
-        redirect_to = flask.current_app.auth_manager.url_for('after-forgot')
-        return flask.redirect(redirect_to)
-
-    def send_email(self, user):
-        user.token_generate()
-        flask.current_app.auth_manager.mail_manager.send_reset_password(user)
+    responder_key = 'forgot-password'
 
 
 class SetPasswordBaseView(AuthFormView):
