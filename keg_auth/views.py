@@ -7,111 +7,6 @@ from blazeutils.strings import case_cw2dash
 from keg.db import db
 
 from keg_auth import forms, grids, requires_permissions
-from keg_auth.libs import authenticators
-
-
-class AuthRespondedView(keg.web.BaseView):
-    """ Base for views which will refer out to the login authenticator for responders
-
-        Note: if the login authenticator doesn't have the referenced key, the view will 404.
-    """
-    responder_key = None
-
-    def __init__(self):
-        super(AuthRespondedView, self).__init__()
-        self.responding_method = 'responder'
-
-    def on_missing_responder(self):
-        flask.abort(404)
-
-    def responder(self, *args, **kwargs):
-        authenticator = flask.current_app.auth_manager.login_authenticator
-        responder = authenticator.get_responder(self.responder_key)
-
-        if not responder:
-            self.on_missing_responder()
-
-        return responder(*args, **kwargs)
-
-    def get(self):
-        # needed in keg to set up a GET route
-        pass
-
-    def post(self):
-        # needed in keg to set up a POST route
-        pass
-
-
-class _BaseView(keg.web.BaseView):
-
-    def flash_and_redirect(self, flash_parts, auth_ident):
-        flask.flash(*flash_parts)
-        redirect_to = flask.current_app.auth_manager.url_for(auth_ident)
-        flask.abort(flask.redirect(redirect_to))
-
-
-class AuthFormView(_BaseView):
-    flash_form_error = 'The form has errors, please see below.', 'error'
-    flash_invalid_user = 'No user account matches: {}', 'error'
-    flash_disabled_user = 'The user account "{}" has been disabled.  Please contact this' \
-        ' site\'s administrators for more information.', 'error'
-
-    def __init__(self, *args, **kwargs):
-        super(AuthFormView, self).__init__(*args, **kwargs)
-
-        self.authenticator = flask.current_app.auth_manager.login_authenticator
-
-    @property
-    def form_action_text(self):
-        return self.page_title
-
-    @property
-    def page_heading(self):
-        return self.page_title
-
-    def get(self):
-        form = self.make_form()
-        self.assign_template_vars(form)
-
-    def post(self, user=None, token=None):
-        form = self.make_form()
-        if form.validate():
-            kwargs = {}
-            if user:
-                kwargs['user'] = user
-            if token:
-                kwargs['token'] = token
-            resp = self.on_form_valid(form, **kwargs)
-            if resp is not None:
-                return resp
-        else:
-            self.on_form_error(form)
-
-        self.assign_template_vars(form)
-
-    def assign_template_vars(self, form):
-        self.assign('form', form)
-        self.assign('form_action_text', self.form_action_text)
-        self.assign('page_title', self.page_title)
-        self.assign('page_heading', self.page_heading)
-
-    def make_form(self):
-        return self.form_cls()
-
-    def get_user(self, login_id=None, password=None):
-        return self.authenticator.verify_user(login_id=login_id, password=password)
-
-    def on_form_error(self, form):
-        flask.flash(*self.flash_form_error)
-
-    def on_invalid_user(self, form, field):
-        message, category = self.flash_invalid_user
-        val = getattr(form, field).data
-        flask.flash(message.format(val), category)
-
-    def on_disabled_user(self, user):
-        message, category = self.flash_disabled_user
-        flask.flash(message.format(user.display_value), category)
 
 
 class CrudView(keg.web.BaseView):
@@ -295,79 +190,72 @@ class CrudView(keg.web.BaseView):
         return self.list_url_with_session
 
 
+class AuthRespondedView(keg.web.BaseView):
+    """ Base for views which will refer out to the login authenticator for responders
+
+        URL gets calculated from the responder class and must be a class attribute there.
+
+        Note: if the login authenticator doesn't have the referenced key, the view will 404.
+    """
+    responder_key = None
+    auth_manager = None
+
+    def __init__(self):
+        super(AuthRespondedView, self).__init__()
+        self.responding_method = 'responder'
+
+    @classmethod
+    def calc_url(cls):
+        authenticator_cls = cls.auth_manager.login_authenticator_cls
+        responder_cls = authenticator_cls.responder_cls.get(cls.responder_key)
+        return getattr(responder_cls, 'url', None)
+
+    def on_missing_responder(self):
+        flask.abort(404)
+
+    def responder(self, *args, **kwargs):
+        authenticator = flask.current_app.auth_manager.login_authenticator
+        responder = authenticator.get_responder(self.responder_key)
+
+        if not responder:
+            self.on_missing_responder()
+
+        return responder(*args, **kwargs)
+
+    def get(self):
+        # needed in keg to set up a GET route
+        pass
+
+    def post(self):
+        # needed in keg to set up a POST route
+        pass
+
+
 class Login(AuthRespondedView):
-    url = '/login'
     responder_key = 'login'
 
 
 class ForgotPassword(AuthRespondedView):
-    url = '/forgot-password'
     responder_key = 'forgot-password'
 
 
-class SetPasswordBaseView(AuthFormView):
-    form_cls = forms.SetPassword
-    template_name = 'keg_auth/set-password.html'
-    flash_invalid_token = 'Authentication token was invalid or expired.  Please fill out the' \
-        ' form below to get a new token.', 'error'
-
-    def check_auth(self):
-        if not flask.current_app.auth_manager.mail_manager:
-            flask.abort(404)
-
-    def user_loader(self, user_id):
-        user_ent = flask.current_app.auth_manager.entity_registry.user_cls
-        return user_ent.query.get(user_id)
-
-    def pre_method(self, user, token):
-        if not user.token_verify(token):
-            resp = self.on_invalid_token()
-            # In case on_invalid_token() is replaced and it accidently fails to return a value
-            # make sure we change that to a generic 400.
-            flask.abort(resp or 400)
-
-    def on_form_valid(self, form, user=None, token=None):
-        assert user is not None
-        assert token is not None
-        return self.on_success(form, user, token)
-
-    def on_success(self, form, user, token):
-        new_password = form.password.data
-        user.change_password(token, new_password)
-        self.flash_and_redirect(self.flash_success, self.on_success_endpoint)
-
-    def on_invalid_token(self):
-        self.flash_and_redirect(self.flash_invalid_token, 'forgot-password')
-
-    def assign_template_vars(self, form):
-        super(SetPasswordBaseView, self).assign_template_vars(form)
-        self.assign('submit_button_text', self.submit_button_text)
+class ResetPassword(AuthRespondedView):
+    responder_key = 'reset-password'
 
 
-class ResetPassword(SetPasswordBaseView):
-    url = '/reset-password/<int:user_id>/<token>'
-    page_title = 'Complete Password Reset'
-    submit_button_text = 'Change Password'
-    flash_success = 'Password changed.  Please use the new password to login below.', 'success'
-    on_success_endpoint = 'after-reset'
+class VerifyAccount(AuthRespondedView):
+    responder_key = 'verify-account'
 
 
-class VerifyAccount(SetPasswordBaseView):
-    url = '/verify-account/<int:user_id>/<token>'
-    page_title = 'Verify Account & Set Password'
-    submit_button_text = 'Verify & Set Password'
-    flash_success = 'Account verified & password set.  Please use the new password to login' \
-        ' below.', 'success'
-    on_success_endpoint = 'after-verify-account'
-
-
-class Logout(_BaseView):
+class Logout(keg.web.BaseView):
     url = '/logout'
     flash_success = 'You have been logged out.', 'success'
 
     def get(self):
         flask_login.logout_user()
-        self.flash_and_redirect(self.flash_success, 'after-logout')
+        flask.flash(*self.flash_success)
+        redirect_to = flask.current_app.auth_manager.url_for('after-logout')
+        flask.abort(flask.redirect(redirect_to))
 
 
 @requires_permissions('auth-manage')
@@ -499,11 +387,19 @@ class Permission(keg.web.BaseView):
         )
 
 
-def make_blueprint(import_name, bp_name='auth', login_cls=Login, forgot_cls=ForgotPassword,
-                   reset_cls=ResetPassword, logout_cls=Logout, verify_cls=VerifyAccount,
-                   user_crud_cls=User, group_crud_cls=Group, bundle_crud_cls=Bundle,
-                   permission_cls=Permission):
+def make_blueprint(import_name, _auth_manager, bp_name='auth', login_cls=Login,
+                   forgot_cls=ForgotPassword, reset_cls=ResetPassword, logout_cls=Logout,
+                   verify_cls=VerifyAccount, user_crud_cls=User, group_crud_cls=Group,
+                   bundle_crud_cls=Bundle, permission_cls=Permission):
+    """ Blueprint factory for keg-auth views
 
+        Naming the blueprint here requires us to create separate view classes so that the routes
+        get applied to the blueprint. Override view classes may be provided.
+
+        Most params are assumed to be view classes. `_auth_manager` is the extension instance meant
+        for the app on which this blueprint will be used: it is necessary in order to apply url
+        routes for user functions.
+    """
     _blueprint = flask.Blueprint(bp_name, import_name)
 
     # It's not ideal we have to redefine the classes, but it's needed because of how
@@ -511,17 +407,21 @@ def make_blueprint(import_name, bp_name='auth', login_cls=Login, forgot_cls=Forg
     # the view doesn't actually get created on blueprint.
     class Login(login_cls):
         blueprint = _blueprint
+        auth_manager = _auth_manager
 
     class ForgotPassword(forgot_cls):
         blueprint = _blueprint
+        auth_manager = _auth_manager
 
     class ResetPassword(reset_cls):
         blueprint = _blueprint
-
-    class Logout(logout_cls):
-        blueprint = _blueprint
+        auth_manager = _auth_manager
 
     class VerifyAccount(verify_cls):
+        blueprint = _blueprint
+        auth_manager = _auth_manager
+
+    class Logout(logout_cls):
         blueprint = _blueprint
 
     class User(user_crud_cls):

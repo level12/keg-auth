@@ -134,6 +134,7 @@ class LoginResponderMixin(UserResponderMixin):
         Flash messages, what to do when a user has been authenticated (by whatever method the
         parent authenticator uses), redirects to a safe URL after login, etc.
     """
+    url = '/login'
     flash_success = 'Login successful.', 'success'
 
     @staticmethod
@@ -181,11 +182,11 @@ class FormResponderMixin(object):
         self.assign('page_title', self.page_title)
         self.assign('page_heading', self.page_title)
 
-    def get(self):
+    def get(self, *args, **kwargs):
         form = self.form_cls()
         self.assign_template_vars(form)
 
-    def post(self):
+    def post(self, *args, **kwargs):
         form = self.form_cls()
         if form.validate():
             resp = self.on_form_valid(form)
@@ -195,6 +196,73 @@ class FormResponderMixin(object):
             self.on_form_error(form)
 
         self.assign_template_vars(form)
+
+
+class PasswordSetterResponderBase(FormResponderMixin, ViewResponder):
+    """ Base logic for resetting passwords and verifying accounts via token"""
+    form_cls = forms.SetPassword
+    template_name = 'keg_auth/set-password.html'
+    flash_invalid_token = 'Authentication token was invalid or expired.  Please fill out the' \
+        ' form below to get a new token.', 'error'
+
+    def __call__(self, *args, **kwargs):
+        if not flask.current_app.auth_manager.mail_manager:
+            flask.abort(404)
+
+        self.user_loader(kwargs.get('user_id'))
+        self.token = kwargs.get('token')
+        self.pre_method()
+
+        return super(PasswordSetterResponderBase, self).__call__(*args, **kwargs)
+
+    def flash_and_redirect(self, flash_parts, auth_ident):
+        flask.flash(*flash_parts)
+        redirect_to = flask.current_app.auth_manager.url_for(auth_ident)
+        flask.abort(flask.redirect(redirect_to))
+
+    def user_loader(self, user_id):
+        user_ent = flask.current_app.auth_manager.entity_registry.user_cls
+        self.user = user_ent.query.get(user_id)
+        if not self.user:
+            flask.abort(404)
+
+    def pre_method(self):
+        if not self.user.token_verify(self.token):
+            resp = self.on_invalid_token()
+            # In case on_invalid_token() is replaced and it accidently fails to return a value
+            # make sure we change that to a generic 400.
+            flask.abort(resp or 400)
+
+    def on_form_valid(self, form):
+        new_password = form.password.data
+        self.user.change_password(self.token, new_password)
+        self.flash_and_redirect(self.flash_success, self.on_success_endpoint)
+
+    def on_invalid_token(self):
+        self.flash_and_redirect(self.flash_invalid_token, 'forgot-password')
+
+    def assign_template_vars(self, form):
+        super(PasswordSetterResponderBase, self).assign_template_vars(form)
+        self.assign('submit_button_text', self.submit_button_text)
+
+
+class ResetPasswordViewResponder(PasswordSetterResponderBase):
+    """ Responder for resetting passwords via token on keg-auth logins"""
+    url = '/reset-password/<int:user_id>/<token>'
+    page_title = 'Complete Password Reset'
+    submit_button_text = 'Change Password'
+    flash_success = 'Password changed.  Please use the new password to login below.', 'success'
+    on_success_endpoint = 'after-reset'
+
+
+class VerifyAccountViewResponder(PasswordSetterResponderBase):
+    """ Responder for verifying users via email token for keg-auth logins"""
+    url = '/verify-account/<int:user_id>/<token>'
+    page_title = 'Verify Account & Set Password'
+    submit_button_text = 'Verify & Set Password'
+    flash_success = 'Account verified & password set.  Please use the new password to login' \
+        ' below.', 'success'
+    on_success_endpoint = 'after-verify-account'
 
 
 class PasswordFormViewResponder(LoginResponderMixin, FormResponderMixin, ViewResponder):
@@ -226,6 +294,7 @@ class PasswordFormViewResponder(LoginResponderMixin, FormResponderMixin, ViewRes
 
 class ForgotPasswordViewResponder(UserResponderMixin, FormResponderMixin, ViewResponder):
     """ Master responder for keg-integrated logins, using an email form"""
+    url = '/forgot-password'
     form_cls = forms.ForgotPassword
     page_title = 'Initiate Password Reset'
     template_name = 'keg_auth/forgot-password.html'
@@ -287,6 +356,8 @@ class KegAuthenticator(PasswordAuthenticatorMixin, LoginAuthenticator):
     responder_cls = {
         'login': PasswordFormViewResponder,
         'forgot-password': ForgotPasswordViewResponder,
+        'reset-password': ResetPasswordViewResponder,
+        'verify-account': VerifyAccountViewResponder,
     }
 
     def verify_user(self, login_id=None, password=None):

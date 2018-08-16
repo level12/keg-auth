@@ -40,16 +40,6 @@ Usage
          - Subject: [Keg App] Password Reset Link
          - Body: Somebody asked to reset your password on Keg Application. If this was not you...
 
--  Blueprints
-
-   -  include an auth blueprint along with your app’s blueprints, which includes the login views
-      and user/group/bundle management:
-
-.. code-block:: python
-
-          from keg_auth import make_blueprint
-          auth_bp = make_blueprint(__name__)
-
 -  Extensions
 
    -  set up an auth manager (in app setup or extensions)
@@ -80,16 +70,12 @@ Usage
           auth_manager.init_app(app)
 ..
 
-    -  Authenticators control validation of users
-      -  'keg' is the default primary authenticator, and uses username/password
-      -  authenticators may be registered on the auth_manager:
-         -  ``AuthManager(mail_ext, primary_authenticator_cls=JwtAuthenticator)``
-         -  ``AuthManager(mail_ext, secondary_authenticators=[JwtAuthenticator, LdapAuthenticator])``
-      -  token authenticators, like JwtAuthenticator, have a `create_access_token` method
-         -  ``token = auth_manager.get_authenticator('jwt').create_access_token(user)``
-      -  JWT authentication:
-         -  ``from keg_auth import JwtAuthenticator``
-         -  uses flask-jwt-extended, which needs to be installed: ``pip install keg-auth[jwt]``
+    -  Login Authenticators control validation of users
+      -  includes logic for verifying a user from a login route, and other view-layer operations
+         needed for user workflow (e.g. verifying email, password resets, etc.)
+      -  authenticator may be specified on the auth_manager:
+         -  'keg' is the default primary authenticator, and uses username/password
+         -  ``AuthManager(mail_ext, login_authenticator=LdapAuthenticator)``
       -  LDAP authentication
          -  ``from keg_auth import LdapAuthenticator``
          -  uses pyldap, which needs to be installed: ``pip install keg-auth[ldap]``
@@ -98,6 +84,24 @@ Usage
             -  KEGAUTH_LDAP_SERVER_URL: target LDAP server to use for queries
             -  KEGAUTH_LDAP_DN_FORMAT: format-able string to set up for the query
                -  ex. ``uid={},dc=example,dc=org``
+    -  Request Loaders run when a user is not in session, and identifying data is in the request
+      -  ``AuthManager(mail_ext, request_loaders=JwtRequestLoader)``
+      -  token authenticators, like JwtRequestLoader, have a `create_access_token` method
+         -  ``token = auth_manager.get_request_loader('jwt').create_access_token(user)``
+      -  JWT:
+         -  ``from keg_auth import JwtRequestLoader``
+         -  uses flask-jwt-extended, which needs to be installed: ``pip install keg-auth[jwt]``
+
+   -  Blueprints
+
+      -  include an auth blueprint along with your app’s blueprints, which includes the login views
+         and user/group/bundle management. Requires AuthManager instance:
+
+.. code-block:: python
+
+             from keg_auth import make_blueprint
+             from my_app.extensions import auth_manager
+             auth_bp = make_blueprint(__name__, auth_manager)
 
    -  CLI is rudimentary, with just one create-user command in the auth group. You can extend the
       group by using the cli_group attribute on the app's auth_manager, but you need access to the
