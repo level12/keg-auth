@@ -28,7 +28,7 @@ class AuthManager(object):
     cli_group_name = 'auth'
 
     def __init__(self, mail_manager=None, blueprint='auth', endpoints=None,
-                 cli_group_name=None, grid_cls=None, login_manager=KegAuthenticator,
+                 cli_group_name=None, grid_cls=None, login_authenticator=KegAuthenticator,
                  request_loaders=None, permissions=None, entity_registry=None):
         """Set up an auth management extension
 
@@ -40,7 +40,7 @@ class AuthManager(object):
         :param endpoints: dict of overrides to auth view endpoints
         :param cli_group_name: name of the CLI group under which auth commands appear
         :param grid_cls: webgrid class to serve as a base class to auth CRUD grids
-        :param login_manager: login manager class used by login view
+        :param login_authenticator: login authenticator class used by login view
             default: KegAuthenticator
         :param request_loaders: registered loaders used for loading a user at request time from
             information not contained in the session (e.g. with an authorization header token).
@@ -58,7 +58,7 @@ class AuthManager(object):
         self.cli_group_name = cli_group_name or self.cli_group_name
         self.cli_group = None
         self.grid_cls = grid_cls
-        self.login_manager_cls = login_manager
+        self.login_authenticator_cls = login_authenticator
         self.request_loader_cls = tolist(request_loaders or [])
         self.request_loaders = dict()
         self.menus = dict()
@@ -128,7 +128,7 @@ class AuthManager(object):
         if self._loaders_initialized:
             return
 
-        self.login_manager = self.login_manager_cls(app)
+        self.login_authenticator = self.login_authenticator_cls(app)
 
         for loader_cls in self.request_loader_cls:
             self.request_loaders[loader_cls.get_identifier()] = loader_cls(app)

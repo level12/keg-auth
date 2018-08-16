@@ -68,5 +68,5 @@ class TestAuthManager(object):
         manager = AuthManager(None, request_loaders=[JwtRequestLoader],
                               entity_registry=auth_entity_registry)
         manager.init_app(app)
-        assert isinstance(manager.login_manager, KegAuthenticator)
+        assert isinstance(manager.login_authenticator, KegAuthenticator)
         assert isinstance(manager.get_request_loader('jwt'), JwtRequestLoader)

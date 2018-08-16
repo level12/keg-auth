@@ -10,6 +10,38 @@ from keg_auth import forms, grids, requires_permissions
 from keg_auth.libs import authenticators
 
 
+class AuthRespondedView(keg.web.BaseView):
+    """ Base for views which will refer out to the login authenticator for responders
+
+        Note: if the login authenticator doesn't have the referenced key, the view will 404.
+    """
+    responder_key = None
+
+    def __init__(self):
+        super(AuthRespondedView, self).__init__()
+        self.responding_method = 'responder'
+
+    def on_missing_responder(self):
+        flask.abort(404)
+
+    def responder(self, *args, **kwargs):
+        authenticator = flask.current_app.auth_manager.login_authenticator
+        responder = authenticator.get_responder(self.responder_key)
+
+        if not responder:
+            self.on_missing_responder()
+
+        return responder(*args, **kwargs)
+
+    def get(self):
+        # needed in keg to set up a GET route
+        pass
+
+    def post(self):
+        # needed in keg to set up a POST route
+        pass
+
+
 class _BaseView(keg.web.BaseView):
 
     def flash_and_redirect(self, flash_parts, auth_ident):
@@ -27,7 +59,7 @@ class AuthFormView(_BaseView):
     def __init__(self, *args, **kwargs):
         super(AuthFormView, self).__init__(*args, **kwargs)
 
-        self.authenticator = flask.current_app.auth_manager.login_manager
+        self.authenticator = flask.current_app.auth_manager.login_authenticator
 
     @property
     def form_action_text(self):
@@ -263,15 +295,9 @@ class CrudView(keg.web.BaseView):
         return self.list_url_with_session
 
 
-class Login(AuthFormView):
+class Login(AuthRespondedView):
     url = '/login'
-
-    def responder(self, *args, **kwargs):
-        return flask.current_app.auth_manager.login_manager(*args, **kwargs)
-
-    def __init__(self):
-        super(Login, self).__init__()
-        self.responding_method = 'responder'
+    responder_key = 'login'
 
 
 class ForgotPassword(AuthFormView):

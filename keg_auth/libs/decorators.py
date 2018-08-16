@@ -101,7 +101,7 @@ class RequiresUser(object):
             self._on_authentication_failure()
 
         # redirect if app's login manager requires it
-        if flask.current_app.auth_manager.login_manager.authentication_failure_redirect:
+        if flask.current_app.auth_manager.login_authenticator.authentication_failure_redirect:
             redirect_resp = flask.current_app.login_manager.unauthorized()
             flask.abort(redirect_resp)
         else:

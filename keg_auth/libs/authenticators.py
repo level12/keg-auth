@@ -1,5 +1,6 @@
 import flask
 import flask_login
+import six
 from six.moves import urllib
 
 from keg_auth import forms
@@ -40,53 +41,82 @@ class RequestLoader(object):
         return cls.__name__.lower().replace('requestloader', '')
 
 
-class LoginManager(object):
+class LoginAuthenticator(object):
+    """ Manages verification of users as well as relevant view-layer logic
+
+        Relevant auth views (login, verification, resets, etc.) get passed through to responders
+        on this layer, to process and render for the specific type of authentication happening.
+
+        For example, a password authenticator will want a user/password login form, but other types
+        like oauth may get a different form entirely (and handle resets differently, etc.).
+
+        `responder_cls` is a key/value store for associating view keys with responder classes. If a
+        view key is not present, we assume that view is not relevant to the authenticator, and the
+        view itself will return 404.
+    """
+
     authentication_failure_redirect = True
-    responder_cls = None
+    responder_cls = {}
 
     def __init__(self, app):
-        self.responder = self.responder_cls()
-        self.responder.parent = self
         self.user_ent = app.auth_manager.entity_registry.user_cls
+        self.responders = {}
 
-    def __call__(self, *args, **kwargs):
-        method_name = flask.request.method.lower()
-        method_obj = getattr(self.responder, method_name, None)
-        if not method_obj:
-            raise NotImplementedError(method_name)
-        resp = method_obj(*args, **kwargs)
+        self.init_responders()
 
-        return resp or flask.render_template(
-            self.responder.template_name, **self.responder.template_args
-        )
+    def init_responders(self):
+        for key, cls in six.iteritems(self.responder_cls):
+            self.responders[key] = cls(self)
+
+    def get_responder(self, key):
+        return self.responders.get(key)
 
 
 class ViewResponder(object):
+    """ View-layer logic wrapper for use in the Authenticator
+
+        Responder should be combined with needed mixins for various functionality (forms,
+        logins, etc.).
+
+        Expected to have methods named for the request method (get, post, etc.)
+
+        `template_name` is passed to `flask.render_template` by default
+    """
     template_name = None
 
-    def __init__(self):
+    def __init__(self, parent):
         self.template_args = {}
+        self.parent = parent
 
     def assign(self, key, value):
         self.template_args[key] = value
 
+    def render(self):
+        return flask.render_template(self.template_name, **self.template_args)
 
-class PasswordFormViewResponder(ViewResponder):
-    template_name = 'keg_auth/login.html'
-    page_title = 'Log In'
-    flash_form_error = 'The form has errors, please see below.', 'error'
+    def __call__(self, *args, **kwargs):
+        method_name = flask.request.method.lower()
+        method_obj = getattr(self, method_name, None)
+        if not method_obj:
+            raise NotImplementedError(method_name)
+        resp = method_obj(*args, **kwargs)
+
+        return resp or self.render()
+
+
+class LoginResponderMixin(object):
+    """ Wrap user authentication view-layer logic
+
+        Flash messages, what to do when a user has been authenticated (by whatever method the
+        parent authenticator uses), redirects to a safe URL after login, etc.
+    """
     flash_success = 'Login successful.', 'success'
-    flash_invalid_password = 'Invalid password.', 'error'
     flash_invalid_user = 'No user account matches: {}', 'error'
     flash_unverified_user = 'The user account "{}" has an unverified email address.  Please check' \
         ' your email for a verification link from this website.  Or, use the "forgot' \
         ' password" link to verify the account.', 'error'
     flash_disabled_user = 'The user account "{}" has been disabled.  Please contact this' \
         ' site\'s administrators for more information.', 'error'
-
-    @property
-    def form_cls(self):
-        return forms.login_form()
 
     @staticmethod
     def is_safe_url(target):
@@ -99,36 +129,20 @@ class PasswordFormViewResponder(ViewResponder):
             ref_url.netloc == test_url.netloc
         )
 
-    def on_form_error(self, form):
-        flask.flash(*self.flash_form_error)
-
-    def on_form_valid(self, form):
-        try:
-            user = self.parent.verify_user(login_id=form.login_id.data, password=form.password.data)
-
-            # User is active and password is verified
-            return self.on_success(user)
-        except UserNotFound:
-            self.on_invalid_user(form, 'login_id')
-        except UserInactive as exc:
-            self.on_inactive_user(exc.user)
-        except UserInvalidAuth:
-            self.on_invalid_password()
-
-    def on_invalid_password(self):
-        flask.flash(*self.flash_invalid_password)
-
-    def on_invalid_user(self, form, field):
-        message, category = self.flash_invalid_user
-        val = getattr(form, field).data
-        flask.flash(message.format(val), category)
-
     def on_inactive_user(self, user):
         if flask.current_app.auth_manager.mail_manager and not user.is_verified:
             message, category = self.flash_unverified_user
             flask.flash(message.format(user.email), category)
         if not user.is_enabled:
             self.on_disabled_user(user)
+
+    def on_invalid_user(self, username):
+        message, category = self.flash_invalid_user
+        flask.flash(message.format(username), category)
+
+    def on_disabled_user(self, user):
+        message, category = self.flash_disabled_user
+        flask.flash(message.format(user.display_value), category)
 
     def on_success(self, user):
         flask_login.login_user(user)
@@ -145,15 +159,20 @@ class PasswordFormViewResponder(ViewResponder):
 
         return flask.redirect(redirect_to)
 
-    def on_disabled_user(self, user):
-        message, category = self.flash_disabled_user
-        flask.flash(message.format(user.display_value), category)
+
+class FormResponderMixin(object):
+    """ Wrap form usage for auth responders, contains GET and POST handlers"""
+    flash_form_error = 'The form has errors, please see below.', 'error'
+    form_cls = None
+
+    def on_form_error(self, form):
+        flask.flash(*self.flash_form_error)
+
+    def on_form_valid(self, form):
+        raise NotImplementedError  # pragma: no cover
 
     def assign_template_vars(self, form):
-        self.assign('form', form)
-        self.assign('form_action_text', self.page_title)
-        self.assign('page_title', self.page_title)
-        self.assign('page_heading', self.page_title)
+        raise NotImplementedError  # pragma: no cover
 
     def get(self):
         form = self.form_cls()
@@ -171,10 +190,45 @@ class PasswordFormViewResponder(ViewResponder):
         self.assign_template_vars(form)
 
 
+class PasswordFormViewResponder(LoginResponderMixin, FormResponderMixin, ViewResponder):
+    """ Master responder for username/password-style logins, using a login form"""
+    template_name = 'keg_auth/login.html'
+    page_title = 'Log In'
+    flash_invalid_password = 'Invalid password.', 'error'
+
+    @property
+    def form_cls(self):
+        return forms.login_form()
+
+    def on_form_valid(self, form):
+        try:
+            user = self.parent.verify_user(login_id=form.login_id.data, password=form.password.data)
+
+            # User is active and password is verified
+            return self.on_success(user)
+        except UserNotFound:
+            self.on_invalid_user(form.login_id.data)
+        except UserInactive as exc:
+            self.on_inactive_user(exc.user)
+        except UserInvalidAuth:
+            self.on_invalid_password()
+
+    def on_invalid_password(self):
+        flask.flash(*self.flash_invalid_password)
+
+    def assign_template_vars(self, form):
+        self.assign('form', form)
+        self.assign('form_action_text', self.page_title)
+        self.assign('page_title', self.page_title)
+        self.assign('page_heading', self.page_title)
+
+
 class PasswordAuthenticatorMixin(object):
     """ Username/password authenticators will need a way to verify a user is valid
         prior to making it the current user in flask login """
-    responder_cls = PasswordFormViewResponder
+    responder_cls = {
+        'login': PasswordFormViewResponder
+    }
 
     def verify_user(self, login_id=None, password=None):
         raise NotImplementedError
@@ -192,7 +246,8 @@ class TokenLoaderMixin(object):
         raise NotImplementedError
 
 
-class KegAuthenticator(PasswordAuthenticatorMixin, LoginManager):
+class KegAuthenticator(PasswordAuthenticatorMixin, LoginAuthenticator):
+    """ Uses username/password authentication with a login form, validates against keg-auth db"""
     def verify_user(self, login_id=None, password=None):
         user = self.user_ent.query.filter_by(username=login_id).one_or_none()
 
@@ -210,6 +265,14 @@ class KegAuthenticator(PasswordAuthenticatorMixin, LoginManager):
 
 
 class LdapAuthenticator(KegAuthenticator):
+    """ Uses username/password authentication with a login form, validates against LDAP host
+
+        Most responder types won't be relevant here.
+    """
+    responder_cls = {
+        'login': PasswordFormViewResponder
+    }
+
     def verify_password(self, user, password):
         """
         Check the given username/password combination at the
@@ -249,7 +312,7 @@ class LdapAuthenticator(KegAuthenticator):
 
 
 class JwtRequestLoader(TokenLoaderMixin, RequestLoader):
-    """ Authenticator for JWT tokens contained in the Authorization header.
+    """ Loader for JWT tokens contained in the Authorization header.
 
         Requires flask-jwt-extended (`pip install keg-auth[jwt]`)"""
     def __init__(self, app):
