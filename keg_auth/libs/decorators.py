@@ -113,6 +113,7 @@ class RequiresUser(object):
             return flask_login.current_user
 
         # no user in session right now, so we need to run request loaders to see if any match
+        user = None
         for loader in flask.current_app.auth_manager.request_loaders.values():
             user = loader.get_authenticated_user()
             if user:

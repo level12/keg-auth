@@ -111,6 +111,11 @@ class TestViews(object):
         # decorated class has its own authentication failure handler
         client.get('/secret1-class', status=405)
 
+    @mock.patch('flask.current_app.auth_manager.request_loaders', {})
+    def test_unauthenticated_client_no_request_loaders(self):
+        client = flask_webtest.TestApp(flask.current_app)
+        client.get('/secret1', status=302)
+
     def test_login_field_success_next_parameter(self):
         ents.User.testing_create(email='foo@bar.com', password='pass')
 
@@ -430,7 +435,7 @@ class TestPermissionsRequired:
         client.get('/protected-class', status=405)
 
 
-class TestAuthenticators(object):
+class TestRequestLoaders(object):
     def test_token_auth_no_token(self):
         client = flask_webtest.TestApp(flask.current_app)
         client.get('/jwt-required', status=302)
