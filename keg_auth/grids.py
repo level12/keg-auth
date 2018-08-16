@@ -5,7 +5,6 @@ from webgrid import filters
 from webhelpers2.html import literal
 from webhelpers2.html.tags import link_to
 
-from keg_auth.model import entity_registry
 from keg_auth.model.utils import has_permissions
 
 

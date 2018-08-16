@@ -11,7 +11,7 @@ from wtforms.fields import (
 from wtforms import ValidationError, validators
 from wtforms_components.widgets import EmailInput
 
-from keg_auth.model import entity_registry, get_username_key
+from keg_auth.model import get_username_key
 
 
 def login_form():
@@ -73,14 +73,16 @@ class PermissionsMixin(object):
     permission_ids = SelectMultipleField('Permissions')
 
     def get_selected_permissions(self):
-        return entities_from_ids(flask.current_app.auth_manager.entity_registry.permission_cls, self.permission_ids.data)
+        return entities_from_ids(flask.current_app.auth_manager.entity_registry.permission_cls,
+                                 self.permission_ids.data)
 
 
 class BundlesMixin(object):
     bundle_ids = SelectMultipleField('Bundles')
 
     def get_selected_bundles(self):
-        return entities_from_ids(flask.current_app.auth_manager.entity_registry.bundle_cls, self.bundle_ids.data)
+        return entities_from_ids(flask.current_app.auth_manager.entity_registry.bundle_cls,
+                                 self.bundle_ids.data)
 
 
 class _ValidatePasswordRequired(object):
@@ -128,7 +130,8 @@ def user_form(config=None, allow_superuser=False, endpoint='', fields=['is_enabl
                               ValidateUnique(html_link)]
         ))
 
-        if isinstance(flask.current_app.auth_manager.entity_registry.user_cls.username.type, EmailType):
+        if isinstance(flask.current_app.auth_manager.entity_registry.user_cls.username.type,
+                      EmailType):
             getattr(FieldsMeta, username_key).widget = EmailInput()
 
         if not config.get('KEGAUTH_EMAIL_OPS_ENABLED'):
@@ -147,7 +150,8 @@ def user_form(config=None, allow_superuser=False, endpoint='', fields=['is_enabl
             self.group_ids.choices = get_group_options()
 
         def get_selected_groups(self):
-            return entities_from_ids(flask.current_app.auth_manager.entity_registry.group_cls, self.group_ids.data)
+            return entities_from_ids(flask.current_app.auth_manager.entity_registry.group_cls,
+                                     self.group_ids.data)
 
         def get_object_by_field(self, field):
             return user_cls.get_by(username=field.data)
