@@ -1,9 +1,12 @@
 # Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
 from __future__ import unicode_literals
 
+from blazeutils import tolist
 from blazeutils.containers import LazyDict
+from six.moves import urllib
 import flask
 import flask_webtest
+import mock
 import wrapt
 
 
@@ -35,7 +38,7 @@ class AuthTests(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(self.login_url)
 
-        resp.form['email'] = 'foo'
+        resp.form['login_id'] = 'foo'
         resp = resp.form.submit(status=200)
 
         assert resp.flashes == [('error', 'The form has errors, please see below.')]
@@ -46,11 +49,75 @@ class AuthTests(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(self.login_url)
 
-        resp.form['email'] = 'foo@bar.com'
+        resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'pass'
         resp = resp.form.submit()
 
         assert resp.status_code == 302, resp.html
+        assert resp.headers['Location'] == 'http://keg.example.com/'
+        assert resp.flashes == [('success', 'Login successful.')]
+
+    def test_login_field_success_next_parameter(self):
+        self.user_ent.testing_create(email='foo@bar.com', password='pass')
+
+        next = '/foo'
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('{}?next={}'.format(self.login_url, next))
+
+        resp.form['login_id'] = 'foo@bar.com'
+        resp.form['password'] = 'pass'
+        resp = resp.form.submit()
+
+        assert resp.status_code == 302, resp.html
+        assert resp.headers['Location'] == 'http://keg.example.com{}'.format(next)
+        assert resp.flashes == [('success', 'Login successful.')]
+
+    def test_login_field_success_next_session(self):
+        self.user_ent.testing_create(email='foo@bar.com', password='pass')
+
+        next = '/foo'
+        with mock.patch.dict(flask.current_app.config, {'USE_SESSION_FOR_NEXT': True}):
+            client = flask_webtest.TestApp(flask.current_app)
+            with client.session_transaction() as sess:
+                sess['next'] = next
+            resp = client.get(self.login_url)
+
+            resp.form['login_id'] = 'foo@bar.com'
+            resp.form['password'] = 'pass'
+            resp = resp.form.submit()
+
+        assert resp.status_code == 302, resp.html
+        assert resp.headers['Location'] == 'http://keg.example.com{}'.format(next)
+        assert resp.flashes == [('success', 'Login successful.')]
+
+    def test_next_parameter_not_open_redirect(self):
+        """ensure following the "next" parameter doesn't allow for an open redirect"""
+        self.user_ent.testing_create(email='foo@bar.com', password='pass')
+
+        # unquoted next parameter
+        next = 'http://www.example.com'
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('{}?next={}'.format(self.login_url, next))
+
+        resp.form['login_id'] = 'foo@bar.com'
+        resp.form['password'] = 'pass'
+        resp = resp.form.submit()
+
+        assert resp.status_code == 302, resp.html
+        # verify the 'next' parameter was ignored
+        assert resp.headers['Location'] == 'http://keg.example.com/'
+        assert resp.flashes == [('success', 'Login successful.')]
+
+        # quoted next parameter
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('{}?next={}'.format(self.login_url, urllib.parse.quote(next)))
+
+        resp.form['login_id'] = 'foo@bar.com'
+        resp.form['password'] = 'pass'
+        resp = resp.form.submit()
+
+        assert resp.status_code == 302, resp.html
+        # verify the 'next' parameter was ignored
         assert resp.headers['Location'] == 'http://keg.example.com/'
         assert resp.flashes == [('success', 'Login successful.')]
 
@@ -60,7 +127,7 @@ class AuthTests(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(self.login_url)
 
-        resp.form['email'] = 'foo@bar.com'
+        resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'badpass'
         resp = resp.form.submit(status=200)
 
@@ -70,7 +137,7 @@ class AuthTests(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(self.login_url)
 
-        resp.form['email'] = 'foo@bar.com'
+        resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'badpass'
         resp = resp.form.submit(status=200)
 
@@ -82,11 +149,11 @@ class AuthTests(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(self.login_url)
 
-        resp.form['email'] = 'foo@bar.com'
+        resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'badpass'
         resp = resp.form.submit(status=200)
 
-        msg = 'The user account "foo@bar.com" has an unverified email addres.  Please check' \
+        msg = 'The user account "foo@bar.com" has an unverified email address.  Please check' \
             ' your email for a verification link from this website.  Or, use the "forgot' \
             ' password" link to verify the account.'
         assert resp.flashes == [('error', msg)]
@@ -97,7 +164,7 @@ class AuthTests(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(self.login_url)
 
-        resp.form['email'] = 'foo@bar.com'
+        resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'badpass'
         resp = resp.form.submit(status=200)
 
@@ -115,7 +182,7 @@ class AuthTests(object):
         assert resp.headers['Location'].startswith(full_login_url)
 
         resp = resp.follow()
-        resp.form['email'] = 'foo@bar.com'
+        resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'pass'
         resp = resp.form.submit(status=302)
         assert resp.flashes == [('success', 'Login successful.')]
@@ -223,7 +290,7 @@ class AuthTests(object):
         assert not user.is_verified
 
         user.token_generate()
-        url = flask.current_app.auth_manager.verify_account_url(user)
+        url = flask.current_app.auth_manager.mail_manager.verify_account_url(user)
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(url, status=200)
@@ -243,7 +310,7 @@ class AuthTests(object):
     def test_verify_account_form_error(self):
         user = self.user_ent.testing_create()
         user.token_generate()
-        url = flask.current_app.auth_manager.verify_account_url(user)
+        url = flask.current_app.auth_manager.mail_manager.verify_account_url(user)
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(url, status=200)
@@ -253,7 +320,7 @@ class AuthTests(object):
 
     def test_verify_account_missing_user(self):
         user = LazyDict(id=9999999, _token_plain='123')
-        url = flask.current_app.auth_manager.verify_account_url(user)
+        url = flask.current_app.auth_manager.mail_manager.verify_account_url(user)
 
         client = flask_webtest.TestApp(flask.current_app)
         client.get(url, status=404)
@@ -261,7 +328,7 @@ class AuthTests(object):
     def test_verify_account_bad_token(self):
         user = self.user_ent.testing_create()
         user._token_plain = 'abc'
-        url = flask.current_app.auth_manager.verify_account_url(user)
+        url = flask.current_app.auth_manager.mail_manager.verify_account_url(user)
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(url, status=302)
@@ -277,7 +344,7 @@ class AuthTests(object):
         user = self.user_ent.testing_create()
         client = flask_webtest.TestApp(flask.current_app)
         with client.session_transaction() as sess:
-            sess['user_id'] = user.id
+            sess['user_id'] = user.session_key
 
         # Make sure our client is actually logged in
         client.get(self.protected_url, status=200)
@@ -300,7 +367,7 @@ def user_request(wrapped, instance, args, kwargs):
     user = new_kwargs.pop('user', None)
     extra_environ = new_kwargs.setdefault('extra_environ', {})
     if user is not None:
-        extra_environ['TEST_USER_ID'] = str(user.id)
+        extra_environ['TEST_USER_ID'] = str(user.session_key)
     return wrapped(*args, **new_kwargs)
 
 
@@ -309,7 +376,7 @@ class AuthTestApp(flask_webtest.TestApp):
         user = kwargs.pop('user', None)
         extra_environ = kwargs.pop('extra_environ', {})
         if user is not None:
-            extra_environ['TEST_USER_ID'] = str(user.id)
+            extra_environ['TEST_USER_ID'] = str(user.session_key)
         super(AuthTestApp, self).__init__(app, extra_environ=extra_environ, **kwargs)
 
     @user_request
@@ -355,3 +422,30 @@ class AuthTestApp(flask_webtest.TestApp):
     @user_request
     def delete_json(self, *args, **kwargs):
         return super(AuthTestApp, self).delete_json(*args, **kwargs)
+
+
+class ViewTestBase:
+    """ Simple helper class that will set up Permission tokens as specified, log in a user, and
+        provide the test app client on the class for use in tests.
+
+        Usage: `permissions` class attribute can be scalar or list, giving either tokens or
+        Permission instances
+
+        Tests:
+        - `self.current_user`: User instance that is logged in
+        - `self.client`: AuthTestApp instance
+    """
+    permissions = tuple()
+
+    @classmethod
+    def setup_class(cls):
+        cls.user_ent = flask.current_app.auth_manager.entity_registry.user_cls
+        cls.permission_ent = flask.current_app.auth_manager.entity_registry.permission_cls
+        cls.user_ent.delete_cascaded()
+
+        # ensure all of the tokens exists
+        for perm in tolist(cls.permissions):
+            cls.permission_ent.testing_create(token=perm)
+
+        cls.current_user = cls.user_ent.testing_create(permissions=cls.permissions)
+        cls.client = AuthTestApp(flask.current_app, user=cls.current_user)

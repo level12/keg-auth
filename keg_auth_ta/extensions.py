@@ -2,10 +2,21 @@ from __future__ import absolute_import
 
 from flask_mail import Mail
 from flask_wtf.csrf import CSRFProtect
-from keg_auth import AuthManager
+from keg_auth import AuthManager, AuthMailManager, JwtRequestLoader, AuthEntityRegistry
+import webgrid
+from webgrid.flask import WebGrid as GridManager
+
+
+class Grid(webgrid.BaseGrid):
+    manager = GridManager()
+    session_on = True
+
 
 csrf = CSRFProtect()
 
+auth_entity_registry = AuthEntityRegistry()
 mail_ext = Mail()
 _endpoints = {'after-login': 'public.home'}
-auth_manager = AuthManager(mail_ext, endpoints=_endpoints)
+auth_mail_manager = AuthMailManager(mail_ext)
+auth_manager = AuthManager(mail_manager=auth_mail_manager, endpoints=_endpoints, grid_cls=Grid,
+                           request_loaders=[JwtRequestLoader], entity_registry=auth_entity_registry)

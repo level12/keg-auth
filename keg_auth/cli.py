@@ -2,24 +2,37 @@ import click
 import keg
 
 
-def add_cli_to_app(app, cli_group_name):
+def add_cli_to_app(app, cli_group_name, user_args=['email']):
 
     @app.cli.group(cli_group_name)
     def auth():
         """ User and authentication related commands."""
 
-    @auth.command('create-user')
-    @click.argument('email')
+    # note: no group attached here. We will apply the arguments and group it below
     @click.argument('extra_args', nargs=-1)
-    def create_user(email, extra_args):
+    @click.option('--as-superuser', is_flag=True)
+    @click.option('--no-mail', is_flag=True)
+    def _create_user(as_superuser, no_mail, **kwargs):
         """ Create a user.
 
-            Create a user record with the given EMAIL address and send them an email with URL
-            and token to set their password.  Any EXTRA_ARGS will be sent to the auth manager
-            for processing.
+            Create a user record with the given required args and (if a mail manager is
+            configured) send them an email with URL and token to set their password.  Any
+            EXTRA_ARGS will be sent to the auth manager for processing.
         """
         auth_manager = keg.current_app.auth_manager
-        user = auth_manager.create_user_cli(email, extra_args)
-        verification_url = auth_manager.verify_account_url(user)
-        click.echo('User created.  Email sent with verification URL.')
-        click.echo('Verification URL: {}'.format(verification_url))
+        user = auth_manager.create_user_cli(is_superuser=as_superuser, mail_enabled=not no_mail,
+                                            **kwargs)
+        click.echo('User created.')
+        if not no_mail and auth_manager.mail_manager:
+            verification_url = auth_manager.mail_manager.verify_account_url(user)
+            click.echo('Email sent with verification URL.')
+            click.echo('Verification URL: {}'.format(verification_url))
+
+    # dress up _create_user as needed
+    user_args.reverse()
+    create_user = _create_user
+    for arg in user_args:
+        create_user = click.argument(arg)(create_user)
+    auth.command('create-user')(create_user)
+
+    app.auth_manager.cli_group = auth

@@ -32,12 +32,18 @@ setup(
     install_requires=[
         'bcrypt',
         'commonmark',
-        'Flask-Mail',
+
+        # this can be removed once level12/keg#100 has been resolved
+        'Flask<1.*',
+
         'Flask-Login',
         'Keg>=0.6.0',
         'KegElements',
+        'inflect',
         'passlib',
         'shortuuid',
+        'six',
+        'webgrid',
     ],
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
@@ -47,14 +53,27 @@ setup(
         'test': [
             'flake8',
             'flask-bootstrap',
+            'flask-jwt-extended',
+            'flask-mail',
             'flask-webtest',
             'freezegun',
             'mock',
-            'psycopg2',
+            'psycopg2-binary',
+            'pyldap',
             'pyquery',
             'pytest',
             'pytest-cov',
             'tox',
+            'xlsxwriter',
         ],
+        'jwt': [
+            'flask-jwt-extended',
+        ],
+        'ldap': [
+            'pyldap',
+        ],
+        'mail': [
+            'Flask-Mail',
+        ]
     }
 )

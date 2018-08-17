@@ -3,5 +3,7 @@
 
 {% block form %}
 {{ horizontal.form(form, action_text=page_title) }}
+{% if config['KEGAUTH_EMAIL_OPS_ENABLED'] %}
 <p><a href="{{auth_manager.url_for('forgot-password')}}">I forgot my password</a>.</p>
+{% endif %}
 {% endblock %}
