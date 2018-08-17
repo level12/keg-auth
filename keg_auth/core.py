@@ -152,46 +152,41 @@ class AuthManager(object):
         # So, connect it to the test signal, then try to call it, and trap the exception
         @db_init_post.connect
         def sync_permissions():
-            db_permissions = db.session.query(Permission).all()
+            with app.app_context():
+                db_permissions = db.session.query(Permission).all()
 
-            # sync permission presence
-            desired_tokens = set(
-                tolist(perm)[0] for perm in app.auth_manager.permissions
-            )
-            current_tokens = {
-                permission.token for permission in db_permissions
-            }
-            for permission in desired_tokens - current_tokens:
-                db_permissions.append(Permission.add(token=permission, _commit=False))
-            for permission in current_tokens - desired_tokens:
-                Permission.query.filter_by(token=permission).delete()
+                # sync permission presence
+                desired_tokens = set(
+                    tolist(perm)[0] for perm in app.auth_manager.permissions
+                )
+                current_tokens = {
+                    permission.token for permission in db_permissions
+                }
+                for permission in desired_tokens - current_tokens:
+                    db_permissions.append(Permission.add(token=permission, _commit=False))
+                for permission in current_tokens - desired_tokens:
+                    Permission.query.filter_by(token=permission).delete()
 
-            # sync permission description
-            permission_descriptions = dict(
-                [perm for perm in app.auth_manager.permissions if isinstance(perm, (list, tuple))]
-            )
-            for db_permission in db_permissions:
-                if (
-                    db_permission.token in permission_descriptions and
-                    db_permission.description != permission_descriptions[db_permission.token]
-                ):
-                    db_permission.description = permission_descriptions[db_permission.token]
-                elif (
-                    db_permission.token not in permission_descriptions and
-                    db_permission.description
-                ):
-                    db_permission.description = None
+                # sync permission description
+                permission_descriptions = dict(
+                    [perm for perm in app.auth_manager.permissions
+                     if isinstance(perm, (list, tuple))]
+                )
+                for db_permission in db_permissions:
+                    if (
+                        db_permission.token in permission_descriptions and
+                        db_permission.description != permission_descriptions[db_permission.token]
+                    ):
+                        db_permission.description = permission_descriptions[db_permission.token]
+                    elif (
+                        db_permission.token not in permission_descriptions and
+                        db_permission.description
+                    ):
+                        db_permission.description = None
 
-            db.session.commit()
+                db.session.commit()
 
-        try:
-            # This call works during normal app startup, but NOT during testing. Testing requires
-            # the model to be set up first, after which we get the signal that sync_permissions
-            # is attached to
-            sync_permissions()
-        except RuntimeError as exc:
-            if 'No application found' not in str(exc):
-                raise
+        sync_permissions()
 
     def add_navigation_menu(self, name, menu):
         self.menus[name] = menu
