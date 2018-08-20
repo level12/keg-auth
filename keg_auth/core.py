@@ -192,7 +192,9 @@ class AuthManager(object):
             # if we are running tests where the model is cleaned/restored during test setup,
             # that process completes after this step. So, we need to trap the ensuing exception,
             # and let the testing signal do the setup.
-            sync_permissions()
+            # syncing permissions during testing was causing some db session issues.
+            if not app.testing:
+                sync_permissions()
         except sa.exc.ProgrammingError as exc:
             if 'permissions' not in str(exc):
                 raise
