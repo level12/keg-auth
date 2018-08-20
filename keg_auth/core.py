@@ -4,6 +4,7 @@ import flask_login
 from keg.db import db
 from keg.signals import db_init_post
 import jinja2
+import sqlalchemy as sa
 import six
 
 import keg_auth.cli
@@ -186,7 +187,15 @@ class AuthManager(object):
 
                 db.session.commit()
 
-        sync_permissions()
+        try:
+            # During normal app startup with models present, this should work just fine. However,
+            # if we are running tests where the model is cleaned/restored during test setup,
+            # that process completes after this step. So, we need to trap the ensuing exception,
+            # and let the testing signal do the setup.
+            sync_permissions()
+        except sa.exc.ProgrammingError as exc:
+            if 'permissions' not in str(exc):
+                raise
 
     def add_navigation_menu(self, name, menu):
         self.menus[name] = menu
