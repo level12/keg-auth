@@ -50,12 +50,16 @@ class TestAuthManager(object):
             ('baz', 'nonsense word'),
         )
         with mock.patch.object(self.am, 'permissions', permissions):
+            # we want to make sure the sync will still
+            # run when mode is not testing
+            flask.current_app.config['TESTING'] = False
             self.am.init_app(flask.current_app)
 
         assert ents.Permission.get_by(token='foo')
         assert ents.Permission.get_by(token='bar').description == 'location for libations'
         assert ents.Permission.get_by(token='baz').description == 'nonsense word'
         assert not ents.Permission.get_by(token='snoopy')
+        flask.current_app.config['TESTING'] = True
 
     @mock.patch('keg_auth.core.KegAuthenticator')
     def test_request_loaders_initialized_only_once(self, m_init):
