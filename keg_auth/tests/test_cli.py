@@ -47,8 +47,15 @@ class TestCLI(CLIBase):
     def test_create_user_integration(self, m_send):
         result = self.invoke('auth', 'create-user', 'foo@bar.com')
 
+        output_parts = result.output.split('/')
+        token = output_parts[-1].strip()
+        user_id = output_parts[-2]
+
         assert 'User created.\nEmail sent with verification URL.' in result.output
         assert m_send.call_count
+
+        user = ents.User.query.get(user_id)
+        assert user.token_verify(token)
 
     @mock.patch('keg.current_app.auth_manager.mail_manager', None)
     def test_create_user_no_mail_by_manager(self):

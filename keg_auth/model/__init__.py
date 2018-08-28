@@ -203,7 +203,7 @@ class UserMixin(object):
             self.display_value,
             str(self.is_active),
             self.password.hash.decode() if self.password is not None else '',
-            self.updated_utc.isoformat(),
+            self.updated_utc.to('UTC').isoformat(),
         ])
 
     def get_token_serializer(self, expires_in):
