@@ -130,8 +130,8 @@ class NavItem(object):
         self.sub_nodes = None
 
         # cache permission-related items
-        self._is_permitted = None
-        self._permitted_sub_nodes = None
+        self._is_permitted = {}
+        self._permitted_sub_nodes = {}
 
         if len(args) == 0:
             raise Exception('must provide a NavURL or a list of NavItems')
@@ -146,11 +146,11 @@ class NavItem(object):
         if len(args):
             self.sub_nodes = args
 
-    def clear_authorization(self):
-        self._is_permitted = None
-        self._permitted_sub_nodes = None
+    def clear_authorization(self, session_key):
+        self._is_permitted.pop(session_key, None)
+        self._permitted_sub_nodes.pop(session_key, None)
         for sub_node in (self.sub_nodes or []):
-            sub_node.clear_authorization()
+            sub_node.clear_authorization(session_key)
 
     @property
     def node_type(self):
@@ -160,21 +160,25 @@ class NavItem(object):
 
     @property
     def is_permitted(self):
-        if self._is_permitted is None:
+        current_user = flask_login.current_user
+        session_key = current_user.get_id() if current_user else None
+        if self._is_permitted.get(session_key) is None:
             if self.node_type == NavItem.NavItemType.LEAF:
                 # checks the route for requirements, or the target view/class
-                self._is_permitted = self.route.is_permitted
+                self._is_permitted[session_key] = self.route.is_permitted
             else:
                 # find a subnode that is permitted
-                self._is_permitted = (len(self.permitted_sub_nodes) > 0)
+                self._is_permitted[session_key] = (len(self.permitted_sub_nodes) > 0)
 
-        return self._is_permitted
+        return self._is_permitted.get(session_key)
 
     @property
     def permitted_sub_nodes(self):
-        if self._permitted_sub_nodes is None:
-            self._permitted_sub_nodes = [
+        current_user = flask_login.current_user
+        session_key = current_user.get_id() if current_user else None
+        if self._permitted_sub_nodes.get(session_key) is None:
+            self._permitted_sub_nodes[session_key] = [
                 node for node in (self.sub_nodes or []) if node.is_permitted
             ]
 
-        return self._permitted_sub_nodes
+        return self._permitted_sub_nodes.get(session_key)
