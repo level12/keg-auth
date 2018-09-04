@@ -268,7 +268,7 @@ class AuthManager(object):
 # ensure that any manager-attached menus are reset for auth requirements on login/logout
 def refresh_session_menus(app, user):
     for menu in app.auth_manager.menus.values():
-        menu.clear_authorization()
+        menu.clear_authorization(user.get_id())
 
 
 flask_login.signals.user_logged_in.connect(refresh_session_menus)
