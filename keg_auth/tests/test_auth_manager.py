@@ -28,6 +28,16 @@ class TestAuthManager(object):
         assert user._token_plain
         assert ents.User.query.count() == 1
 
+    def test_create_user_no_commit(self):
+        self.am.create_user(dict(email=u'foo@bar.com'), _commit=False)
+        ents.db.session.rollback()
+        assert ents.User.query.count() == 0
+
+    def test_create_user_commit(self):
+        self.am.create_user(dict(email=u'foo@bar.com'), _commit=True)
+        ents.db.session.rollback()
+        assert ents.User.query.count() == 1
+
     @mock.patch('keg_auth.core.model.initialize_mappings')
     def test_model_initialized_only_once(self, m_init):
         self.am.init_app(flask.current_app)

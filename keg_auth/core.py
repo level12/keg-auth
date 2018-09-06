@@ -241,9 +241,8 @@ class AuthManager(object):
         user_kwargs = kwargs
         return self.create_user(user_kwargs)
 
-    def create_user(self, user_kwargs):
+    def create_user(self, user_kwargs, _commit=True):
         mail_enabled = user_kwargs.pop('mail_enabled', True)
-
         from passlib.pwd import genword
         user_kwargs.setdefault('password', genword(entropy='secure'))
         user_class = self.entity_registry.user_cls
@@ -260,7 +259,8 @@ class AuthManager(object):
 
         # use add + commit here instead of user_class.add() above so the user isn't actually
         # committed if mail isn't set.
-        db.session.commit()
+        if _commit:
+            db.session.commit()
         return user
 
     def get_request_loader(self, identifier):
