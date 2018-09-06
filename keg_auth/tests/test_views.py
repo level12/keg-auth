@@ -473,12 +473,11 @@ class TestUserCrud(ViewTestBase):
         resp.form['bundle_ids'] = [bundle_approve.id]
         with mail_ext.record_messages() as outbox:
             resp = resp.form.submit()
-            assert len(outbox) == 1
-            assert outbox[0].subject == '[KA Demo] User Welcome & Verification'
         assert resp.status_code == 302
         assert resp.location.endswith('/users')
         assert resp.flashes == [('success', 'Successfully created User')]
-
+        assert len(outbox) == 1
+        assert outbox[0].subject == '[KA Demo] User Welcome & Verification'
         user = self.user_ent.get_by(email='abc@example.com')
         assert user.is_enabled is True
         assert user.is_superuser is False
@@ -499,11 +498,11 @@ class TestUserCrud(ViewTestBase):
         resp.form['confirm'] = 'bleh'
         with mail_ext.record_messages() as outbox:
             resp = resp.form.submit()
-            assert len(outbox) == 0
 
         assert resp.status_code == 302
         assert resp.location.endswith('/users')
         assert resp.flashes == [('success', 'Successfully created User')]
+        assert len(outbox) == 0
 
         # be sure the password is stored. Force-verify the email so we can continue
         user = self.user_ent.get_by(email='foobar@baz.com')
