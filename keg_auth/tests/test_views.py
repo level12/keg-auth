@@ -497,7 +497,9 @@ class TestUserCrud(ViewTestBase):
             'This field is required.'
         resp.form['reset_password'] = 'bleh'
         resp.form['confirm'] = 'bleh'
-        resp = resp.form.submit()
+        with mail_ext.record_messages() as outbox:
+            resp = resp.form.submit()
+            assert len(outbox) == 0
 
         assert resp.status_code == 302
         assert resp.location.endswith('/users')

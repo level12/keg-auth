@@ -283,23 +283,29 @@ class User(CrudView):
             delete_permission=self.permissions['delete']
         )
 
-    def send_new_user_email(self, obj):
-        email_enabled = flask.current_app.config['KEGAUTH_EMAIL_OPS_ENABLED']
+    def create_user(self, form):
         auth_manager = keg.current_app.auth_manager
-        if obj.id is None and email_enabled and auth_manager.mail_manager:
-            db.session.flush()
-            obj.token_generate()
-            auth_manager.mail_manager.send_new_user(obj)
+        email_enabled = flask.current_app.config.get('KEGAUTH_EMAIL_OPS_ENABLED', True)
+        user_kwargs = {}
+        user_kwargs['mail_enabled'] = email_enabled
+        for field in form.data:
+            # Only want fields that are on the class in kwargs
+            # if we pass other stuff like permission_ids
+            # user model wont be saved
+            if hasattr(self.orm_cls, field):
+                user_kwargs[field] = form[field].data
+        obj = auth_manager.create_user(user_kwargs, _commit=False)
+        return obj
 
     def update_obj(self, obj, form):
-        obj = obj or self.add_orm_obj()
-
-        form.populate_obj(obj)
+        if obj is None:
+            obj = self.create_user(form)
+        else:
+            form.populate_obj(obj)
         # only reset a password if it is on the form and populated
         if hasattr(form, 'reset_password') and form.reset_password.data:
             obj.password = form.reset_password.data
 
-        self.send_new_user_email(obj)
         obj.permissions = form.get_selected_permissions()
         obj.bundles = form.get_selected_bundles()
         obj.groups = form.get_selected_groups()
