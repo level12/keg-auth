@@ -7,7 +7,7 @@ from keg.db import db
 import mock
 import pytest
 import sqlalchemy as sa
-
+from keg_auth_ta.app import mail_ext
 from keg_auth.testing import AuthTests, AuthTestApp, ViewTestBase
 
 from keg_auth_ta.model import entities as ents
@@ -471,8 +471,10 @@ class TestUserCrud(ViewTestBase):
         resp.form['permission_ids'] = [perm_approve.id]
         resp.form['group_ids'] = [group_approve.id]
         resp.form['bundle_ids'] = [bundle_approve.id]
-
-        resp = resp.form.submit()
+        with mail_ext.record_messages() as outbox:
+            resp = resp.form.submit()
+            assert len(outbox) == 1
+            assert outbox[0].subject == '[KA Demo] User Welcome & Verification'
         assert resp.status_code == 302
         assert resp.location.endswith('/users')
         assert resp.flashes == [('success', 'Successfully created User')]

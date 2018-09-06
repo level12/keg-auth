@@ -283,14 +283,23 @@ class User(CrudView):
             delete_permission=self.permissions['delete']
         )
 
+    def send_new_user_email(self, obj):
+        email_enabled = flask.current_app.config['KEGAUTH_EMAIL_OPS_ENABLED']
+        auth_manager = keg.current_app.auth_manager
+        if obj.id is None and email_enabled and auth_manager.mail_manager:
+            db.session.flush()
+            obj.token_generate()
+            auth_manager.mail_manager.send_new_user(obj)
+
     def update_obj(self, obj, form):
         obj = obj or self.add_orm_obj()
-        form.populate_obj(obj)
 
+        form.populate_obj(obj)
         # only reset a password if it is on the form and populated
         if hasattr(form, 'reset_password') and form.reset_password.data:
             obj.password = form.reset_password.data
 
+        self.send_new_user_email(obj)
         obj.permissions = form.get_selected_permissions()
         obj.bundles = form.get_selected_bundles()
         obj.groups = form.get_selected_groups()
