@@ -66,6 +66,9 @@ setup(
             'tox',
             'xlsxwriter',
         ],
+        'i18n': [
+            'morphi'
+        ],
         'jwt': [
             'flask-jwt-extended',
         ],

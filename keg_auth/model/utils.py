@@ -1,7 +1,10 @@
+from keg_auth.extensions import lazy_gettext as _
+
+
 class PermissionCondition(object):
     def __init__(self, *conditions):
         if len(conditions) < 1:
-            raise ValueError('At least one permission or condition is required')
+            raise ValueError(_('At least one permission or condition is required'))
         self.conditions = conditions
 
     @staticmethod

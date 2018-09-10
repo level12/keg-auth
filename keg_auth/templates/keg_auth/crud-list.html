@@ -1,5 +1,9 @@
 {% extends config.get('BASE_TEMPLATE') or config['KEGAUTH_BASE_TEMPLATE'] %}
 
+{%- if _ is not defined -%}
+    {% from 'keg_auth/i18n.j2' import gettext as _ %}
+{%- endif -%}
+
 {% block title %}{{ page_title }} | {{ super() }}{% endblock %}
 
 {% block page_content %}
@@ -11,7 +15,7 @@
             <div class="grid-header-add-link">
                 <a href="{{ add_url }}">
                     <span class="fa fa-plus-circle"></span>
-                    Create {{ object_name }}
+                    {{ _('Create %(name)s') | format(name=object_name) }}
                 </a>
             </div>
         {% endif %}

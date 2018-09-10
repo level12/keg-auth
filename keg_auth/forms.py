@@ -11,22 +11,23 @@ from wtforms.fields import (
 from wtforms import ValidationError, validators
 from wtforms_components.widgets import EmailInput
 
+from keg_auth.extensions import lazy_gettext as _
 from keg_auth.model import get_username_key
 
 
 def login_form():
-    login_id_label = u'User ID'
+    login_id_label = _(u'User ID')
     login_id_validators = [validators.DataRequired()]
 
     if isinstance(flask.current_app.auth_manager.entity_registry.user_cls.username.type, EmailType):
-        login_id_label = u'Email'
+        login_id_label = _(u'Email')
         login_id_validators.append(validators.Email())
 
     class Login(Form):
         next = HiddenField()
 
         login_id = StringField(login_id_label, validators=login_id_validators)
-        password = PasswordField('Password', validators=[
+        password = PasswordField(_('Password'), validators=[
             validators.DataRequired(),
         ])
 
@@ -34,18 +35,18 @@ def login_form():
 
 
 class ForgotPassword(Form):
-    email = StringField(u'Email', validators=[
+    email = StringField(_(u'Email'), validators=[
         validators.DataRequired(),
         validators.Email(),
     ])
 
 
 class SetPassword(Form):
-    password = PasswordField('New Password', validators=[
+    password = PasswordField(_('New Password'), validators=[
         validators.DataRequired(),
-        validators.EqualTo('confirm', message='Passwords must match')
+        validators.EqualTo('confirm', message=_('Passwords must match'))
     ])
-    confirm = PasswordField('Confirm Password')
+    confirm = PasswordField(_('Confirm Password'))
 
 
 def get_permission_options():
@@ -88,7 +89,7 @@ class BundlesMixin(object):
 class _ValidatePasswordRequired(object):
     def __call__(self, form, field):
         if not form.obj and not field.data:
-            raise ValidationError('This field is required.')
+            raise ValidationError(_('This field is required.'))
         return True
 
 
@@ -135,14 +136,14 @@ def user_form(config=None, allow_superuser=False, endpoint='', fields=['is_enabl
             getattr(FieldsMeta, username_key).widget = EmailInput()
 
         if not config.get('KEGAUTH_EMAIL_OPS_ENABLED'):
-            reset_password = PasswordField('New Password', validators=[
+            reset_password = PasswordField(_('New Password'), validators=[
                 _ValidatePasswordRequired(),
-                validators.EqualTo('confirm', message='Passwords must match')
+                validators.EqualTo('confirm', message=_('Passwords must match'))
             ])
-            confirm = PasswordField('Confirm Password')
+            confirm = PasswordField(_('Confirm Password'))
             field_order = field_order + ('reset_password', 'confirm')
 
-        group_ids = SelectMultipleField('Groups')
+        group_ids = SelectMultipleField(_('Groups'))
 
         def after_init(self, args, kwargs):
             self.permission_ids.choices = get_permission_options()

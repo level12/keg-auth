@@ -5,6 +5,7 @@ import flask
 import flask_login
 import six
 
+from keg_auth.extensions import lazy_gettext as _
 from keg_auth.model.utils import has_permissions
 
 
@@ -51,7 +52,9 @@ class NavURL(object):
         # the following checks are ANDed, so return False if anything fails
         view_obj = flask.current_app.view_functions.get(self.route_string)
         if not view_obj:
-            raise Exception('Endpoint {} in navigation is not registered'.format(self.route_string))
+            raise Exception(
+                _('Endpoint {} in navigation is not registered').format(self.route_string)
+            )
 
         def check_auth(obj):
             if obj is None:
@@ -134,7 +137,7 @@ class NavItem(object):
         self._permitted_sub_nodes = {}
 
         if len(args) == 0:
-            raise Exception('must provide a NavURL or a list of NavItems')
+            raise Exception(_('must provide a NavURL or a list of NavItems'))
 
         if isinstance(args[0], NavURL):
             self.route = args[0]

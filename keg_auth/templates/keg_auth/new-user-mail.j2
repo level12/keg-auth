@@ -1,14 +1,17 @@
 {% extends 'keg_auth/multi-part-mail.j2' %}
+{%- if _ is not defined -%}
+    {% from 'keg_auth/i18n.j2' import gettext as _ %}
+{%- endif -%}
 
 {% block subject %}
-    User Welcome & Verification
+    {{ _('User Welcome & Verification') }}
 {% endblock %}
 
 {% block markdown %}
 
-A user account has been created for you on {{ config.KEGAUTH_EMAIL_SITE_NAME }}.
+ {{ _('A user account has been created for you on %(site_name)s') | format(site_name=config.KEGAUTH_EMAIL_SITE_NAME) }}.
 
-Please use the following link to verify your email address and set a password:
+{{ _('Please use the following link to verify your email address and set a password:') }}
 
 <{{ auth_manager.url_for('verify-account', user_id=user.id, token=user._token_plain, _external=True) }}>
 

@@ -349,18 +349,6 @@ class BundleMixin(object):
         original_groups = {group.id for group in obj.groups}"""
 
         obj = super(BundleMixin, cls).edit(oid=oid, _commit=False, **kwargs)
-
-        """# if any users were added or removed, reset their session keys
-        # if any groups were added or removed, reset their users' session keys
-        # if this bundle's rights changed, reset all of the assigned users and group users
-        user_cls = registry().user_cls
-        reset_user_ids = original_users ^ {user.id for user in obj.users}
-        if original_rights != _rights_as_dict(obj, *rights_keys):
-            reset_user_ids |= {user.id for user in obj.users}
-
-        for user_id in reset_user_ids:
-            user_cls.query.get(user_id).session_key = _generate_session_key()"""
-
         return obj
 
 

@@ -4,6 +4,7 @@ import six
 from six.moves import urllib
 
 from keg_auth import forms
+from keg_auth.extensions import gettext as _
 
 try:
     import flask_jwt_extended
@@ -105,12 +106,16 @@ class ViewResponder(object):
 
 
 class UserResponderMixin(object):
-    flash_invalid_user = 'No user account matches: {}', 'error'
-    flash_unverified_user = 'The user account "{}" has an unverified email address.  Please check' \
-        ' your email for a verification link from this website.  Or, use the "forgot' \
-        ' password" link to verify the account.', 'error'
-    flash_disabled_user = 'The user account "{}" has been disabled.  Please contact this' \
-        ' site\'s administrators for more information.', 'error'
+    flash_invalid_user = _('No user account matches: {}'), 'error'
+    flash_unverified_user = _(
+        'The user account "{}" has an unverified email address.  Please check'
+        ' your email for a verification link from this website.  Or, use the "forgot'
+        ' password" link to verify the account.'
+    ), 'error'
+    flash_disabled_user = _(
+        'The user account "{}" has been disabled.  Please contact this'
+        ' site\'s administrators for more information.'
+    ), 'error'
 
     def on_inactive_user(self, user):
         if flask.current_app.auth_manager.mail_manager and not user.is_verified:
@@ -135,7 +140,7 @@ class LoginResponderMixin(UserResponderMixin):
         parent authenticator uses), redirects to a safe URL after login, etc.
     """
     url = '/login'
-    flash_success = 'Login successful.', 'success'
+    flash_success = _('Login successful.'), 'success'
 
     @staticmethod
     def is_safe_url(target):
@@ -166,7 +171,7 @@ class LoginResponderMixin(UserResponderMixin):
 
 class FormResponderMixin(object):
     """ Wrap form usage for auth responders, contains GET and POST handlers"""
-    flash_form_error = 'The form has errors, please see below.', 'error'
+    flash_form_error = _('The form has errors, please see below.'), 'error'
     form_cls = None
     page_title = None
 
@@ -202,8 +207,10 @@ class PasswordSetterResponderBase(FormResponderMixin, ViewResponder):
     """ Base logic for resetting passwords and verifying accounts via token"""
     form_cls = forms.SetPassword
     template_name = 'keg_auth/set-password.html'
-    flash_invalid_token = 'Authentication token was invalid or expired.  Please fill out the' \
-        ' form below to get a new token.', 'error'
+    flash_invalid_token = _(
+        'Authentication token was invalid or expired.  Please fill out the'
+        ' form below to get a new token.'
+    ), 'error'
 
     def __call__(self, *args, **kwargs):
         if not flask.current_app.auth_manager.mail_manager:
@@ -249,27 +256,27 @@ class PasswordSetterResponderBase(FormResponderMixin, ViewResponder):
 class ResetPasswordViewResponder(PasswordSetterResponderBase):
     """ Responder for resetting passwords via token on keg-auth logins"""
     url = '/reset-password/<int:user_id>/<token>'
-    page_title = 'Complete Password Reset'
-    submit_button_text = 'Change Password'
-    flash_success = 'Password changed.  Please use the new password to login below.', 'success'
+    page_title = _('Complete Password Reset')
+    submit_button_text = _('Change Password')
+    flash_success = _('Password changed.  Please use the new password to login below.'), 'success'
     on_success_endpoint = 'after-reset'
 
 
 class VerifyAccountViewResponder(PasswordSetterResponderBase):
     """ Responder for verifying users via email token for keg-auth logins"""
     url = '/verify-account/<int:user_id>/<token>'
-    page_title = 'Verify Account & Set Password'
-    submit_button_text = 'Verify & Set Password'
-    flash_success = 'Account verified & password set.  Please use the new password to login' \
-        ' below.', 'success'
+    page_title = _('Verify Account & Set Password')
+    submit_button_text = _('Verify & Set Password')
+    flash_success = _('Account verified & password set.  Please use the new password to login'
+                      ' below.'), 'success'
     on_success_endpoint = 'after-verify-account'
 
 
 class PasswordFormViewResponder(LoginResponderMixin, FormResponderMixin, ViewResponder):
     """ Master responder for username/password-style logins, using a login form"""
     template_name = 'keg_auth/login.html'
-    page_title = 'Log In'
-    flash_invalid_password = 'Invalid password.', 'error'
+    page_title = _('Log In')
+    flash_invalid_password = _('Invalid password.'), 'error'
 
     @property
     def form_cls(self):
@@ -296,9 +303,9 @@ class ForgotPasswordViewResponder(UserResponderMixin, FormResponderMixin, ViewRe
     """ Master responder for keg-integrated logins, using an email form"""
     url = '/forgot-password'
     form_cls = forms.ForgotPassword
-    page_title = 'Initiate Password Reset'
+    page_title = _('Initiate Password Reset')
     template_name = 'keg_auth/forgot-password.html'
-    flash_success = 'Please check your email for the link to change your password.', 'success'
+    flash_success = _('Please check your email for the link to change your password.'), 'success'
 
     def __call__(self, *args, **kwargs):
         if not flask.current_app.auth_manager.mail_manager:
@@ -399,11 +406,11 @@ class LdapAuthenticator(KegAuthenticator):
 
         ldap_url = flask.current_app.config.get('KEGAUTH_LDAP_SERVER_URL')
         if not ldap_url:
-            raise Exception('No KEGAUTH_LDAP_SERVER_URL configured!')
+            raise Exception(_('No KEGAUTH_LDAP_SERVER_URL configured!'))
 
         ldap_dn_format = flask.current_app.config.get('KEGAUTH_LDAP_DN_FORMAT')
         if not ldap_dn_format:
-            raise Exception('No KEGAUTH_LDAP_DN_FORMAT configured!')
+            raise Exception(_('No KEGAUTH_LDAP_DN_FORMAT configured!'))
 
         session = ldap.initialize(ldap_url)
 

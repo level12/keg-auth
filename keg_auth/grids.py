@@ -5,6 +5,7 @@ from webgrid import filters
 from webhelpers2.html import literal
 from webhelpers2.html.tags import link_to
 
+from keg_auth.extensions import lazy_gettext as _
 from keg_auth.model.utils import has_permissions
 
 
@@ -70,9 +71,9 @@ class ActionColumn(webgrid.Column):
                 literal('&nbsp;'),
                 flask.url_for(self.edit_endpoint, objid=value, session_key=self.grid.session_key),
                 **{
-                    'aria-label': 'Edit',
+                    'aria-label': _('Edit'),
                     'class_': 'edit-link',
-                    'title': 'Edit'
+                    'title': _('Edit')
                 }
             )
         if self.delete_endpoint and show_delete:
@@ -80,9 +81,9 @@ class ActionColumn(webgrid.Column):
                 literal('&nbsp;'),
                 flask.url_for(self.delete_endpoint, objid=value, session_key=self.grid.session_key),
                 **{
-                    'aria-label': 'Delete',
+                    'aria-label': _('Delete'),
                     'class_': delete_link_class,
-                    'title': 'Delete'
+                    'title': _('Delete')
                 }
             )
         if self.view_endpoint and show_view:
@@ -90,9 +91,9 @@ class ActionColumn(webgrid.Column):
                 literal('&nbsp;'),
                 flask.url_for(self.view_endpoint, objid=value, session_key=self.grid.session_key),
                 **{
-                    'aria-label': 'View',
+                    'aria-label': _('View'),
                     'class_': 'view-link',
-                    'title': 'View'
+                    'title': _('View')
                 }
             )
         return result
@@ -112,10 +113,10 @@ def make_user_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permi
             edit_permission_for=lambda _: edit_permission,
             delete_permission_for=lambda _: delete_permission
         )
-        webgrid.Column('User ID', user_cls.username, filters.TextFilter)
+        webgrid.Column(_('User ID'), user_cls.username, filters.TextFilter)
         if flask.current_app.auth_manager.mail_manager and hasattr(user_cls, 'is_verified'):
-            webgrid.YesNoColumn('Verified', user_cls.is_verified, filters.YesNoFilter)
-        webgrid.YesNoColumn('Superuser', user_cls.is_superuser, filters.YesNoFilter)
+            webgrid.YesNoColumn(_('Verified'), user_cls.is_verified, filters.YesNoFilter)
+        webgrid.YesNoColumn(_('Superuser'), user_cls.is_superuser, filters.YesNoFilter)
 
         def query_prep(self, query, has_sort, has_filters):
             if not has_sort:
@@ -138,7 +139,7 @@ def make_group_grid(edit_endpoint, edit_permission, delete_endpoint, delete_perm
             edit_permission_for=lambda _: edit_permission,
             delete_permission_for=lambda _: delete_permission
         )
-        webgrid.Column('Name', group_cls.name, filters.TextFilter)
+        webgrid.Column(_('Name'), group_cls.name, filters.TextFilter)
 
         def query_prep(self, query, has_sort, has_filters):
             if not has_sort:
@@ -161,7 +162,7 @@ def make_bundle_grid(edit_endpoint, edit_permission, delete_endpoint, delete_per
             edit_permission_for=lambda _: edit_permission,
             delete_permission_for=lambda _: delete_permission
         )
-        webgrid.Column('Name', bundle_cls.name, filters.TextFilter)
+        webgrid.Column(_('Name'), bundle_cls.name, filters.TextFilter)
 
         def query_prep(self, query, has_sort, has_filters):
             if not has_sort:
@@ -175,8 +176,8 @@ def make_permission_grid(grid_cls=None):
     grid_cls = grid_cls or flask.current_app.auth_manager.grid_cls
 
     class Permission(grid_cls):
-        webgrid.Column('Name', permission_cls.token, filters.TextFilter)
-        webgrid.Column('Description', permission_cls.description, filters.TextFilter)
+        webgrid.Column(_('Name'), permission_cls.token, filters.TextFilter)
+        webgrid.Column(_('Description'), permission_cls.description, filters.TextFilter)
 
         def query_prep(self, query, has_sort, has_filters):
             if not has_sort:
