@@ -243,16 +243,10 @@ class AuthManager(object):
 
     def create_user(self, user_kwargs, _commit=True):
         mail_enabled = user_kwargs.pop('mail_enabled', True)
-        permissions = user_kwargs.pop('permissions', [])
-        bundles = user_kwargs.pop('bundles', [])
-        groups = user_kwargs.pop('groups', [])
         from passlib.pwd import genword
         user_kwargs.setdefault('password', genword(entropy='secure'))
         user_class = self.entity_registry.user_cls
         user = user_class(**user_kwargs)
-        user.permissions = permissions
-        user.bundles = bundles
-        user.groups = groups
         db.session.add(user)
         db.session.flush()
 
