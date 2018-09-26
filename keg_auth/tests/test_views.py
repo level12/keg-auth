@@ -498,7 +498,7 @@ class TestUserCrud(ViewTestBase):
         assert resp.form['email'].value == ''
         assert 'is_superuser' not in resp.form.fields, resp.form.fields.keys()
 
-        resp.form['email'] = 'abc@example.com'
+        resp.form['email'] = 'abc2@example.com'
         resp.form['permission_ids'] = [perm_approve.id]
         resp.form['group_ids'] = [group_approve.id]
         resp.form['bundle_ids'] = [bundle_approve.id]
@@ -509,7 +509,8 @@ class TestUserCrud(ViewTestBase):
         assert resp.flashes == [('success', 'Successfully created User')]
         assert len(outbox) == 1
         assert outbox[0].subject == '[KA Demo] User Welcome & Verification'
-        user = self.user_ent.get_by(email='abc@example.com')
+        assert 'abc2@example.com' in outbox[0].recipients
+        user = self.user_ent.get_by(email='abc2@example.com')
         assert user.token_generate() in outbox[0].as_string()
         assert user.is_enabled is True
         assert user.is_superuser is False
