@@ -8,12 +8,16 @@ from blazeutils.strings import case_cw2dash
 from keg.db import db
 
 from keg_auth import forms, grids, requires_permissions
-from keg_auth.extensions import gettext as _
+from keg_auth.extensions import lazy_gettext as _
 
 try:
     from speaklater import is_lazy_string
 except ImportError:
     is_lazy_string = lambda value: False  # noqa: E731
+
+
+def flash(message, category):
+    flask.flash(six.text_type(message), category)
 
 
 class CrudView(keg.web.BaseView):
@@ -165,15 +169,16 @@ class CrudView(keg.web.BaseView):
     def flash_success(self, verb):
         # i18n: this may require reworking in order to support proper
         #       sentence structures...
-        flask.flash(_('Successfully {verb} {object}').format(verb=verb, object=self.object_name),
-                    'success')
+        flash(_('Successfully {verb} {object}').format(
+            verb=verb, object=self.object_name), 'success'
+        )
 
     def on_delete_success(self):
         self.flash_success(_('removed'))
         return flask.redirect(self.list_url_with_session)
 
     def on_delete_failure(self):
-        flask.flash(
+        flash(
             _('Unable to delete {name}. It may be referenced by other items.').format(
                 name=self.object_name
             ),
@@ -190,7 +195,7 @@ class CrudView(keg.web.BaseView):
         return flask.redirect(self.list_url_with_session)
 
     def on_add_edit_failure(self, entity, is_edit):
-        flask.flash(_('Form errors detected.  Please see below for details.'), 'error')
+        flash(_('Form errors detected.  Please see below for details.'), 'error')
 
     @classmethod
     def endpoint_for_action(cls, action):
@@ -285,7 +290,7 @@ class Logout(keg.web.BaseView):
 
     def get(self):
         flask_login.logout_user()
-        flask.flash(*self.flash_success)
+        flash(*self.flash_success)
         redirect_to = flask.current_app.auth_manager.url_for('after-logout')
         flask.abort(flask.redirect(redirect_to))
 
