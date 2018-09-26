@@ -1,7 +1,7 @@
 from collections import namedtuple
 
 from blazeutils.strings import normalizews
-import CommonMark as commonmark
+import commonmark
 import flask
 
 try:
