@@ -485,6 +485,38 @@ class TestUserCrud(ViewTestBase):
         assert user.groups == [group_approve]
         assert user.bundles == [bundle_approve]
 
+    def test_add_and_token_is_correct(self):
+        perm_approve = ents.Permission.testing_create()
+        ents.Permission.testing_create()
+        group_approve = ents.Group.testing_create()
+        ents.Group.testing_create()
+        bundle_approve = ents.Bundle.testing_create()
+        ents.Bundle.testing_create()
+
+        resp = self.client.get('/users/add')
+
+        assert resp.form['email'].value == ''
+        assert 'is_superuser' not in resp.form.fields, resp.form.fields.keys()
+
+        resp.form['email'] = 'abc@example.com'
+        resp.form['permission_ids'] = [perm_approve.id]
+        resp.form['group_ids'] = [group_approve.id]
+        resp.form['bundle_ids'] = [bundle_approve.id]
+        with mail_ext.record_messages() as outbox:
+            resp = resp.form.submit()
+        assert resp.status_code == 302
+        assert resp.location.endswith('/users')
+        assert resp.flashes == [('success', 'Successfully created User')]
+        assert len(outbox) == 1
+        assert outbox[0].subject == '[KA Demo] User Welcome & Verification'
+        user = self.user_ent.get_by(email='abc@example.com')
+        assert user.token_generate() in outbox[0].as_string()
+        assert user.is_enabled is True
+        assert user.is_superuser is False
+        assert user.permissions == [perm_approve]
+        assert user.groups == [group_approve]
+        assert user.bundles == [bundle_approve]
+
     @mock.patch.dict('flask.current_app.config', {'KEGAUTH_EMAIL_OPS_ENABLED': False})
     def test_add_no_email(self):
         resp = self.client.get('/users/add')

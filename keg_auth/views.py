@@ -294,6 +294,9 @@ class User(CrudView):
             # user model wont be saved
             if hasattr(self.orm_cls, field):
                 user_kwargs[field] = form[field].data
+        user_kwargs['permissions'] = form.get_selected_permissions()
+        user_kwargs['bundles'] = form.get_selected_bundles()
+        user_kwargs['groups'] = form.get_selected_groups()
         obj = auth_manager.create_user(user_kwargs, _commit=False)
         return obj
 
@@ -302,13 +305,13 @@ class User(CrudView):
             obj = self.create_user(form)
         else:
             form.populate_obj(obj)
+            obj.permissions = form.get_selected_permissions()
+            obj.bundles = form.get_selected_bundles()
+            obj.groups = form.get_selected_groups()
         # only reset a password if it is on the form and populated
         if hasattr(form, 'reset_password') and form.reset_password.data:
             obj.password = form.reset_password.data
 
-        obj.permissions = form.get_selected_permissions()
-        obj.bundles = form.get_selected_bundles()
-        obj.groups = form.get_selected_groups()
         return obj
 
     def delete(self, objid):
