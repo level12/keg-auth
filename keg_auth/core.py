@@ -214,6 +214,10 @@ class AuthManager(object):
         user_class = self.entity_registry.user_cls
         return user_class.get_by(session_key=six.text_type(session_key))
 
+    def user_by_id(self, user_id):
+        user_class = self.entity_registry.user_cls
+        return user_class.get_by(id=user_id)
+
     def test_request_loader(self, request):
         """ Load a user from a request when testing. This gives a nice API for test clients to
             be logged in:
@@ -267,6 +271,12 @@ class AuthManager(object):
 
     def get_request_loader(self, identifier):
         return self.request_loaders.get(identifier)
+
+    def resend_verification_email(self, user_id):
+        user = self.user_by_id(user_id)
+        if not self.mail_manager:
+            raise Exception("Tried to resend verification email, but email is not setup.")
+        self.mail_manager.send_new_user(user)
 
 
 # ensure that any manager-attached menus are reset for auth requirements on login/logout

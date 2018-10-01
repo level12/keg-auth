@@ -3,10 +3,11 @@ import flask_login
 import webgrid
 from webgrid import filters
 from webhelpers2.html import literal
-from webhelpers2.html.tags import link_to
+from webhelpers2.html.tags import link_to, HTML, form, end_form
 
 from keg_auth.extensions import lazy_gettext as _
 from keg_auth.model.utils import has_permissions
+from flask_wtf.csrf import generate_csrf
 
 
 class ActionColumn(webgrid.Column):
@@ -100,9 +101,47 @@ class ActionColumn(webgrid.Column):
 
 
 def make_user_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permission,
-                   grid_cls=None):
+                   grid_cls=None, resend_verification_endpoint=None):
     user_cls = flask.current_app.auth_manager.entity_registry.user_cls
     grid_cls = grid_cls or flask.current_app.auth_manager.grid_cls
+
+    class ResendVerificationColumn(webgrid.Column):
+
+        def __init__(self,
+                     label,
+                     url,
+                     key=None,
+                     render_in=('html',),
+                     **kwargs):
+            self.url = url
+            super(ResendVerificationColumn, self).__init__(
+                label, key=key, filter=None, can_sort=False,
+                render_in=render_in, has_subtotal=False)
+
+        def extract_and_format_data(self, record):
+            return self.format_data(record)
+
+        def format_data(self, data):
+            result = literal()
+            if data.is_verified is False:
+                result += form(
+                    flask.url_for(self.url),
+                    hidden_fields={
+                        'csrf_token': generate_csrf(),
+                        'user_id': data.id
+                    }
+                )
+                result += HTML.tag(
+                    'input',
+                    type='submit',
+                    value=self.label,
+                    url=self.url,
+                    **{
+                        'class_': 'btn btn-primary',
+                    }
+                )
+                result += end_form()
+            return result
 
     class User(grid_cls):
         ActionColumn(
@@ -117,6 +156,13 @@ def make_user_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permi
         if flask.current_app.auth_manager.mail_manager and hasattr(user_cls, 'is_verified'):
             webgrid.YesNoColumn(_('Verified'), user_cls.is_verified, filters.YesNoFilter)
         webgrid.YesNoColumn(_('Superuser'), user_cls.is_superuser, filters.YesNoFilter)
+        if (
+            flask.current_app.auth_manager.mail_manager and
+            hasattr(user_cls, 'is_verified') and
+            resend_verification_endpoint is not None and
+            flask.current_app.config['KEGAUTH_EMAIL_OPS_ENABLED']
+        ):
+            ResendVerificationColumn('Resend Verification', resend_verification_endpoint)
 
         def query_prep(self, query, has_sort, has_filters):
             if not has_sort:

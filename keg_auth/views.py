@@ -6,7 +6,7 @@ import six
 import sqlalchemy as sa
 from blazeutils.strings import case_cw2dash
 from keg.db import db
-
+from flask_wtf.csrf import validate_csrf
 from keg_auth import forms, grids, requires_permissions
 from keg_auth.extensions import lazy_gettext as _, flash
 
@@ -305,6 +305,14 @@ class User(CrudView):
                                  endpoint=self.endpoint_for_action('edit'))
         return form_cls(obj=obj)
 
+    @keg.web.route(post_only=True)
+    def resend_verification_email(self):
+        validate_csrf(flask.request.form['csrf_token'])
+        auth_manager = keg.current_app.auth_manager
+        auth_manager.resend_verification_email(flask.request.form['user_id'])
+        flask.flash('Verification email has been sent', 'success')
+        return flask.redirect(flask.url_for(self.endpoint_for_action('list')))
+
     @property
     def orm_cls(self):
         return flask.current_app.auth_manager.entity_registry.user_cls
@@ -315,7 +323,8 @@ class User(CrudView):
             edit_endpoint=self.endpoint_for_action('edit'),
             edit_permission=self.permissions['edit'],
             delete_endpoint=self.endpoint_for_action('delete'),
-            delete_permission=self.permissions['delete']
+            delete_permission=self.permissions['delete'],
+            resend_verification_endpoint=self.endpoint_for_action('resend-verification-email')
         )
 
     def create_user(self, form):
