@@ -275,7 +275,6 @@ def refresh_session_menus(app, user):
 
 
 def update_last_login(app, user):
-    # import pdb; pdb.set_trace()
     user.last_login_utc = arrow.utcnow()
     db.session.commit()
 
