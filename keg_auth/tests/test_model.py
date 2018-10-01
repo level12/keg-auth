@@ -1,8 +1,5 @@
 # Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
 from __future__ import unicode_literals
-
-from datetime import datetime
-
 import arrow
 import flask
 from keg.db import db
