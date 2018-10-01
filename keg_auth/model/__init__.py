@@ -14,7 +14,7 @@ from sqlalchemy.dialects import mssql
 import sqlalchemy.orm as sa_orm
 import sqlalchemy.sql as sa_sql
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy_utils import EmailType, PasswordType, force_auto_coercion
+from sqlalchemy_utils import EmailType, PasswordType, force_auto_coercion, ArrowType
 
 force_auto_coercion()
 
@@ -62,6 +62,11 @@ class UserMixin(object):
     #   sessions when permissions go stale
     session_key = sa.Column(sa.Unicode(36), nullable=False, unique=True,
                             default=_generate_session_key)
+
+    # When a user logins we need to track their last login time
+    # This is used in the salt to invalidate a password/verification token
+    # when a user logs in.
+    last_login_utc = sa.Column(ArrowType, nullable=True, default=None, server_default=None)
 
     # is_active defines the complexities of how to determine what users are active. For instance,
     #   if email is in scope, we need to have an additional flag to verify users, and that would
@@ -191,19 +196,24 @@ class UserMixin(object):
         together with the signing key. This ensures that changes to any of the fields included
         in the salt invalidates any tokens produced with the old values
         Values included:
-            * flask-login session key
-            * user login identifier
-            * is_active
+
+            * user login identifier -> if username/email change it will invalidate
+                                       the user token
+            * is_active -> Anytime a user verifies will invalidate a token
+
             * current password hash or empty string if no password has been set
-            * most recent update time
+              -> If the password is updated we want to invalidate the token
+
+            * last login time -> Any time a user logs in it will invalidate any
+                                 verification and reset password emails
+
         :return: JSON string of list containing the values listed above
         """
         return json.dumps([
-            str(self.get_id()),
             self.display_value,
             str(self.is_active),
             self.password.hash.decode() if self.password is not None else '',
-            self.updated_utc.to('UTC').isoformat(),
+            str(self.last_login_utc)
         ])
 
     def get_token_serializer(self, expires_in):

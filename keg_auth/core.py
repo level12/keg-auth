@@ -6,6 +6,7 @@ from keg.signals import db_init_post
 import jinja2
 import sqlalchemy as sa
 import six
+import arrow
 
 import keg_auth.cli
 from keg_auth.libs.authenticators import KegAuthenticator
@@ -273,5 +274,16 @@ def refresh_session_menus(app, user):
         menu.clear_authorization(user.get_id())
 
 
-flask_login.signals.user_logged_in.connect(refresh_session_menus)
+def update_last_login(app, user):
+    # import pdb; pdb.set_trace()
+    user.last_login_utc = arrow.utcnow()
+    db.session.commit()
+
+
+def on_login(app, user):
+    refresh_session_menus(app, user)
+    update_last_login(app, user)
+
+
+flask_login.signals.user_logged_in.connect(on_login)
 flask_login.signals.user_logged_out.connect(refresh_session_menus)

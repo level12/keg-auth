@@ -70,25 +70,19 @@ class TestUser(object):
 
     def test_token_salt_info_changed(self):
         def check_field(field, new_value):
-            # this can be tricky - the database will set our update timestamp, which will also kill
-            # a token. To test this, set what we expect to kill the token, then reset the update
-            # timestamp, so we're verifying the desired field
             user = ents.User.testing_create()
             token = user.token_generate()
             setattr(user, field, new_value)
             db.session.flush()
-            if field != 'updated_utc':
-                db.session.execute('update users set updated_utc = created_utc')
             db.session.commit()
             db.session.refresh(user)
             assert not user.token_verify(token)
 
-        check_field('session_key', 'foobar')
         check_field('email', 'foobar')
         check_field('is_enabled', False)
         check_field('is_verified', False)
         check_field('password', 'foobar')
-        check_field('updated_utc', arrow.get(datetime(2013, 5, 5)))
+        check_field('last_login_utc', arrow.utcnow())
 
     def test_token_expiration(self):
         user = ents.User.add(email='foo', password='bar')

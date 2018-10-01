@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 import flask
 import mock
-
 from keg_auth.core import AuthManager
 from keg_auth.libs.authenticators import KegAuthenticator, JwtRequestLoader
 

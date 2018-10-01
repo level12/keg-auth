@@ -1,7 +1,8 @@
 # Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
 from __future__ import unicode_literals
-
 import flask
+import freezegun
+import arrow
 import flask_webtest
 from keg.db import db
 import mock
@@ -11,6 +12,8 @@ from keg_auth_ta.app import mail_ext
 from keg_auth.testing import AuthTests, AuthTestApp, ViewTestBase
 
 from keg_auth_ta.model import entities as ents
+from flask_login import user_logged_in
+from .utils import listen_to
 
 
 class TestAuthIntegration(AuthTests):
@@ -115,6 +118,25 @@ class TestViews(object):
     def test_unauthenticated_client_no_request_loaders(self):
         client = flask_webtest.TestApp(flask.current_app)
         client.get('/secret1', status=302)
+
+    @freezegun.freeze_time("2018-10-01 15:00:00")
+    def test_login_user_sets_last_login_and_invalidates_token(self):
+        u = ents.User.testing_create(email='foo@bar.com', password='pass', last_login_utc=None)
+        token = u.token_generate()
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('/login', status=200)
+
+        resp.form['login_id'] = 'foo@bar.com'
+        resp.form['password'] = 'pass'
+        with listen_to(user_logged_in) as listener:
+            resp = resp.form.submit()
+        listener.assert_heard_one(flask.current_app, user=u)
+
+        assert resp.status_code == 302, resp.html
+        db.session.remove()
+        u = ents.User.get_by(email="foo@bar.com")
+        assert u.last_login_utc == arrow.utcnow()
+        assert not u.token_verify(token)
 
     def test_login_field_success_next_parameter(self):
         ents.User.testing_create(email='foo@bar.com', password='pass')
