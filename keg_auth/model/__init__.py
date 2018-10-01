@@ -213,7 +213,7 @@ class UserMixin(object):
             self.display_value,
             str(self.is_active),
             self.password.hash.decode() if self.password is not None else '',
-            str(self.last_login_utc)
+            self.last_login_utc.to('UTC').isoformat() if self.last_login_utc else None
         ])
 
     def get_token_serializer(self, expires_in):
