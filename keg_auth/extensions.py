@@ -1,3 +1,6 @@
+import flask
+import six
+
 MORPHI_PACKAGE_NAME = 'keg_auth'
 
 # begin morphi boilerplate
@@ -37,3 +40,7 @@ else:
 
     lazy_gettext = gettext
     lazy_ngettext = ngettext
+
+
+def flash(message, category):
+    flask.flash(six.text_type(message), category)

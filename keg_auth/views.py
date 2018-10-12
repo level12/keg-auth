@@ -8,16 +8,12 @@ from blazeutils.strings import case_cw2dash
 from keg.db import db
 
 from keg_auth import forms, grids, requires_permissions
-from keg_auth.extensions import lazy_gettext as _
+from keg_auth.extensions import lazy_gettext as _, flash
 
 try:
     from speaklater import is_lazy_string
 except ImportError:
     is_lazy_string = lambda value: False  # noqa: E731
-
-
-def flash(message, category):
-    flask.flash(six.text_type(message), category)
 
 
 class CrudView(keg.web.BaseView):
