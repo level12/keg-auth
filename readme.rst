@@ -34,14 +34,14 @@ Usage
       -  if mail functions are enabled and tokens in the model, affects the time a verification token remains valid
    -  `KEGAUTH_CLI_USER_ARGS`: list of strings, defaults to `['email']`
       -  names arguments to be accepted by CLI user commands and passed to the model
-      
+
    -  Email settings
-   
+
       -  `KEGAUTH_EMAIL_SITE_NAME = 'Keg Application'`: used in email body if mail is enabled
       -  `KEGAUTH_EMAIL_SITE_ABBR = 'Keg App'`: used in email subject if mail is enabled
-      
+
       - Example message:
-           
+
         - Subject: [Keg App] Password Reset Link
         - Body: Somebody asked to reset your password on Keg Application. If this was not you...
 
@@ -54,7 +54,7 @@ Usage
    -  note that the mail_manager is optional. If a mail_manager is not given, no mail will be sent
    -  permissions may be passed as simple string tokens, or as tuples of `(token, description)`
 
-.. code-block:: python
+    .. code-block:: python
 
           from flask_mail import Mail
           from keg_auth import AuthManager, AuthMailManager, AuthEntityRegistry
@@ -73,29 +73,29 @@ Usage
           auth_manager = AuthManager(mail_manager=auth_mail_manager, endpoints=_endpoints,
                                      entity_registry=auth_entity_registry, permissions=permissions)
           auth_manager.init_app(app)
-..
+    ..
 
 -  Login Authenticators control validation of users
 
    -  includes logic for verifying a user from a login route, and other view-layer operations
       needed for user workflow (e.g. verifying email, password resets, etc.)
    -  authenticator may be specified on the auth_manager:
-   
+
       -  'keg' is the default primary authenticator, and uses username/password
       -  ``AuthManager(mail_ext, login_authenticator=LdapAuthenticator)``
-      
+
    -  LDAP authentication
-   
+
       -  ``from keg_auth import LdapAuthenticator``
       -  uses pyldap, which needs to be installed: ``pip install keg-auth[ldap]``
-      
+
       -  additional config:
-      
+
          -  KEGAUTH_LDAP_TEST_MODE: when True, bypasses LDAP calls. Defaults to False
          -  KEGAUTH_LDAP_SERVER_URL: target LDAP server to use for queries
          -  KEGAUTH_LDAP_DN_FORMAT: format-able string to set up for the query
             -  ex. ``uid={},dc=example,dc=org``
-           
+
 -  Request Loaders run when a user is not in session, and identifying data is in the request
 
    -  ``AuthManager(mail_ext, request_loaders=JwtRequestLoader)``
@@ -110,19 +110,19 @@ Usage
    -  include an auth blueprint along with your app’s blueprints, which includes the login views
       and user/group/bundle management. Requires AuthManager instance:
 
-.. code-block:: python
+   .. code-block:: python
 
              from keg_auth import make_blueprint
              from my_app.extensions import auth_manager
              auth_bp = make_blueprint(__name__, auth_manager)
-..
+   ..
 
 -  CLI is rudimentary, with just one create-user command in the auth group. You can extend the
    group by using the cli_group attribute on the app's auth_manager, but you need access to the
    app during startup to do that. You can use an event signal to handle this - just be sure
    your app's `visit_modules` has the location of the event.
 
-.. code-block:: python
+   .. code-block:: python
 
           # in app definition
           visit_modules = ['.events']
@@ -144,7 +144,7 @@ Usage
               @app.auth_manager.cli_group.command('command-extension')
               def command_extension():
                   pass
-..
+   ..
 
 -  CLI create-user command, by default, has one required argument (email). If you wish to have
    additional arguments, put the list of arg names in `KEGAUTH_CLI_USER_ARGS` config
@@ -158,7 +158,7 @@ Usage
    -  email address and token verification by email are in `UserEmailMixin`
       - i.e. if your app will not use email token verification for passwords, leave that mixin out
 
-.. code-block:: python
+   .. code-block:: python
 
           from keg.db import db
           from keg_elements.db.mixins import DefaultColsMixin, MethodsMixin
@@ -192,7 +192,7 @@ Usage
           @auth_entity_registry.register_group
           class Group(db.Model, GroupMixin, EntityMixin):
               __tablename__ = 'groups'
-
+   ..
 -  Navigation Helpers
 
    -  Keg-Auth provides navigation helpers to set up a menu tree, for which nodes on the tree are
@@ -206,7 +206,7 @@ Usage
       -  ``render_menu(auth_manager.menus['main'])``
    -  Example:
 
-.. code-block:: python
+   .. code-block:: python
 
           from keg.signals import init_complete
 
@@ -233,6 +233,7 @@ Usage
                       NavItem('User Manage', NavURL('auth.user:add')),
                   )
               )
+   ..
 
 
 -  Templates
@@ -262,10 +263,10 @@ Usage
       -  a decorated class/blueprint may have a custom `on_authentication_failure` instance method instead
          of passing one to the decorator
       -  the decorator uses authenticators to determine whether a user is logged in
-      
+
          -  the primary authenticator is used by default
          -  control a view/blueprint's authenticators by specifying them on the decorator:
-         
+
             -  ``@requires_user(authenticators='jwt')``
             -  ``@requires_user(authenticators=['keg', 'jwt'])``
 
