@@ -17,6 +17,7 @@ Usage
 -----
 
 -  Installation
+
    - bare functionality: `pip install keg-auth`
    - mail (i.e. with a mail manager configured, see below): `pip install keg-auth[mail]`
    - JWT (for using JWT tokens as authenticators): `pip install keg-auth[jwt]`
@@ -25,20 +26,24 @@ Usage
 -  Configuration
 
    -  `SERVER_NAME = 'somehost'`: required for Keg Auth when generating URL in create-user CLI command
-       -  include a port number if needed (e.g. `localhost:5000`)
+      -  include a port number if needed (e.g. `localhost:5000`)
    -  `PREFERRED_URL_SCHEME = 'https'`: this is important so that generated auth related URLS are
-        secure.  You could have an SSL redirect but by the time that would fire, the key would
-        have already been sent in the URL.
+       secure.  You could have an SSL redirect but by the time that would fire, the key would
+       have already been sent in the URL.
    -  `KEGAUTH_TOKEN_EXPIRE_MINS`: integer, defaults to 240 minutes (4 hours)
       -  if mail functions are enabled and tokens in the model, affects the time a verification token remains valid
    -  `KEGAUTH_CLI_USER_ARGS`: list of strings, defaults to `['email']`
       -  names arguments to be accepted by CLI user commands and passed to the model
+      
    -  Email settings
+   
       -  `KEGAUTH_EMAIL_SITE_NAME = 'Keg Application'`: used in email body if mail is enabled
       -  `KEGAUTH_EMAIL_SITE_ABBR = 'Keg App'`: used in email subject if mail is enabled
+      
       - Example message:
-         - Subject: [Keg App] Password Reset Link
-         - Body: Somebody asked to reset your password on Keg Application. If this was not you...
+           
+        - Subject: [Keg App] Password Reset Link
+        - Body: Somebody asked to reset your password on Keg Application. If this was not you...
 
 -  Extensions
 
@@ -71,42 +76,51 @@ Usage
 ..
 
 -  Login Authenticators control validation of users
-  -  includes logic for verifying a user from a login route, and other view-layer operations
-     needed for user workflow (e.g. verifying email, password resets, etc.)
-  -  authenticator may be specified on the auth_manager:
-     -  'keg' is the default primary authenticator, and uses username/password
-     -  ``AuthManager(mail_ext, login_authenticator=LdapAuthenticator)``
-  -  LDAP authentication
-     -  ``from keg_auth import LdapAuthenticator``
-     -  uses pyldap, which needs to be installed: ``pip install keg-auth[ldap]``
-     -  additional config:
-        -  KEGAUTH_LDAP_TEST_MODE: when True, bypasses LDAP calls. Defaults to False
-        -  KEGAUTH_LDAP_SERVER_URL: target LDAP server to use for queries
-        -  KEGAUTH_LDAP_DN_FORMAT: format-able string to set up for the query
-           -  ex. ``uid={},dc=example,dc=org``
+
+   -  includes logic for verifying a user from a login route, and other view-layer operations
+      needed for user workflow (e.g. verifying email, password resets, etc.)
+   -  authenticator may be specified on the auth_manager:
+   
+      -  'keg' is the default primary authenticator, and uses username/password
+      -  ``AuthManager(mail_ext, login_authenticator=LdapAuthenticator)``
+      
+   -  LDAP authentication
+   
+      -  ``from keg_auth import LdapAuthenticator``
+      -  uses pyldap, which needs to be installed: ``pip install keg-auth[ldap]``
+      
+      -  additional config:
+      
+         -  KEGAUTH_LDAP_TEST_MODE: when True, bypasses LDAP calls. Defaults to False
+         -  KEGAUTH_LDAP_SERVER_URL: target LDAP server to use for queries
+         -  KEGAUTH_LDAP_DN_FORMAT: format-able string to set up for the query
+            -  ex. ``uid={},dc=example,dc=org``
+           
 -  Request Loaders run when a user is not in session, and identifying data is in the request
-  -  ``AuthManager(mail_ext, request_loaders=JwtRequestLoader)``
-  -  token authenticators, like JwtRequestLoader, have a `create_access_token` method
-     -  ``token = auth_manager.get_request_loader('jwt').create_access_token(user)``
-  -  JWT:
-     -  ``from keg_auth import JwtRequestLoader``
-     -  uses flask-jwt-extended, which needs to be installed: ``pip install keg-auth[jwt]``
+
+   -  ``AuthManager(mail_ext, request_loaders=JwtRequestLoader)``
+   -  token authenticators, like JwtRequestLoader, have a `create_access_token` method
+      -  ``token = auth_manager.get_request_loader('jwt').create_access_token(user)``
+   -  JWT:
+      -  ``from keg_auth import JwtRequestLoader``
+      -  uses flask-jwt-extended, which needs to be installed: ``pip install keg-auth[jwt]``
 
 -  Blueprints
 
-  -  include an auth blueprint along with your app’s blueprints, which includes the login views
-     and user/group/bundle management. Requires AuthManager instance:
+   -  include an auth blueprint along with your app’s blueprints, which includes the login views
+      and user/group/bundle management. Requires AuthManager instance:
 
 .. code-block:: python
 
              from keg_auth import make_blueprint
              from my_app.extensions import auth_manager
              auth_bp = make_blueprint(__name__, auth_manager)
+..
 
-   -  CLI is rudimentary, with just one create-user command in the auth group. You can extend the
-      group by using the cli_group attribute on the app's auth_manager, but you need access to the
-      app during startup to do that. You can use an event signal to handle this - just be sure
-      your app's `visit_modules` has the location of the event.
+-  CLI is rudimentary, with just one create-user command in the auth group. You can extend the
+   group by using the cli_group attribute on the app's auth_manager, but you need access to the
+   app during startup to do that. You can use an event signal to handle this - just be sure
+   your app's `visit_modules` has the location of the event.
 
 .. code-block:: python
 
@@ -132,8 +146,8 @@ Usage
                   pass
 ..
 
-   -  CLI create-user command, by default, has one required argument (email). If you wish to have
-      additional arguments, put the list of arg names in `KEGAUTH_CLI_USER_ARGS` config
+-  CLI create-user command, by default, has one required argument (email). If you wish to have
+   additional arguments, put the list of arg names in `KEGAUTH_CLI_USER_ARGS` config
 
 -  Model
 
@@ -248,8 +262,10 @@ Usage
       -  a decorated class/blueprint may have a custom `on_authentication_failure` instance method instead
          of passing one to the decorator
       -  the decorator uses authenticators to determine whether a user is logged in
+      
          -  the primary authenticator is used by default
          -  control a view/blueprint's authenticators by specifying them on the decorator:
+         
             -  ``@requires_user(authenticators='jwt')``
             -  ``@requires_user(authenticators=['keg', 'jwt'])``
 
