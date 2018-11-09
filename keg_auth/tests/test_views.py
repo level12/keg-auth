@@ -426,13 +426,17 @@ class TestPermissionsRequired:
         client = AuthTestApp(flask.current_app, user=allowed)
         resp = client.get('/protected-class', status=200)
         assert resp.text == 'protected-class'
+        resp = client.get('/protected-class2')
+        assert resp.text == 'protected-class2'
 
         client = AuthTestApp(flask.current_app, user=disallowed)
         client.get('/protected-class', {}, status=403)
+        client.get('/protected-class2')
 
         # blueprint has custom authentication failure hander
         client = flask_webtest.TestApp(flask.current_app)
         client.get('/protected-class', status=405)
+        client.get('/protected-class2', status=302)
 
 
 class TestRequestLoaders(object):

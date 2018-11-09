@@ -15,12 +15,18 @@ class ProtectedBlueprint(flask.Blueprint):
         flask.abort(405)
 
 
+@requires_user()
+class ProtectedBlueprint2(flask.Blueprint):
+    pass
+
+
 public_bp = flask.Blueprint('public', __name__)
 private_bp = flask.Blueprint('private', __name__)
 protected_bp = ProtectedBlueprint('protected', __name__)
+protected_bp2 = ProtectedBlueprint2('protected2', __name__)
 auth_bp = make_blueprint(__name__, auth_manager)
 
-blueprints = public_bp, private_bp, protected_bp, auth_bp
+blueprints = public_bp, private_bp, protected_bp, protected_bp2, auth_bp
 
 # Exempt from CSRF or we have problems with Secret2.post.
 csrf.exempt(private_bp)
@@ -141,6 +147,13 @@ class ProtectedClass(keg.web.BaseView):
 
     def get(self):
         return 'protected-class'
+
+
+class ProtectedClass2(keg.web.BaseView):
+    blueprint = protected_bp2
+
+    def get(self):
+        return 'protected-class2'
 
 
 @protected_bp.route('/protected-method')

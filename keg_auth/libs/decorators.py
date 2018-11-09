@@ -110,7 +110,7 @@ class RequiresUser(object):
     def check_auth(self, instance=None):
         # if flask_login has an authenticated user in session, that's who we want
         if flask_login.current_user.is_authenticated:
-            return flask_login.current_user
+            return
 
         # no user in session right now, so we need to run request loaders to see if any match
         user = None
@@ -182,6 +182,8 @@ def requires_user(arg=None, *args, **kwargs):
     if arg is None:
         return RequiresUser(*args, **kwargs)
     if inspect.isclass(arg):
+        if issubclass(arg, flask.Blueprint):
+            return RequiresUser().decorate_blueprint(arg)
         return RequiresUser().decorate_class(arg)  # pragma: no cover
     return RequiresUser().decorate_function(arg)
 
