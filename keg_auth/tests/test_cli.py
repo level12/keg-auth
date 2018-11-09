@@ -71,6 +71,7 @@ class TestCLI(CLIBase):
 
         assert 'User created.' in result.output
         assert 'Email sent with verification URL.' not in result.output
+        assert 'Verification URL: http://keg.example.com/verify-account' in result.output
         assert not m_send.call_count
 
     def test_command_extension(self):

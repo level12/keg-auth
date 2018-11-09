@@ -23,9 +23,10 @@ def add_cli_to_app(app, cli_group_name, user_args=['email']):
         user = auth_manager.create_user_cli(is_superuser=as_superuser, mail_enabled=not no_mail,
                                             **kwargs)
         click.echo('User created.')
-        if not no_mail and auth_manager.mail_manager:
+        if auth_manager.mail_manager:
+            if not no_mail:
+                click.echo('Email sent with verification URL.')
             verification_url = auth_manager.mail_manager.verify_account_url(user)
-            click.echo('Email sent with verification URL.')
             click.echo('Verification URL: {}'.format(verification_url))
 
     # dress up _create_user as needed
