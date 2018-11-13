@@ -59,15 +59,15 @@ class NavURL(object):
 
             if (
                 getattr(obj, '__keg_auth_requires_user__', False) and (
-                    not flask_login.current_user or
-                    not flask_login.current_user.is_authenticated
+                    not flask_login.current_user
+                    or not flask_login.current_user.is_authenticated
                 )
             ):
                 return False
 
             if (
-                getattr(obj, '__keg_auth_requires_permissions__', False) and
-                not has_permissions(
+                getattr(obj, '__keg_auth_requires_permissions__', False)
+                and not has_permissions(
                     obj.__keg_auth_requires_permissions__,
                     flask_login.current_user
                 )

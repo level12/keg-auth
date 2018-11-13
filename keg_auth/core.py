@@ -175,13 +175,14 @@ class AuthManager(object):
                 )
                 for db_permission in db_permissions:
                     if (
-                        db_permission.token in permission_descriptions and
-                        db_permission.description != permission_descriptions[db_permission.token]
+                        db_permission.token in permission_descriptions
+                        and db_permission.description
+                            != permission_descriptions[db_permission.token]
                     ):
                         db_permission.description = permission_descriptions[db_permission.token]
                     elif (
-                        db_permission.token not in permission_descriptions and
-                        db_permission.description
+                        db_permission.token not in permission_descriptions
+                        and db_permission.description
                     ):
                         db_permission.description = None
 

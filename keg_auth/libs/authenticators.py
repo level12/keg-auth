@@ -144,8 +144,8 @@ class LoginResponderMixin(UserResponderMixin):
         ref_url = urllib.parse.urlparse(flask.request.host_url)
         test_url = urllib.parse.urlparse(urllib.parse.urljoin(flask.request.host_url, target))
         return (
-            test_url.scheme in ('http', 'https') and
-            ref_url.netloc == test_url.netloc
+            test_url.scheme in ('http', 'https')
+            and ref_url.netloc == test_url.netloc
         )
 
     def on_success(self, user):
@@ -411,9 +411,9 @@ class LdapAuthenticator(KegAuthenticator):
             dn = ldap_dn_format.format(user.username)
             result = session.simple_bind_s(dn, password)
             return bool(
-                result and
-                len(result) and
-                result[0] == ldap.RES_BIND
+                result
+                and len(result)
+                and result[0] == ldap.RES_BIND
             )
         except (ldap.INVALID_CREDENTIALS, ldap.INVALID_DN_SYNTAX):
             return False

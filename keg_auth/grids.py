@@ -55,8 +55,8 @@ class ActionColumn(webgrid.Column):
         can_edit = has_permissions(edit_perm, flask_login.current_user)
         can_delete = has_permissions(delete_perm, flask_login.current_user)
         can_view = (
-            (self.edit_endpoint != self.view_endpoint or not can_edit) and
-            has_permissions(view_perm, flask_login.current_user)
+            (self.edit_endpoint != self.view_endpoint or not can_edit)
+            and has_permissions(view_perm, flask_login.current_user)
         )
 
         delete_link_class = self.delete_link_class_for(record)
