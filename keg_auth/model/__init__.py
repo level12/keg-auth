@@ -556,11 +556,11 @@ def initialize_events(registry=None):
                 continue
 
             if (
-                _sa_attr_has_changes(target, 'permissions') or
-                _sa_attr_has_changes(target, 'groups') or
-                _sa_attr_has_changes(target, 'bundles') or
-                _sa_attr_has_changes(target, 'is_superuser') or
-                _sa_attr_has_changes(target, 'is_enabled')
+                _sa_attr_has_changes(target, 'permissions')
+                or _sa_attr_has_changes(target, 'groups')
+                or _sa_attr_has_changes(target, 'bundles')
+                or _sa_attr_has_changes(target, 'is_superuser')
+                or _sa_attr_has_changes(target, 'is_enabled')
             ):
                 target.reset_session_key()
 
@@ -571,8 +571,8 @@ def initialize_events(registry=None):
                 continue
 
             if (
-                _sa_attr_has_changes(target, 'permissions') or
-                _sa_attr_has_changes(target, 'bundles')
+                _sa_attr_has_changes(target, 'permissions')
+                or _sa_attr_has_changes(target, 'bundles')
             ):
                 for user in target.users:
                     user.reset_session_key()
