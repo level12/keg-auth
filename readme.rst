@@ -364,3 +364,20 @@ accessible). Only a few changes are necessary from the examples above to achieve
 
 - leave `UserEmailMixin` out of the `User` model
 - do not specify a mail_manager when setting up `AuthManager`
+
+
+
+Email/Reset Password functionality
+------------------------------------
+
+* The JWT tokens in the email / reset password emails are salted with
+    * username/email (depends on which is enabled)
+    * password hash
+    * last login utc
+    * is_active (verified/enabled combination)
+
+    This allows for tokens to become invalidate anytime of the following happens:
+        * username/email changes
+        * password hash changes
+        * a user logs in (last login utc will be updated and invalidate the token)
+        * is active (depending on the model this is calculated from is_enabled/is_verified fields)
