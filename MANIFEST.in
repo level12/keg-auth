@@ -4,8 +4,10 @@ include keg_auth_ta-config-example.py
 recursive-include keg_auth/i18n *
 recursive-include keg_auth *.j2
 recursive-include keg_auth *.html
+recursive-include keg_auth *.json
 recursive-include keg_auth_ta *.j2
 recursive-include keg_auth_ta *.html
 include .circleci/config.yml
 include .circleci/pytest.ini
 exclude keg_auth_ta-config.py coverage.xml .coverage
+exclude pyp.ini

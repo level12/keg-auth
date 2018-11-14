@@ -352,7 +352,7 @@ permissions specified on the class definition:
 
 
 Using Without Email Functions
--------------------------
+-----------------------------
 
 Keg Auth is designed out of the box to use emailed tokens to:
 

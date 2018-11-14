@@ -8,3 +8,4 @@ tags
 .cache
 /keg_auth_ta-config.py
 .pytest_cache
+dist/
