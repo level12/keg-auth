@@ -4,6 +4,7 @@ import flask
 import flask_login
 from keg.web import validate_arguments, ArgumentValidationError, ViewArgumentError
 
+from keg_auth.extensions import lazy_gettext as _
 from keg_auth.model import utils as model_utils
 
 
@@ -68,10 +69,11 @@ class RequiresUser(object):
                 # removing it before the bound method is called below
                 pass_args, pass_kwargs = validate_arguments(old_check_auth, args, kwargs.copy())
             except ArgumentValidationError as e:
-                msg = 'Argument mismatch occured: method=%s, missing=%s, ' \
-                      'extra_keys=%s, extra_pos=%s.' \
-                      '  Arguments available: %s' % (old_check_auth, e.missing, e.extra,
-                                                     e.extra_positional, kwargs)  # pragma: no cover
+                msg = _('Argument mismatch occured: method=%s, missing=%s, '
+                        'extra_keys=%s, extra_pos=%s.'
+                        '  Arguments available: %s') % (old_check_auth, e.missing,
+                                                        e.extra, e.extra_positional,
+                                                        kwargs)  # pragma: no cover
                 raise ViewArgumentError(msg)  # pragma: no cover
 
             return old_check_auth(*pass_args, **pass_kwargs)

@@ -2,11 +2,18 @@ import flask
 import flask_login
 import inflect
 import keg.web
+import six
 import sqlalchemy as sa
 from blazeutils.strings import case_cw2dash
 from keg.db import db
 
 from keg_auth import forms, grids, requires_permissions
+from keg_auth.extensions import lazy_gettext as _, flash
+
+try:
+    from speaklater import is_lazy_string
+except ImportError:
+    is_lazy_string = lambda value: False  # noqa: E731
 
 
 class CrudView(keg.web.BaseView):
@@ -55,11 +62,19 @@ class CrudView(keg.web.BaseView):
 
     @property
     def object_name_plural(self):
-        return self._inflect.plural(self.object_name)
+        return self._inflect.plural(
+            self.object_name
+            if not is_lazy_string(self.object_name)
+            else six.text_type(self.object_name)
+        )
 
     def page_title(self, action):
-        if action in ('Create', 'Edit'):
-            return '{} {}'.format(action, self.object_name)
+        if action == _('Create'):
+            return _('Create {name}').format(name=self.object_name)
+
+        if action == _('Edit'):
+            return _('Edit {name}').format(name=self.object_name)
+
         return self.object_name_plural
 
     def create_form(self, obj):
@@ -68,7 +83,7 @@ class CrudView(keg.web.BaseView):
     def form_template_args(self, arg_dict):
         return arg_dict
 
-    def render_form(self, obj, action, form, action_button_text='Save Changes'):
+    def render_form(self, obj, action, form, action_button_text=_('Save Changes')):
         template_args = self.form_template_args({
             'action': action,
             'action_button_text': action_button_text,
@@ -102,8 +117,12 @@ class CrudView(keg.web.BaseView):
 
         return self.render_form(
             obj=obj,
-            action='Edit' if obj else 'Create',
-            action_button_text='Save Changes' if obj else 'Create ' + self.object_name,
+            action=_('Edit') if obj else _('Create'),
+            action_button_text=(
+                _('Save Changes')
+                if obj
+                else _('Create {name}').format(name=self.object_name)
+            ),
             form=form
         )
 
@@ -145,26 +164,35 @@ class CrudView(keg.web.BaseView):
                              session_key=flask.request.args.get('session_key'))
 
     def flash_success(self, verb):
-        flask.flash('Successfully {verb} {object}'.format(verb=verb, object=self.object_name),
-                    'success')
+        # i18n: this may require reworking in order to support proper
+        #       sentence structures...
+        flash(_('Successfully {verb} {object}').format(
+            verb=verb, object=self.object_name), 'success'
+        )
 
     def on_delete_success(self):
-        self.flash_success('removed')
+        self.flash_success(_('removed'))
         return flask.redirect(self.list_url_with_session)
 
     def on_delete_failure(self):
-        flask.flash(
-            'Unable to delete {}. It may be referenced by other items.'.format(self.object_name),
+        flash(
+            _('Unable to delete {name}. It may be referenced by other items.').format(
+                name=self.object_name
+            ),
             'warning'
         )
         return flask.redirect(self.list_url_with_session)
 
     def on_add_edit_success(self, entity, is_edit):
-        self.flash_success('modified' if is_edit else 'created')
+        self.flash_success(
+            _('modified')
+            if is_edit
+            else _('created')
+        )
         return flask.redirect(self.list_url_with_session)
 
     def on_add_edit_failure(self, entity, is_edit):
-        flask.flash('Form errors detected.  Please see below for details.', 'error')
+        flash(_('Form errors detected.  Please see below for details.'), 'error')
 
     @classmethod
     def endpoint_for_action(cls, action):
@@ -186,7 +214,7 @@ class CrudView(keg.web.BaseView):
 
         template_args = self.grid_template_args({
             'add_url': flask.url_for(self.endpoint_for_action('add'), session_key=grid.session_key),
-            'page_title': self.page_title('list'),
+            'page_title': self.page_title(_('list')),
             'grid': grid,
         })
 
@@ -255,11 +283,11 @@ class VerifyAccount(AuthRespondedView):
 
 class Logout(keg.web.BaseView):
     url = '/logout'
-    flash_success = 'You have been logged out.', 'success'
+    flash_success = _('You have been logged out.'), 'success'
 
     def get(self):
         flask_login.logout_user()
-        flask.flash(*self.flash_success)
+        flash(*self.flash_success)
         redirect_to = flask.current_app.auth_manager.url_for('after-logout')
         flask.abort(flask.redirect(redirect_to))
 
@@ -267,7 +295,8 @@ class Logout(keg.web.BaseView):
 @requires_permissions('auth-manage')
 class User(CrudView):
     url = '/users'
-    object_name = 'User'
+    object_name = _('User')
+    object_name_plural = _('Users')
     form_cls = staticmethod(forms.user_form)
 
     def create_form(self, obj):
@@ -330,7 +359,8 @@ class User(CrudView):
 @requires_permissions('auth-manage')
 class Group(CrudView):
     url = '/groups'
-    object_name = 'Group'
+    object_name = _('Group')
+    object_name_plural = _('Groups')
     form_cls = staticmethod(forms.group_form)
 
     def create_form(self, obj):
@@ -361,7 +391,8 @@ class Group(CrudView):
 @requires_permissions('auth-manage')
 class Bundle(CrudView):
     url = '/bundles'
-    object_name = 'Bundle'
+    object_name = _('Bundle')
+    object_name_plural = _('Bundles')
     form_cls = staticmethod(forms.bundle_form)
 
     def create_form(self, obj):
@@ -406,7 +437,7 @@ class Permission(keg.web.BaseView):
 
         return flask.render_template(
             self.grid_template,
-            page_title='Permissions',
+            page_title=_('Permissions'),
             grid=grid
         )
 

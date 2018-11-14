@@ -1,5 +1,7 @@
 import inspect
 
+from keg_auth.extensions import lazy_gettext as _
+
 
 class RegistryError(Exception):
     pass
@@ -19,11 +21,11 @@ class EntityRegistry(object):
         attr = self._type_to_attr(type)
         try:
             if getattr(self, attr) is not None:
-                raise RegistryError('Entity class already registered for {}'.format(type))
+                raise RegistryError(_('Entity class already registered for {}').format(type))
         except AttributeError:
-            raise RegistryError('Attempting to register unknown type {}'.format(type))
+            raise RegistryError(_('Attempting to register unknown type {}').format(type))
         if not inspect.isclass(cls):
-            raise RegistryError('Entity must be a class')
+            raise RegistryError(_('Entity must be a class'))
 
         setattr(self, attr, cls)
         return cls
@@ -45,10 +47,10 @@ class EntityRegistry(object):
         try:
             cls = getattr(self, attr)
         except AttributeError:
-            raise RegistryError('Attempting to register unknown type {}'.format(type))
+            raise RegistryError(_('Attempting to register unknown type {}').format(type))
 
         if cls is None:
-            raise RegistryError('No entity registered for {}'.format(type))
+            raise RegistryError(_('No entity registered for {}').format(type))
         return cls
 
     @property

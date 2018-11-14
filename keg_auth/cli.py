@@ -1,6 +1,8 @@
 import click
 import keg
 
+from keg_auth.extensions import gettext as _
+
 
 def add_cli_to_app(app, cli_group_name, user_args=['email']):
 
@@ -22,12 +24,12 @@ def add_cli_to_app(app, cli_group_name, user_args=['email']):
         auth_manager = keg.current_app.auth_manager
         user = auth_manager.create_user_cli(is_superuser=as_superuser, mail_enabled=not no_mail,
                                             **kwargs)
-        click.echo('User created.')
+        click.echo(_('User created.'))
         if auth_manager.mail_manager:
             if not no_mail:
-                click.echo('Email sent with verification URL.')
+                click.echo(_('Email sent with verification URL.'))
             verification_url = auth_manager.mail_manager.verify_account_url(user)
-            click.echo('Verification URL: {}'.format(verification_url))
+            click.echo(_('Verification URL: {url}').format(url=verification_url))
 
     # dress up _create_user as needed
     user_args.reverse()
