@@ -511,6 +511,43 @@ class TestUserCrud(ViewTestBase):
         assert user.groups == [group_approve]
         assert user.bundles == [bundle_approve]
 
+    def test_resend_verification(self):
+        self.current_user.is_verified = True
+        self.current_user.permissions = ents.Permission.query.filter_by(token='auth-manage').all()
+        for user in ents.User.query.filter(ents.User.email != self.current_user.email):
+            ents.db.session.delete(user)
+        user_edit = self.user_ent.testing_create(
+            is_verified=False,
+            email="foo1@bar.com",
+            is_superuser=False,
+            permissions=[]
+        )
+        resp = self.client.get('/users')
+        form = resp.forms[1]
+
+        # assert only one verification link because
+        # only one unverified user
+        assert 'user_id' not in resp.forms[0].fields
+        assert len(resp.forms) == 2
+        assert 'user_id' in form.fields
+        assert form['user_id'].value == str(user_edit.id)
+        with mail_ext.record_messages() as outbox:
+            resp = form.submit()
+
+        assert len(outbox) == 1
+        assert outbox[0].subject == '[KA Demo] User Welcome & Verification'
+        assert 'foo1@bar.com' in outbox[0].recipients
+        assert resp.status_code == 302
+        assert resp.location.endswith('/users')
+        assert resp.flashes == [('success', 'Verification email has been sent')]
+
+    def test_verification_column_appears_when_needed(self):
+        resp = self.client.get('/users?op(username)=eq&v1(username)=' + self.current_user.email)
+        assert resp.pyquery('.datagrid table.records thead th').eq(4).text() == 'Resend Verification' # noqa
+        with mock.patch.dict('flask.current_app.config', {'KEGAUTH_EMAIL_OPS_ENABLED': False}):
+            resp = self.client.get('/users?op(username)=eq&v1(username)=' + self.current_user.email)
+            assert resp.pyquery('.datagrid table.records thead th').eq(4).text() == ''
+
     def test_add_and_token_is_correct(self):
         perm_approve = ents.Permission.testing_create()
         ents.Permission.testing_create()

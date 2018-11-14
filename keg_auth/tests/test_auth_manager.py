@@ -83,3 +83,13 @@ class TestAuthManager(object):
         manager.init_app(app)
         assert isinstance(manager.login_authenticator, KegAuthenticator)
         assert isinstance(manager.get_request_loader('jwt'), JwtRequestLoader)
+
+    def test_resend_verification(self):
+        user = ents.User.testing_create(
+            email='foo1@bar.com'
+        )
+        with mail_ext.record_messages() as outbox:
+            self.am.resend_verification_email(user.id)
+
+        assert len(outbox) == 1
+        assert outbox[0].subject == '[KA Demo] User Welcome & Verification'
