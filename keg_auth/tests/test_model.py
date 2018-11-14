@@ -67,7 +67,7 @@ class TestUser(object):
 
     def test_token_salt_info_changed(self):
         def check_field(field, new_value):
-            user = ents.User.testing_create()
+            user = ents.User.testing_create(last_login_utc=None)
             token = user.token_generate()
             setattr(user, field, new_value)
             db.session.flush()
