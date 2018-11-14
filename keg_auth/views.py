@@ -65,16 +65,19 @@ class CrudView(keg.web.BaseView):
     def create_form(self, obj):
         return self.form_cls(obj=obj)
 
+    def form_template_args(self, arg_dict):
+        return arg_dict
+
     def render_form(self, obj, action, form, action_button_text='Save Changes'):
-        default_template_args = {
+        template_args = self.form_template_args({
             'action': action,
             'action_button_text': action_button_text,
             'cancel_url': self.cancel_url(),
             'form': form,
             'obj_inst': obj,
             'page_title': self.page_title(action),
-        }
-        return flask.render_template(self.form_template, **default_template_args)
+        })
+        return flask.render_template(self.form_template, **template_args)
 
     def add_orm_obj(self):
         o = self.orm_cls()
@@ -172,19 +175,22 @@ class CrudView(keg.web.BaseView):
         grid.apply_qs_args()
         return grid
 
+    def grid_template_args(self, arg_dict):
+        return arg_dict
+
     def render_grid(self):
         grid = self.make_grid()
 
         if grid.export_to:
             return grid.export_as_response()
 
-        return flask.render_template(
-            self.grid_template,
-            add_url=flask.url_for(self.endpoint_for_action('add'),
-                                  session_key=grid.session_key),
-            page_title=self.page_title('list'),
-            grid=grid
-        )
+        template_args = self.grid_template_args({
+            'add_url': flask.url_for(self.endpoint_for_action('add'), session_key=grid.session_key),
+            'page_title': self.page_title('list'),
+            'grid': grid,
+        })
+
+        return flask.render_template(self.grid_template, **template_args)
 
     def cancel_url(self):
         return self.list_url_with_session
