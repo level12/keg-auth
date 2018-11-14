@@ -157,12 +157,12 @@ def make_user_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permi
             webgrid.YesNoColumn(_('Verified'), user_cls.is_verified, filters.YesNoFilter)
         webgrid.YesNoColumn(_('Superuser'), user_cls.is_superuser, filters.YesNoFilter)
         if (
-            flask.current_app.auth_manager.mail_manager and
-            hasattr(user_cls, 'is_verified') and
-            resend_verification_endpoint is not None and
-            flask.current_app.config['KEGAUTH_EMAIL_OPS_ENABLED']
+            flask.current_app.auth_manager.mail_manager
+            and hasattr(user_cls, 'is_verified')
+            and resend_verification_endpoint is not None
+            and flask.current_app.config['KEGAUTH_EMAIL_OPS_ENABLED']
         ):
-            ResendVerificationColumn('Resend Verification', resend_verification_endpoint)
+            ResendVerificationColumn(_('Resend Verification'), resend_verification_endpoint)
 
         def query_prep(self, query, has_sort, has_filters):
             if not has_sort:

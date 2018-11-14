@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Keg Auth 0.2.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2018-08-23 13:49-0400\n"
+"POT-Creation-Date: 2018-11-14 12:23-0500\n"
 "PO-Revision-Date: 2018-08-23 13:49-0400\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: es\n"
@@ -26,11 +26,11 @@ msgstr "Creado por el usuario."
 msgid "Email sent with verification URL."
 msgstr "Correo electrónico enviado con la URL de verificación."
 
-#: keg_auth/cli.py:31
+#: keg_auth/cli.py:32
 msgid "Verification URL: {url}"
 msgstr "URL de verificación: {url}"
 
-#: keg_auth/forms.py:19 keg_auth/grids.py:116
+#: keg_auth/forms.py:19 keg_auth/grids.py:155
 msgid "User ID"
 msgstr "Identidad de usuario"
 
@@ -58,44 +58,49 @@ msgstr "Confirmar Contraseña"
 msgid "This field is required."
 msgstr "Este campo es requerido."
 
-#: keg_auth/forms.py:146 keg_auth/views.py:338
+#: keg_auth/forms.py:146 keg_auth/views.py:372
 msgid "Groups"
 msgstr "Grupos"
 
-#: keg_auth/grids.py:74 keg_auth/grids.py:76 keg_auth/views.py:75
-#: keg_auth/views.py:117
+#: keg_auth/grids.py:75 keg_auth/grids.py:77 keg_auth/views.py:75
+#: keg_auth/views.py:120
 msgid "Edit"
 msgstr "Editar"
 
-#: keg_auth/grids.py:84 keg_auth/grids.py:86
+#: keg_auth/grids.py:85 keg_auth/grids.py:87
 msgid "Delete"
 msgstr "Borrar"
 
-#: keg_auth/grids.py:94 keg_auth/grids.py:96
+#: keg_auth/grids.py:95 keg_auth/grids.py:97
 msgid "View"
 msgstr "Ver"
 
-#: keg_auth/grids.py:118
+#: keg_auth/grids.py:157
 msgid "Verified"
 msgstr "Verificado"
 
-#: keg_auth/grids.py:119
+#: keg_auth/grids.py:158
 msgid "Superuser"
 msgstr "Superusuario"
 
-#: keg_auth/grids.py:142 keg_auth/grids.py:165 keg_auth/grids.py:179
+#: keg_auth/grids.py:165
+#, fuzzy
+msgid "Resend Verification"
+msgstr "Correo electrónico enviado con la URL de verificación."
+
+#: keg_auth/grids.py:188 keg_auth/grids.py:211 keg_auth/grids.py:225
 msgid "Name"
 msgstr "Nombre"
 
-#: keg_auth/grids.py:180
+#: keg_auth/grids.py:226
 msgid "Description"
 msgstr "Descripción"
 
-#: keg_auth/views.py:72 keg_auth/views.py:117
+#: keg_auth/views.py:72 keg_auth/views.py:120
 msgid "Create"
 msgstr "Crear"
 
-#: keg_auth/views.py:73 keg_auth/views.py:121
+#: keg_auth/views.py:73 keg_auth/views.py:124
 msgid "Create {name}"
 msgstr "Crear {name}"
 
@@ -103,98 +108,102 @@ msgstr "Crear {name}"
 msgid "Edit {name}"
 msgstr "Editar {name}"
 
-#: keg_auth/views.py:83 keg_auth/views.py:119
+#: keg_auth/views.py:86 keg_auth/views.py:122
 msgid "Save Changes"
 msgstr "Guardar Cambios"
 
-#: keg_auth/views.py:166
+#: keg_auth/views.py:169
 msgid "Successfully {verb} {object}"
 msgstr "{verb} {object} con éxito"
 
-#: keg_auth/views.py:170
+#: keg_auth/views.py:174
 msgid "removed"
 msgstr "remoto"
 
-#: keg_auth/views.py:175
+#: keg_auth/views.py:179
 msgid "Unable to delete {name}. It may be referenced by other items."
 msgstr "No se puede eliminar {name}. Puede ser referenciado por otros artículos."
 
-#: keg_auth/views.py:184
+#: keg_auth/views.py:188
 msgid "modified"
 msgstr "modificado"
 
-#: keg_auth/views.py:186
+#: keg_auth/views.py:190
 msgid "created"
 msgstr "creado"
 
-#: keg_auth/views.py:191
+#: keg_auth/views.py:195
 msgid "Form errors detected.  Please see below for details."
 msgstr "Errores de forma detectados. Por favor mira abajo para más detalles."
 
-#: keg_auth/views.py:212
+#: keg_auth/views.py:217
 msgid "list"
 msgstr "lista"
 
-#: keg_auth/views.py:279
+#: keg_auth/views.py:286
 msgid "You have been logged out."
 msgstr "Has sido desconectado."
 
-#: keg_auth/views.py:291
+#: keg_auth/views.py:298
 msgid "User"
 msgstr "Usuario"
 
-#: keg_auth/views.py:292
+#: keg_auth/views.py:299
 msgid "Users"
 msgstr "Usuarios"
 
-#: keg_auth/views.py:337
+#: keg_auth/views.py:313
+msgid "Verification email has been sent"
+msgstr "Correo electrónico de verificación ha sido enviado"
+
+#: keg_auth/views.py:371
 msgid "Group"
 msgstr "Grupo"
 
-#: keg_auth/views.py:369
+#: keg_auth/views.py:403
 msgid "Bundle"
 msgstr "Manojo"
 
-#: keg_auth/views.py:370
+#: keg_auth/views.py:404
 msgid "Bundles"
 msgstr "Manojos"
 
-#: keg_auth/views.py:415
+#: keg_auth/views.py:449
 msgid "Permissions"
 msgstr "Permisos"
 
-#: keg_auth/libs/authenticators.py:109
+#: keg_auth/libs/authenticators.py:112
 msgid "No user account matches: {}"
 msgstr "Ninguna cuenta de usuario coincide: {}"
 
-#: keg_auth/libs/authenticators.py:110
+#: keg_auth/libs/authenticators.py:113
 msgid ""
 "The user account \"{}\" has an unverified email address.  Please check "
 "your email for a verification link from this website.  Or, use the "
 "\"forgot password\" link to verify the account."
 msgstr ""
 "La cuenta de usuario \"{}\" tiene una dirección de correo electrónico no "
-"verificada. Por favor revise su correo electrónico para ver un enlace "
-"de verificación desde este sitio web. O bien, use el enlace "
-"\"olvidó la contraseña\" para verificar la cuenta."
+"verificada. Por favor revise su correo electrónico para ver un enlace de "
+"verificación desde este sitio web. O bien, use el enlace \"olvidó la "
+"contraseña\" para verificar la cuenta."
 
-#: keg_auth/libs/authenticators.py:115
+#: keg_auth/libs/authenticators.py:118
 msgid ""
 "The user account \"{}\" has been disabled.  Please contact this site's "
 "administrators for more information."
 msgstr ""
-"La cuenta de usuario \"{}\" ha sido desactivada. Por favor, póngase "
-"en contacto con los administradores de este sitio para más información."
+"La cuenta de usuario \"{}\" ha sido desactivada. Por favor, póngase en "
+"contacto con los administradores de este sitio para más información."
 
-#: keg_auth/libs/authenticators.py:143
+#: keg_auth/libs/authenticators.py:146
 msgid "Login successful."
 msgstr "Inicio de sesión correcto."
 
-#: keg_auth/libs/authenticators.py:174
+#: keg_auth/libs/authenticators.py:177
 msgid "The form has errors, please see below."
 msgstr "El formulario tiene errores, ve a continuación."
 
-#: keg_auth/libs/authenticators.py:210
+#: keg_auth/libs/authenticators.py:213
 msgid ""
 "Authentication token was invalid or expired.  Please fill out the form "
 "below to get a new token."
@@ -202,54 +211,59 @@ msgstr ""
 "El token de autenticación no es válido o ha caducado. Complete el "
 "formulario a continuación para obtener un nuevo token."
 
-#: keg_auth/libs/authenticators.py:259
+#: keg_auth/libs/authenticators.py:262
 msgid "Complete Password Reset"
 msgstr "Restablecer Contraseña Completa"
 
-#: keg_auth/libs/authenticators.py:260
+#: keg_auth/libs/authenticators.py:263
 msgid "Change Password"
 msgstr "Cambia la Contraseña"
 
-#: keg_auth/libs/authenticators.py:261
+#: keg_auth/libs/authenticators.py:264
 msgid "Password changed.  Please use the new password to login below."
-msgstr "Contraseña cambiada. Utilice la nueva contraseña para iniciar sesión a continuación."
+msgstr ""
+"Contraseña cambiada. Utilice la nueva contraseña para iniciar sesión a "
+"continuación."
 
-#: keg_auth/libs/authenticators.py:268
+#: keg_auth/libs/authenticators.py:271
 msgid "Verify Account & Set Password"
 msgstr "Verificar Cuenta y Establecer Contraseña"
 
-#: keg_auth/libs/authenticators.py:269
+#: keg_auth/libs/authenticators.py:272
 msgid "Verify & Set Password"
 msgstr "Verificar y Configurar la Contraseña"
 
-#: keg_auth/libs/authenticators.py:270
+#: keg_auth/libs/authenticators.py:273
 msgid ""
 "Account verified & password set.  Please use the new password to login "
 "below."
 msgstr ""
-"Cuenta verificada y contraseña establecida. Utilice la nueva contraseña para iniciar sesión a continuación."
+"Cuenta verificada y contraseña establecida. Utilice la nueva contraseña "
+"para iniciar sesión a continuación."
 
-#: keg_auth/libs/authenticators.py:278
+#: keg_auth/libs/authenticators.py:281
 msgid "Log In"
 msgstr "Iniciar Sesión"
 
-#: keg_auth/libs/authenticators.py:279
+#: keg_auth/libs/authenticators.py:282
 msgid "Invalid password."
 msgstr "Contraseña invalida."
 
-#: keg_auth/libs/authenticators.py:306
+#: keg_auth/libs/authenticators.py:309
 msgid "Initiate Password Reset"
 msgstr "Iniciar Restablecimiento de Contraseña"
 
-#: keg_auth/libs/authenticators.py:308
+#: keg_auth/libs/authenticators.py:311
 msgid "Please check your email for the link to change your password."
-msgstr "Por favor revise su correo electrónico para ver el enlace para cambiar su contraseña."
+msgstr ""
+"Por favor revise su correo electrónico para ver el enlace para cambiar su"
+" contraseña."
 
-#: keg_auth/libs/authenticators.py:409
+#: keg_auth/libs/authenticators.py:412
 msgid "No KEGAUTH_LDAP_SERVER_URL configured!"
 msgstr "¡No se configuró KEGAUTH_LDAP_SERVER_URL!"
 
-#: keg_auth/libs/authenticators.py:413
+#: keg_auth/libs/authenticators.py:416
 msgid "No KEGAUTH_LDAP_DN_FORMAT configured!"
 msgstr "¡No se configuró KEGAUTH_LDAP_DN_FORMAT!"
 
@@ -259,8 +273,8 @@ msgid ""
 "Argument mismatch occured: method=%s, missing=%s, extra_keys=%s, "
 "extra_pos=%s.  Arguments available: %s"
 msgstr ""
-"El desajuste de argumento ocurrió: método=%s, faltante=%s, "
-"extra_keys=%s, extra_pos=%s. Argumentos disponibles: %s"
+"El desajuste de argumento ocurrió: método=%s, faltante=%s, extra_keys=%s,"
+" extra_pos=%s. Argumentos disponibles: %s"
 
 #: keg_auth/libs/navigation.py:56
 msgid "Endpoint {} in navigation is not registered"
@@ -302,4 +316,10 @@ msgstr "Enviar Restablecer correo electrónico"
 #: keg_auth/templates/keg_auth/login.html:10
 msgid "I forgot my password"
 msgstr "Olvidé mi contraseña"
+
+#~ msgid "Tried to resend verification email, but email is not setup."
+#~ msgstr ""
+#~ "Intentó reenviar el correo electrónico "
+#~ "de verificación, pero el correo "
+#~ "electrónico no está configurado."
 

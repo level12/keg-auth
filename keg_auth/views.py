@@ -310,7 +310,7 @@ class User(CrudView):
         validate_csrf(flask.request.form['csrf_token'])
         auth_manager = keg.current_app.auth_manager
         auth_manager.resend_verification_email(flask.request.form['user_id'])
-        flask.flash('Verification email has been sent', 'success')
+        flask.flash(str(_('Verification email has been sent')), 'success')
         return flask.redirect(flask.url_for(self.endpoint_for_action('list')))
 
     @property
