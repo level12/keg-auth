@@ -82,6 +82,7 @@ class CrudView(keg.web.BaseView):
 
     def form_template_args(self, arg_dict):
         return arg_dict
+
     def render_form(self, obj, action, form, action_button_text=_('Save Changes')):
         template_args = self.form_template_args({
             'action': action,
