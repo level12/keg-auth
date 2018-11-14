@@ -67,7 +67,8 @@ setup(
             'xlsxwriter',
         ],
         'i18n': [
-            'morphi'
+            'morphi',
+            'webgrid[i18n]'
         ],
         'jwt': [
             'flask-jwt-extended',
