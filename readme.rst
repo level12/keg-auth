@@ -262,13 +262,6 @@ Usage
          redirect to the login page
       -  a decorated class/blueprint may have a custom `on_authentication_failure` instance method instead
          of passing one to the decorator
-      -  the decorator uses authenticators to determine whether a user is logged in
-
-         -  the primary authenticator is used by default
-         -  control a view/blueprint's authenticators by specifying them on the decorator:
-
-            -  ``@requires_user(authenticators='jwt')``
-            -  ``@requires_user(authenticators=['keg', 'jwt'])``
 
    -  ``requires_permissions``
 
@@ -281,11 +274,9 @@ Usage
          respond 403 Unauthorized
       -  a decorated class/blueprint may have a custom `on_authorization_failure` instance method instead
          of passing one to the decorator
-      -  authenticators are used as in `requires_user`
       -  usage:
 
          -  ``@requires_permissions(('token1', 'token2'))``
-         -  ``@requires_permissions(('token1', 'token2'), authenticators='jwt')``
          -  ``@requires_permissions(has_any('token1', 'token2'))``
          -  ``@requires_permissions(has_all('token1', 'token2'))``
          -  ``@requires_permissions(has_all(has_any('token1', 'token2'), 'token3'))``
