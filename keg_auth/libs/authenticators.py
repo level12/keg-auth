@@ -469,3 +469,21 @@ class JwtRequestLoader(TokenLoaderMixin, RequestLoader):
 
     def create_access_token(self, user):
         return flask_jwt_extended.create_access_token(user)
+
+
+class TokenRequestLoader(RequestLoader):
+    authentication_failure_redirect = False
+
+    def get_authenticated_user(self):
+        token = flask.request.headers.get('X-Auth-Token')
+
+        if token is None:
+            return
+
+        user = self.user_ent.get_by_token(token)
+
+        if user is None:
+            return
+
+        flask_login.login_user(user)
+        return user

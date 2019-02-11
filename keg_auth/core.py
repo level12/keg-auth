@@ -13,6 +13,9 @@ from keg_auth.libs.authenticators import KegAuthenticator
 from keg_auth import model
 
 
+DEFAULT_CRYPTO_SCHEMES = ('bcrypt', 'pbkdf2_sha256',)
+
+
 class AuthManager(object):
     endpoints = {
         'forgot-password': '{blueprint}.forgot-password',
@@ -78,7 +81,7 @@ class AuthManager(object):
         self.init_permissions(app)
 
     def init_config(self, app):
-        _cc_kwargs = dict(schemes=['bcrypt', 'pbkdf2_sha256'], deprecated='auto')
+        _cc_kwargs = dict(schemes=DEFAULT_CRYPTO_SCHEMES, deprecated='auto')
         app.config.setdefault('PASSLIB_CRYPTCONTEXT_KWARGS', _cc_kwargs)
 
         # config flag controls email ops such as sending verification emails, etc.

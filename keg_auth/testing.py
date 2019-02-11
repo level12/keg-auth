@@ -7,6 +7,7 @@ from six.moves import urllib
 import flask
 import flask_webtest
 import mock
+import passlib
 import wrapt
 
 
@@ -369,6 +370,47 @@ def user_request(wrapped, instance, args, kwargs):
     if user is not None:
         extra_environ['TEST_USER_ID'] = str(user.session_key)
     return wrapped(*args, **new_kwargs)
+
+
+def with_crypto_context(field, context=None):
+    """Wrap a test to use a real cryptographic context for a :class:`KAPasswordType`
+
+    Temporarily assign a :class:`passlib.context.CryptoContext` to a particular entity column.
+
+    :param context (optional): :class:`passlib.context.CryptoContext` to use for this test. The
+        default value is `keg_auth.core.DEFAULT_CRYPTO_SCHEMES`.
+
+    .. NOTE: In most situations we don't want a real crypto scheme to run in the tests, it is
+    slow on entities like Users which have a password. ``User.testing_create`` will generate a value
+    for that instance and then hash which takes a bunch of time. However, when testing certain
+    schemes, it is useful to execute the real behavior instead of the ``plaintext`` behaviour.
+
+    ::
+
+        import bcrypt
+
+        bcrypt_context =passlib.context.CryptContext(scheme=['bcrypt'])
+
+        @with_crypto_context(ents.User.password, context=bcrypt_context)
+        def test_with_real_context():
+            user = ents.User.testing_create(password='abc')
+            assert bcrypt.checkpw('abc', user.password.hash)
+
+    """
+    import keg_auth
+
+    @wrapt.decorator
+    def wrapper(wrapped, instance, args, kwargs):
+        prev_context = field.type.context
+        field.type.context = (
+            context or passlib.context.CryptContext(schemes=keg_auth.core.DEFAULT_CRYPTO_SCHEMES)
+        )
+
+        wrapped(*args, **kwargs)
+
+        field.type.context = prev_context
+
+    return wrapper
 
 
 class AuthTestApp(flask_webtest.TestApp):
