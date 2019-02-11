@@ -297,7 +297,7 @@ class UserTokenMixin(object):
         if api_token is None:
             return
 
-        if isinstance(api_token, bytes):
+        if isinstance(api_token, six.binary_type):
             api_token = api_token.decode()
 
         if len(api_token.split('.')) != 2:
@@ -306,7 +306,7 @@ class UserTokenMixin(object):
         raw_email, raw_token = api_token.split('.')
         try:
             real_email = base64.urlsafe_b64decode(raw_email.encode()).decode()
-        except binascii.Error:
+        except (binascii.Error, TypeError):
             return
 
         user = cls.query.filter_by(email=real_email).one_or_none()
