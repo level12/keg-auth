@@ -1,6 +1,16 @@
 Changelog
 =========
 
+0.2.6 released 2019-02-12
+-------------------------
+
+- Merge pull request #60 from level12/move-sync-perms-to-entity (3181691_)
+- update readme to remove reference to view-scoped authenticators (514c202_)
+
+.. _3181691: https://github.com/level12/keg-auth/commit/3181691
+.. _514c202: https://github.com/level12/keg-auth/commit/514c202
+
+
 0.2.5 released 2018-11-14
 -------------------------
 
