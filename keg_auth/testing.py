@@ -389,7 +389,7 @@ def with_crypto_context(field, context=None):
 
         import bcrypt
 
-        bcrypt_context =passlib.context.CryptContext(scheme=['bcrypt'])
+        bcrypt_context = passlib.context.CryptContext(scheme=['bcrypt'])
 
         @with_crypto_context(ents.User.password, context=bcrypt_context)
         def test_with_real_context():
