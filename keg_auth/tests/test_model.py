@@ -1,15 +1,98 @@
 # Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
 from __future__ import unicode_literals
+import base64
+import string
 import arrow
 import flask
 from keg.db import db
 import pytest
 from freezegun import freeze_time
 import sqlalchemy as sa
+import bcrypt
 
 from keg_auth.model import InvalidToken, entity_registry, utils
 from keg_auth_ta.model import entities as ents
+from keg_auth.testing import with_crypto_context
 import mock
+
+
+class TestUserTokenMixin(object):
+    def setup(self):
+        ents.UserWithToken.delete_cascaded()
+
+    @with_crypto_context(ents.UserWithToken.token)
+    def test_token_storage_with_real_bcrypt(self):
+        raw_token = b'a' * 32
+        uwt = ents.UserWithToken.testing_create(token=raw_token)
+        assert bcrypt.checkpw(raw_token, uwt.token.hash)
+
+    @with_crypto_context(ents.UserWithToken.token)
+    def test_reset_auth_token(self):
+        original_token = b'a' * 32
+        uwt = ents.UserWithToken.testing_create(token=original_token)
+
+        assert bcrypt.checkpw(original_token, uwt.token.hash)
+        new_token = uwt.reset_auth_token()
+
+        assert bcrypt.checkpw(new_token.encode(), uwt.token.hash)
+        assert not bcrypt.checkpw(original_token, uwt.token.hash)
+
+    def test_generate_auth_token(self):
+        assert len(ents.UserWithToken.generate_raw_auth_token(length=1)) == 1
+        assert len(ents.UserWithToken.generate_raw_auth_token()) == 32
+        assert len(ents.UserWithToken.generate_raw_auth_token(entropy='secure')) == 32
+        assert len(ents.UserWithToken.generate_raw_auth_token(length=None, entropy='secure')) == 11
+        assert (string.ascii_uppercase not in
+                ents.UserWithToken.generate_raw_auth_token(charset='hex'))
+
+    @pytest.mark.parametrize('raw,test,result', [
+        ('123', '123', True),
+        ('123', 'abc', False),
+        ('a' * 400, 'abc', False),
+        (b'abc', b'abc', True),
+        (b'abc', 'abc', True),
+        ('abc', b'abc', True),
+        (None, b'abc', False),
+        ('abc', None, False),
+    ])
+    def test_verify_token(self, raw, test, result):
+        uwt = ents.UserWithToken.testing_create(token=raw)
+        assert uwt.verify_token(test) is result
+
+    def test_generate_api_token(self):
+        u1 = ents.UserWithToken.testing_create()
+        raw_token = u1.generate_api_token()
+
+        raw_email, token = raw_token.split('.')
+        real_email = base64.urlsafe_b64decode(raw_email.encode()).decode()
+
+        assert (real_email, token) == (u1.email, u1.token.hash.decode())
+
+    def test_get_user_for_api_token_happy_path(self):
+        u1 = ents.UserWithToken.testing_create(email='test@test.com', token='1234')
+        ents.UserWithToken.testing_create(email='test-2@test.com', token='5678')
+
+        u1_api_token = u1.generate_api_token('1234')
+        assert ents.UserWithToken.get_user_for_api_token(u1_api_token).id == u1.id
+
+    def test_get_user_for_api_token_wrong_token(self):
+        u1 = ents.UserWithToken.testing_create(email='test@test.com', token='1234')
+        ents.UserWithToken.testing_create(email='test-2@test.com', token='5678')
+
+        u1_api_token = u1.generate_api_token('1234')
+        u1_raw_email, u1_raw_token = u1_api_token.split('.')
+        u1_fake_token = '{email}.faketoken'.format(email=u1_raw_email)
+
+        assert ents.UserWithToken.get_user_for_api_token(u1_fake_token) is None
+
+    @pytest.mark.parametrize('token', [
+        None,  # Bad
+        'test@testcom',  # No period
+        'tes.t@te.stcom',  # three periods
+        b'test@thing.token',  # not b64encoded
+    ])
+    def test_get_user_for_api_token_bad_token(self, token):
+        assert ents.UserWithToken.get_user_for_api_token(token) is None
 
 
 class TestUser(object):

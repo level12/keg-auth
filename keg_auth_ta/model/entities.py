@@ -22,6 +22,10 @@ class UserNoEmail(db.Model, keg_auth.UserMixin, EntityMixin):
     __tablename__ = 'users_no_email'
 
 
+class UserWithToken(EntityMixin, keg_auth.UserEmailMixin, keg_auth.UserTokenMixin,  db.Model):
+    __tablename__ = 'users_with_token'
+
+
 @auth_entity_registry.register_permission
 class Permission(db.Model, keg_auth.PermissionMixin, EntityMixin):
     __tablename__ = 'permissions'

@@ -1,18 +1,22 @@
+import binascii
+import base64
 import hashlib
 import json
 
-from blazeutils import tolist
-from blazeutils.strings import randchars
 import flask
 import itsdangerous
-from keg.db import db
-from keg_elements.db.mixins import might_commit, might_flush
+import passlib.hash
+import passlib.pwd
 import shortuuid
 import six
 import sqlalchemy as sa
-from sqlalchemy.dialects import mssql
 import sqlalchemy.orm as sa_orm
 import sqlalchemy.sql as sa_sql
+from blazeutils import tolist
+from blazeutils.strings import randchars
+from keg.db import db
+from keg_elements.db.mixins import might_commit, might_flush
+from sqlalchemy.dialects import mssql
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy_utils import EmailType, PasswordType, force_auto_coercion, ArrowType
 
@@ -272,6 +276,70 @@ class UserMixin(object):
         self._token_plain = token
 
         return token
+
+
+class UserTokenMixin(object):
+
+    token = sa.Column(KAPasswordType(onload=_create_cryptcontext_kwargs))
+
+    @classmethod
+    def generate_raw_auth_token(cls, length=32, entropy=None, charset='ascii_50'):
+        """Return a raw authentication token
+
+        NOTE(nZac): You should not store this directly in the database. When using this mixin,
+        simply setting this value to ``self.token = generate_raw_auth_token`` is enough (though,
+        there is a helper method for that ``reset_auth_token``).
+        """
+        return passlib.pwd.genword(length=length, entropy=entropy, charset=charset)
+
+    @classmethod
+    def get_user_for_api_token(cls, api_token):
+        if api_token is None:
+            return
+
+        if isinstance(api_token, six.binary_type):
+            api_token = api_token.decode()
+
+        if len(api_token.split('.')) != 2:
+            return
+
+        raw_email, raw_token = api_token.split('.')
+        try:
+            real_email = base64.urlsafe_b64decode(raw_email.encode()).decode()
+        except (binascii.Error, TypeError):
+            return
+
+        user = cls.query.filter_by(email=real_email).one_or_none()
+        if user is None or not user.token.context.verify(raw_token, user.token.hash):
+            return
+        else:
+            return user
+
+    def reset_auth_token(self, **kwargs):
+        """Reset the authentication token for this user
+
+        Takes the same parameter as `:cls:generate_auth_token`
+        """
+        self.token = raw = self.generate_raw_auth_token(**kwargs)
+        return raw
+
+    def verify_token(self, token):
+        if not token or not self.token:
+            return False
+
+        return self.token.context.verify(token, self.token.hash)
+
+    def generate_api_token(self, token=None):
+        raw_token = token or self.reset_auth_token()
+
+        url_safe_email = base64.urlsafe_b64encode(self.email.encode()).decode()
+
+        raw_api_token = '{email}.{token}'.format(
+            email=url_safe_email,
+            token=raw_token,
+        )
+
+        return raw_api_token
 
 
 class UserEmailMixin(object):
