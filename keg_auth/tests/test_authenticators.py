@@ -7,7 +7,7 @@ import pytest
 
 from keg_auth.libs import authenticators as auth
 
-from keg_auth_ta.model.entities import User
+from keg_auth_ta.model.entities import User, UserWithToken
 
 
 class TestKegAuthenticator:
@@ -220,3 +220,37 @@ class TestJwtRequestLoader:
         jwt_auth = auth.JwtRequestLoader(flask.current_app)
         token = jwt_auth.create_access_token(user)
         assert flask_jwt_extended.decode_token(token)['identity'] == user.session_key
+
+
+class TestUserRequestLoader:
+
+    def test_no_token_present(self):
+        with flask.current_app.test_request_context('/blah'):
+            loader = auth.TokenRequestLoader(flask.current_app, user_ent=UserWithToken)
+            assert loader.get_authenticated_user() is None
+
+    def test_header_but_no_token(self):
+        with flask.current_app.test_request_context('/blah', headers={'X-Auth-Token': ''}):
+            loader = auth.TokenRequestLoader(flask.current_app, user_ent=UserWithToken)
+            assert loader.get_authenticated_user() is None
+
+    def test_header_token_but_no_user(self):
+        with flask.current_app.test_request_context('/blah', headers={'X-Auth-Token': '1234'}):
+            loader = auth.TokenRequestLoader(flask.current_app, user_ent=UserWithToken)
+            assert loader.get_authenticated_user() is None
+
+    def test_header_token_and_user_but_not_matching(self):
+        u1 = UserWithToken.testing_create()
+        token = u1.generate_api_token()
+        token = token + '1'
+
+        with flask.current_app.test_request_context('/blah', headers={'X-Auth-Token': token}):
+            loader = auth.TokenRequestLoader(flask.current_app, user_ent=UserWithToken)
+            assert loader.get_authenticated_user() is None
+
+    def test_header_token_and_user_and_matching(self):
+        u1 = UserWithToken.testing_create()
+        token = u1.generate_api_token()
+        with flask.current_app.test_request_context('/blah', headers={'X-Auth-Token': token}):
+            loader = auth.TokenRequestLoader(flask.current_app, user_ent=UserWithToken)
+            assert loader.get_authenticated_user() is u1

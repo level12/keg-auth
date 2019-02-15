@@ -9,7 +9,12 @@ import mock
 import pytest
 import sqlalchemy as sa
 from keg_auth_ta.app import mail_ext
-from keg_auth.testing import AuthTests, AuthTestApp, ViewTestBase
+from keg_auth.testing import (
+    AuthTestApp,
+    AuthTests,
+    TokenAuthenticatedTestBase,
+    ViewTestBase,
+)
 
 from keg_auth_ta.model import entities as ents
 from flask_login import user_logged_in
@@ -1052,3 +1057,17 @@ class TestPermissionsView(ViewTestBase):
         ents.Permission.testing_create()
         resp = self.client.get('/permissions?export_to=xlsx')
         assert resp.content_type == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'  # noqa
+
+
+class TestTokenRequestLoader(TokenAuthenticatedTestBase):
+    user_cls = ents.UserWithToken
+
+    def test_validating_user_with_token(self):
+        resp = self.client.get('/protected-class2')
+        assert resp.status_code == 200
+        assert resp.body == b'protected-class2'
+
+    def test_validating_user_without_token(self):
+        resp = self.client.get('/protected-class2', autoauth=False)
+        assert resp.status_code == 302
+        assert 'login' in resp.location

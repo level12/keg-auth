@@ -480,8 +480,7 @@ class TokenRequestLoader(RequestLoader):
         if token is None:
             return
 
-        user = self.user_ent.get_by_token(token)
-
+        user = self.user_ent.get_user_for_api_token(token)
         if user is None:
             return
 
