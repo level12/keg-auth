@@ -1,8 +1,18 @@
 from keg.signals import app_ready
 
+import keg_auth
 from keg_auth import NavItem, NavURL
 
 from keg_auth_ta.cli import auth_cli_extensions
+
+
+@app_ready.connect
+def add_custom_request_loader(app):
+    import keg_auth_ta.model.entities as ents
+
+    app.auth_manager.request_loaders[
+        keg_auth.TokenRequestLoader.get_identifier()
+    ] = keg_auth.TokenRequestLoader(app, user_ent=ents.UserWithToken)
 
 
 @app_ready.connect

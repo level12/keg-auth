@@ -22,7 +22,8 @@ class UserNoEmail(db.Model, keg_auth.UserMixin, EntityMixin):
     __tablename__ = 'users_no_email'
 
 
-class UserWithToken(EntityMixin, keg_auth.UserEmailMixin, keg_auth.UserTokenMixin,  db.Model):
+class UserWithToken(db.Model, keg_auth.UserEmailMixin, keg_auth.UserMixin,
+                    EntityMixin, keg_auth.UserTokenMixin):
     __tablename__ = 'users_with_token'
 
 
@@ -42,3 +43,10 @@ class Bundle(db.Model, keg_auth.BundleMixin, EntityMixin):
 @auth_entity_registry.register_group
 class Group(db.Model, keg_auth.GroupMixin, EntityMixin):
     __tablename__ = 'groups'
+
+
+keg_auth.model.user_permission_mapping(
+    UserWithToken,
+    Permission,
+    table_name='user_permissions_tokens'
+)

@@ -37,8 +37,8 @@ class UserInvalidAuth(Exception):
 class RequestLoader(object):
     """ Generic loader interface for determining if a user should be logged in"""
 
-    def __init__(self, app):
-        self.user_ent = app.auth_manager.entity_registry.user_cls
+    def __init__(self, app, user_ent=None):
+        self.user_ent = user_ent or app.auth_manager.entity_registry.user_cls
 
     @classmethod
     def get_identifier(cls):

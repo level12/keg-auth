@@ -466,6 +466,92 @@ class AuthTestApp(flask_webtest.TestApp):
         return super(AuthTestApp, self).delete_json(*args, **kwargs)
 
 
+@wrapt.decorator
+def with_auth(wrapped, instance, args, kwargs):
+    if kwargs.pop('autoauth', True):
+        instance.login(req_args=args, req_kwargs=kwargs)
+
+    return wrapped(*args, **kwargs)
+
+
+class AuthenticatedTestAppBase(flask_webtest.TestApp):
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+    def login(self, user=None, req_args=None, req_kwargs=None):
+        raise NotImplementedError('Login is not implemented for this authentication class.')
+
+    @with_auth
+    def get(self, *args, **kwargs):
+        return super().get(*args, **kwargs)
+
+    @with_auth
+    def post(self, *args, **kwargs):
+        return super().post(*args, **kwargs)
+
+    @with_auth
+    def put(self, *args, **kwargs):
+        return super().put(*args, **kwargs)
+
+    @with_auth
+    def patch(self, *args, **kwargs):
+        return super().patch(*args, **kwargs)
+
+    @with_auth
+    def delete(self, *args, **kwargs):
+        return super().delete(*args, **kwargs)
+
+    @with_auth
+    def options(self, *args, **kwargs):
+        return super().options(*args, **kwargs)
+
+    @with_auth
+    def head(self, *args, **kwargs):
+        return super().head(*args, **kwargs)
+
+    @with_auth
+    def post_json(self, *args, **kwargs):
+        return super().post_json(*args, **kwargs)
+
+    @with_auth
+    def put_json(self, *args, **kwargs):
+        return super().put_json(*args, **kwargs)
+
+    @with_auth
+    def patch_json(self, *args, **kwargs):
+        return super().patch_json(*args, **kwargs)
+
+    @with_auth
+    def delete_json(self, *args, **kwargs):
+        return super().delete_json(*args, **kwargs)
+
+
+class TokenAuthenticatedTestAppBase(AuthenticatedTestAppBase):
+    def login(self, *args, req_args=None, req_kwargs=None, user=None,  **kwargs):
+        if None in (req_args, req_kwargs):
+            raise ValueError('You must pass the request arguments and keyword arguments.')
+
+        user = (
+            user          # passed in to this function, get priority
+            or self.user  # create at setup
+        )
+        if user is None:
+            raise AttributeError(
+                'No default user supplied, pass a user to this request or instantiate the test'
+                'application with a user.'
+            )
+
+        token = user.generate_api_token()
+
+        if 'headers' in req_kwargs:
+            req_kwargs['headers']['X-Auth-Token'] = token
+        else:
+            req_kwargs['headers'] = {
+                'X-Auth-Token': token
+            }
+
+
 class ViewTestBase:
     """ Simple helper class that will set up Permission tokens as specified, log in a user, and
         provide the test app client on the class for use in tests.
@@ -491,3 +577,38 @@ class ViewTestBase:
 
         cls.current_user = cls.user_ent.testing_create(permissions=cls.permissions)
         cls.client = AuthTestApp(flask.current_app, user=cls.current_user)
+
+
+class UnauthenticatedTestBase:
+    @classmethod
+    def setup_class(cls):
+        cls.client = flask_webtest.TestApp(flask.curent_app)
+
+
+class AuthenticatedTestBase:
+    user_cls = None
+    permission_cls = None
+    permissions = tuple()
+    test_app_cls = AuthenticatedTestAppBase
+
+    @classmethod
+    def setup_class(cls):
+        cls.user_cls = (
+            cls.user_cls or flask.current_app.auth_manager.entity_registry.user_cls
+        )
+        cls.permission_cls = (
+            cls.permission_cls or flask.current_app.auth_manager.entity_registry.permission_cls
+        )
+
+        # ensure all of the tokens exists
+        for perm in tolist(cls.permissions):
+            cls.permissions_cls.testing_create(token=perm)
+
+    def setup_method(self, _):
+        self.user_cls.delete_cascaded()
+        self.current_user = self.user_cls.testing_create(permissions=self.permissions)
+        self.client = self.test_app_cls(flask.current_app, user=self.current_user)
+
+
+class TokenAuthenticatedTestBase(AuthenticatedTestBase):
+    test_app_cls = TokenAuthenticatedTestAppBase
