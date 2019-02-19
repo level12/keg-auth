@@ -50,6 +50,12 @@ setup(
     # for example:
     # $ pip install -e .[dev,test]
     extras_require={
+        'docs': [
+            'pygments',
+            'pygments-style-github',
+            'sphinx',
+            'sphinx_rtd_theme',
+        ],
         'test': [
             'flake8',
             'flask-bootstrap',
