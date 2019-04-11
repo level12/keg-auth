@@ -15,6 +15,9 @@ class ActionColumn(webgrid.Column):
 
     Since actions can be protected by permissions, this column must reside in a ProtectedGrid.
     """
+    default_view_link_class = 'view-link'
+    default_edit_link_class = 'edit-link'
+    default_delete_link_class = 'delete-link confirm-delete'
 
     def __init__(self,
                  label,
@@ -29,22 +32,43 @@ class ActionColumn(webgrid.Column):
                  edit_permission_for=lambda row: None,
                  delete_permission_for=lambda row: None,
                  view_permission_for=lambda row: None,
-                 delete_link_class_for=lambda row: 'delete-link confirm-delete',
+                 view_link_class_for=None,
+                 edit_link_class_for=None,
+                 delete_link_class_for=None,
                  **kwargs):
         """
         :param edit_permission_for: is a function that takes a row and returns the permission
                                     required to open the edit endpoint for that row.
         :param delete_permission_for: is like `edit_permission_for`, but for the delete endpoint.
         :param view_permission_for: is like `edit_permission_for`, but for the view endpoint.
+        :param view_link_class_for: is a function that takes a row and returns the HTML class to
+                                    place on the view link.
+        :param edit_link_class_for: is a function that takes a row and returns the HTML class to
+                                    place on the edit link.
         :param delete_link_class_for: is a function that takes a row and returns the HTML class to
                                       place on the delete link.
         """
+        def link_class_for_fun(default_link_class):
+            def link_class_for(row):
+                return default_link_class
+
+            return link_class_for
+
+        if view_link_class_for is None:
+            view_link_class_for = link_class_for_fun(self.default_view_link_class)
+        if edit_link_class_for is None:
+            edit_link_class_for = link_class_for_fun(self.default_edit_link_class)
+        if delete_link_class_for is None:
+            delete_link_class_for = link_class_for_fun(self.default_delete_link_class)
+
         self.edit_endpoint = edit_endpoint
         self.delete_endpoint = delete_endpoint
         self.view_endpoint = view_endpoint
         self.edit_permission_for = edit_permission_for
         self.delete_permission_for = delete_permission_for
         self.view_permission_for = view_permission_for
+        self.view_link_class_for = view_link_class_for
+        self.edit_link_class_for = edit_link_class_for
         self.delete_link_class_for = delete_link_class_for
 
         super(ActionColumn, self).__init__(label, key=key, filter=filter, can_sort=can_sort,
@@ -61,11 +85,15 @@ class ActionColumn(webgrid.Column):
             and has_permissions(view_perm, flask_login.current_user)
         )
 
+        view_link_class = self.view_link_class_for(record)
+        edit_link_class = self.edit_link_class_for(record)
         delete_link_class = self.delete_link_class_for(record)
         data = self.extract_data(record)
-        return self.format_data(data, can_edit, can_delete, can_view, delete_link_class)
+        return self.format_data(data, can_edit, can_delete, can_view,
+                                view_link_class, edit_link_class, delete_link_class)
 
-    def format_data(self, value, show_edit, show_delete, show_view, delete_link_class):
+    def format_data(self, value, show_edit, show_delete, show_view,
+                    view_link_class, edit_link_class, delete_link_class):
         result = literal()
         if self.edit_endpoint and show_edit:
             result += link_to(
@@ -73,7 +101,7 @@ class ActionColumn(webgrid.Column):
                 flask.url_for(self.edit_endpoint, objid=value, session_key=self.grid.session_key),
                 **{
                     'aria-label': _('Edit'),
-                    'class_': 'edit-link',
+                    'class_': edit_link_class,
                     'title': _('Edit')
                 }
             )
@@ -93,7 +121,7 @@ class ActionColumn(webgrid.Column):
                 flask.url_for(self.view_endpoint, objid=value, session_key=self.grid.session_key),
                 **{
                     'aria-label': _('View'),
-                    'class_': 'view-link',
+                    'class_': view_link_class,
                     'title': _('View')
                 }
             )
@@ -104,6 +132,7 @@ def make_user_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permi
                    grid_cls=None, resend_verification_endpoint=None):
     user_cls = flask.current_app.auth_manager.entity_registry.user_cls
     grid_cls = grid_cls or flask.current_app.auth_manager.grid_cls
+    action_column_cls = getattr(grid_cls, 'action_column_cls', ActionColumn)
 
     class ResendVerificationColumn(webgrid.Column):
 
@@ -144,7 +173,7 @@ def make_user_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permi
             return result
 
     class User(grid_cls):
-        ActionColumn(
+        action_column_cls(
             '',
             user_cls.id,
             edit_endpoint=edit_endpoint,
@@ -175,9 +204,10 @@ def make_group_grid(edit_endpoint, edit_permission, delete_endpoint, delete_perm
                     grid_cls=None):
     group_cls = flask.current_app.auth_manager.entity_registry.group_cls
     grid_cls = grid_cls or flask.current_app.auth_manager.grid_cls
+    action_column_cls = getattr(grid_cls, 'action_column_cls', ActionColumn)
 
     class Group(grid_cls):
-        ActionColumn(
+        action_column_cls(
             '',
             group_cls.id,
             edit_endpoint=edit_endpoint,
@@ -198,9 +228,10 @@ def make_bundle_grid(edit_endpoint, edit_permission, delete_endpoint, delete_per
                      grid_cls=None):
     bundle_cls = flask.current_app.auth_manager.entity_registry.bundle_cls
     grid_cls = grid_cls or flask.current_app.auth_manager.grid_cls
+    action_column_cls = getattr(grid_cls, 'action_column_cls', ActionColumn)
 
     class Bundle(grid_cls):
-        ActionColumn(
+        action_column_cls(
             '',
             bundle_cls.id,
             edit_endpoint=edit_endpoint,
