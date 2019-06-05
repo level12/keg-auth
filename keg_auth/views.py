@@ -80,6 +80,9 @@ class CrudView(keg.web.BaseView):
     def create_form(self, obj):
         return self.form_cls(obj=obj)
 
+    def form_page_heading(self, action):
+        return self.page_title(action)
+
     def form_template_args(self, arg_dict):
         return arg_dict
 
@@ -91,6 +94,7 @@ class CrudView(keg.web.BaseView):
             'form': form,
             'obj_inst': obj,
             'page_title': self.page_title(action),
+            'page_heading': self.form_page_heading(action),
         })
         return flask.render_template(self.form_template, **template_args)
 
@@ -203,6 +207,10 @@ class CrudView(keg.web.BaseView):
         grid.apply_qs_args()
         return grid
 
+    @property
+    def grid_page_heading(self):
+        return self.page_title(_('list'))
+
     def grid_template_args(self, arg_dict):
         return arg_dict
 
@@ -215,6 +223,8 @@ class CrudView(keg.web.BaseView):
         template_args = self.grid_template_args({
             'add_url': flask.url_for(self.endpoint_for_action('add'), session_key=grid.session_key),
             'page_title': self.page_title(_('list')),
+            'page_heading': self.grid_page_heading,
+            'object_name': self.object_name,
             'grid': grid,
         })
 
