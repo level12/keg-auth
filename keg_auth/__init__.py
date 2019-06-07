@@ -1,5 +1,6 @@
 # flake8: noqa
 from keg_auth.core import AuthManager
+from keg_auth.libs import get_current_user
 from keg_auth.libs.authenticators import (
     JwtRequestLoader,
     KegAuthenticator,

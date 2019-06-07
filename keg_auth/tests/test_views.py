@@ -8,12 +8,15 @@ from keg.db import db
 import mock
 import pytest
 import sqlalchemy as sa
+from werkzeug.datastructures import MultiDict
 from keg_auth_ta.app import mail_ext
 from keg_auth.testing import AuthTests, AuthTestApp, ViewTestBase
 
 from keg_auth_ta.model import entities as ents
-from flask_login import user_logged_in
+import flask_login
 from .utils import listen_to
+
+from keg_auth import get_current_user
 
 
 class TestAuthIntegration(AuthTests):
@@ -128,7 +131,7 @@ class TestViews(object):
 
         resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'pass'
-        with listen_to(user_logged_in) as listener:
+        with listen_to(flask_login.user_logged_in) as listener:
             resp = resp.form.submit()
         listener.assert_heard_one(flask.current_app, user=u)
 
@@ -1056,3 +1059,26 @@ class TestPermissionsView(ViewTestBase):
         ents.Permission.testing_create()
         resp = self.client.get('/permissions?export_to=xlsx')
         assert resp.content_type == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'  # noqa
+
+
+class TestGetCurrentUser:
+    def test_no_user_returned(self):
+        with flask.current_app.test_request_context():
+            assert get_current_user() is None
+
+    def test_flask_login_user_returned(self):
+        with flask.current_app.test_request_context():
+            user = ents.User.testing_create()
+            flask_login.login_user(user)
+            assert get_current_user().id == user.id
+
+    def test_request_loader_user_returned(self):
+        with flask.current_app.test_request_context():
+            user = ents.User.testing_create()
+            jwt_auth = flask.current_app.auth_manager.get_request_loader('jwt')
+            token = jwt_auth.create_access_token(user)
+            flask.request.headers = MultiDict([
+                ('Authorization', 'Bearer {}'.format(token)),
+            ])
+
+            assert get_current_user().id == user.id
