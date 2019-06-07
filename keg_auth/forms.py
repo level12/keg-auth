@@ -114,7 +114,7 @@ def user_form(config=None, allow_superuser=False, endpoint='', fields=['is_enabl
             flask.url_for(endpoint, objid=obj.id)
         )
 
-    class User(ModelForm, PermissionsMixin, BundlesMixin):
+    class User(PermissionsMixin, BundlesMixin, ModelForm):
         class Meta:
             model = user_cls
             only = _fields
@@ -175,7 +175,7 @@ def group_form(endpoint):
         import flask
         return link_to(obj.name, flask.url_for(endpoint, objid=obj.id))
 
-    class Group(ModelForm, PermissionsMixin, BundlesMixin):
+    class Group(PermissionsMixin, BundlesMixin, ModelForm):
         class Meta:
             model = group_cls
 
@@ -203,7 +203,7 @@ def bundle_form(endpoint):
         import flask
         return link_to(obj.name, flask.url_for(endpoint, objid=obj.id))
 
-    class Bundle(ModelForm, PermissionsMixin):
+    class Bundle(PermissionsMixin, ModelForm):
         class Meta:
             model = bundle_cls
 

@@ -14,20 +14,20 @@ class EntityMixin(DefaultColsMixin, MethodsMixin):
 
 
 @auth_entity_registry.register_user
-class User(db.Model, keg_auth.UserEmailMixin, keg_auth.UserMixin, EntityMixin):
+class User(keg_auth.UserEmailMixin, keg_auth.UserMixin, EntityMixin, db.Model):
     __tablename__ = 'users'
 
 
-class UserNoEmail(db.Model, keg_auth.UserMixin, EntityMixin):
+class UserNoEmail(keg_auth.UserMixin, EntityMixin, db.Model):
     __tablename__ = 'users_no_email'
 
 
-class UserWithToken(EntityMixin, keg_auth.UserEmailMixin, keg_auth.UserTokenMixin,  db.Model):
+class UserWithToken(keg_auth.UserEmailMixin, keg_auth.UserTokenMixin,  EntityMixin, db.Model):
     __tablename__ = 'users_with_token'
 
 
 @auth_entity_registry.register_permission
-class Permission(db.Model, keg_auth.PermissionMixin, EntityMixin):
+class Permission(keg_auth.PermissionMixin, EntityMixin, db.Model):
     __tablename__ = 'permissions'
 
     def __repr__(self):
@@ -35,10 +35,10 @@ class Permission(db.Model, keg_auth.PermissionMixin, EntityMixin):
 
 
 @auth_entity_registry.register_bundle
-class Bundle(db.Model, keg_auth.BundleMixin, EntityMixin):
+class Bundle(keg_auth.BundleMixin, EntityMixin, db.Model):
     __tablename__ = 'bundles'
 
 
 @auth_entity_registry.register_group
-class Group(db.Model, keg_auth.GroupMixin, EntityMixin):
+class Group(keg_auth.GroupMixin, EntityMixin, db.Model):
     __tablename__ = 'groups'
