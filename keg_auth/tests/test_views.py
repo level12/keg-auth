@@ -490,6 +490,7 @@ class TestUserCrud(ViewTestBase):
 
         resp = self.client.get('/users/add')
 
+        assert resp.pyquery('#page-content')('h1').eq(0).text() == 'Create User'
         assert resp.form['email'].value == ''
         assert 'is_superuser' not in resp.form.fields, resp.form.fields.keys()
 
@@ -666,6 +667,7 @@ class TestUserCrud(ViewTestBase):
         user_edit = ents.User.testing_create()
 
         resp = self.client.get('/users/{}/edit'.format(user_edit.id))
+        assert resp.pyquery('#page-content')('h1').eq(0).text() == 'Edit User'
         assert resp.form['email'].value == user_edit.email
         resp.form['email'] = 'foo@bar.baz'
         resp = resp.form.submit()
@@ -791,6 +793,8 @@ class TestUserCrud(ViewTestBase):
         assert resp.pyquery('.grid-header-add-link a').attr('href').startswith('/users/add')
         assert resp.pyquery('.datagrid table.records thead th').eq(1).text() == 'User ID'
         assert resp.pyquery('.datagrid table.records tbody td').eq(1).text() == self.current_user.email  # noqa
+        assert resp.pyquery('#page-content')('h1').eq(0).text() == 'Users'
+        assert resp.pyquery('.grid-header-add-link').eq(0).text() == 'Create User'
 
     def test_list_alternate_ident_field(self):
         # with the mock here, authentication/authorization will also be happening on the alternate
