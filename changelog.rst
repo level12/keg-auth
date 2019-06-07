@@ -1,6 +1,24 @@
 Changelog
 =========
 
+0.2.7 released 2019-06-07
+-------------------------
+
+- make custom action access control easier (63921ee_)
+- enforce test permissions are specified to the auth manager (794f320_)
+- correct the MRO order in CRUD forms and testing models (2f4c451_)
+- add get_current_user helper method (cae02a2_)
+- make grid action column link CSS classes customizable (aa1bc21_)
+- ensure CRUD view passes in desired template args (aae3dad_)
+
+.. _63921ee: https://github.com/level12/keg-auth/commit/63921ee
+.. _794f320: https://github.com/level12/keg-auth/commit/794f320
+.. _2f4c451: https://github.com/level12/keg-auth/commit/2f4c451
+.. _cae02a2: https://github.com/level12/keg-auth/commit/cae02a2
+.. _aa1bc21: https://github.com/level12/keg-auth/commit/aa1bc21
+.. _aae3dad: https://github.com/level12/keg-auth/commit/aae3dad
+
+
 0.2.6 released 2019-02-12
 -------------------------
 
