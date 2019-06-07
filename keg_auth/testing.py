@@ -487,6 +487,8 @@ class ViewTestBase:
 
         # ensure all of the tokens exists
         for perm in tolist(cls.permissions):
+            if perm not in flask.current_app.auth_manager.permissions:
+                raise Exception('permission {} not specified in the auth manager'.format(perm))
             cls.permission_ent.testing_create(token=perm)
 
         cls.current_user = cls.user_ent.testing_create(permissions=cls.permissions)

@@ -14,9 +14,14 @@ class Grid(webgrid.BaseGrid):
 
 csrf = CSRFProtect()
 
+permissions = (
+    'auth-manage',
+)
+
 auth_entity_registry = AuthEntityRegistry()
 mail_ext = Mail()
 _endpoints = {'after-login': 'public.home'}
 auth_mail_manager = AuthMailManager(mail_ext)
 auth_manager = AuthManager(mail_manager=auth_mail_manager, endpoints=_endpoints, grid_cls=Grid,
-                           request_loaders=[JwtRequestLoader], entity_registry=auth_entity_registry)
+                           request_loaders=[JwtRequestLoader], entity_registry=auth_entity_registry,
+                           permissions=permissions)
