@@ -761,6 +761,22 @@ class TestUserCrud(ViewTestBase):
 
         assert not self.user_ent.query.get(user_delete_id)
 
+    def test_delete_disallowed_by_action_init(self):
+        user_delete_id = ents.User.testing_create().id
+
+        def init_object_delete(self):
+            flask.abort(403)
+
+        from keg_auth import views
+        views.User.init_object_delete = init_object_delete
+
+        try:
+            self.client.get('/users/{}/delete'.format(user_delete_id), status=403)
+        finally:
+            del views.User.init_object_delete
+
+        self.client.get('/users/{}/delete'.format(user_delete_id), status=302)
+
     def test_delete_with_session_key(self):
         user_delete = ents.User.testing_create()
 

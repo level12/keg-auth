@@ -130,24 +130,32 @@ class CrudView(keg.web.BaseView):
             form=form
         )
 
-    def init_object(self, obj_id):
+    def init_object(self, obj_id, action=None):
         if obj_id is None:
             flask.abort(400)
         self.objinst = self.orm_cls.query.get(obj_id)
         if not self.objinst:
             flask.abort(404)
+        if action:
+            # Sometimes an action has particular requirements that are different from other actions.
+            # For instance, a delete may be disallowed based on some property of the object itself,
+            # which can't be trapped in permissions checks. Now that the object is loaded, see if
+            # the view has an action init method.
+            action_method = 'init_object_{}'.format(action)
+            if hasattr(self, action_method):
+                getattr(self, action_method)()
         return self.objinst
 
     def add(self):
         return requires_permissions(self.permissions['add'])(self.add_edit)(flask.request.method)
 
     def edit(self, objid):
-        obj = self.init_object(objid)
+        obj = self.init_object(objid, 'edit')
         return requires_permissions(self.permissions['edit'])(self.add_edit)(
             flask.request.method, obj)
 
     def delete(self, objid):
-        self.init_object(objid)
+        self.init_object(objid, 'delete')
 
         def action():
             try:
