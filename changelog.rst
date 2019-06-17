@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.2.8 released 2019-06-17
+-------------------------
+
+- resolve bug in testing permission existence check (feccb98_)
+
+.. _feccb98: https://github.com/level12/keg-auth/commit/feccb98
+
+
 0.2.7 released 2019-06-07
 -------------------------
 
