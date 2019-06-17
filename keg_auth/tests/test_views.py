@@ -1098,3 +1098,43 @@ class TestGetCurrentUser:
             ])
 
             assert get_current_user().id == user.id
+
+
+class TestViewTestBase:
+    def test_permission_validated_from_tuple(self):
+        class Foo(ViewTestBase):
+            permissions = 'foo'
+
+        with mock.patch(
+            'keg.current_app.auth_manager.permissions', [('foo', 'bar'), ('baz', 'bam')]
+        ):
+            Foo.setup_class()
+
+    def test_permission_validated_from_string(self):
+        class Foo(ViewTestBase):
+            permissions = 'foo'
+
+        with mock.patch(
+            'flask.current_app.auth_manager.permissions', ['foo', 'baz']
+        ):
+            Foo.setup_class()
+
+    def test_permission_invalid(self):
+        class Foo(ViewTestBase):
+            permissions = 'bar'
+
+        with mock.patch(
+            'flask.current_app.auth_manager.permissions', ['foo', 'baz']
+        ):
+            with pytest.raises(Exception,
+                               message='permission bar not specified in the auth manager'):
+                Foo.setup_class()
+
+    def test_multiple_permissions_validated(self):
+        class Foo(ViewTestBase):
+            permissions = 'foo', 'baz'
+
+        with mock.patch(
+            'flask.current_app.auth_manager.permissions', ['foo', 'baz']
+        ):
+            Foo.setup_class()

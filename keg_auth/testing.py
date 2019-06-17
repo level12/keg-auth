@@ -486,8 +486,11 @@ class ViewTestBase:
         cls.user_ent.delete_cascaded()
 
         # ensure all of the tokens exists
+        defined_perms = set(
+            tolist(perm)[0] for perm in flask.current_app.auth_manager.permissions
+        )
         for perm in tolist(cls.permissions):
-            if perm not in flask.current_app.auth_manager.permissions:
+            if perm not in defined_perms:
                 raise Exception('permission {} not specified in the auth manager'.format(perm))
             cls.permission_ent.testing_create(token=perm)
 
