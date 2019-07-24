@@ -229,7 +229,7 @@ class CrudView(keg.web.BaseView):
             return grid.export_as_response()
 
         template_args = self.grid_template_args({
-            'add_url': flask.url_for(self.endpoint_for_action('add'), session_key=grid.session_key),
+            'add_url': self.add_url_with_session(grid.session_key),
             'page_title': self.page_title(_('list')),
             'page_heading': self.grid_page_heading,
             'object_name': self.object_name,
@@ -237,6 +237,9 @@ class CrudView(keg.web.BaseView):
         })
 
         return flask.render_template(self.grid_template, **template_args)
+
+    def add_url_with_session(self, session_key):
+        return flask.url_for(self.endpoint_for_action('add'), session_key=session_key)
 
     def cancel_url(self):
         return self.list_url_with_session
