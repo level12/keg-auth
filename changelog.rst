@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.2.9 released 2019-07-27
+-------------------------
+
+- Provide a hook on the CRUD base class to allow overriding the default add url generation (#74) (7eea8bb_)
+
+.. _7eea8bb: https://github.com/level12/keg-auth/commit/7eea8bb
+
+
 0.2.8 released 2019-06-17
 -------------------------
 
