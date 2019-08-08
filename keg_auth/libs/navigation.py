@@ -8,6 +8,11 @@ import six
 from keg_auth.extensions import lazy_gettext as _
 from keg_auth.model.utils import has_permissions
 
+try:
+    from speaklater import is_lazy_string
+except ImportError:
+    is_lazy_string = lambda value: False  # noqa: E731
+
 
 def get_defining_class(func):
     if inspect.isclass(func):
@@ -124,13 +129,14 @@ class NavItem(object):
         STEM = 0
         LEAF = 1
 
-    def __init__(self, *args):
+    def __init__(self, *args, nav_group=None, icon_class=None):
         self.label = None
-        if len(args) and isinstance(args[0], six.string_types):
+        if len(args) and (isinstance(args[0], six.string_types) or is_lazy_string(args[0])):
             self.label = args[0]
             args = args[1:]
         self.route = None
         self.sub_nodes = None
+        self.nav_group = nav_group
 
         # cache permission-related items
         self._is_permitted = {}

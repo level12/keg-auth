@@ -2,11 +2,13 @@
 from __future__ import unicode_literals
 
 import sys
+from unittest import mock
 
 import flask
 import flask_login
 import pytest
 
+from keg_auth.extensions import lazy_gettext
 from keg_auth.libs.navigation import NavItem, NavURL
 
 from keg_auth_ta import views
@@ -313,3 +315,10 @@ class TestNavItem(object):
                 permissions=[perm1])
             flask_login.login_user(user)
             assert node.is_permitted
+
+    @mock.patch('keg_auth.libs.navigation.is_lazy_string', return_value=True)
+    def test_lazy_string_label(self, _):
+        # Pass a non-string label so is_lazy_string gets called.
+        label = 12
+        node = NavItem(label, NavURL('public.home'))
+        assert node.label == label

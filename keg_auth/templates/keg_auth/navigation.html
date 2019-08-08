@@ -1,12 +1,71 @@
-{% macro render_node(nav_node) -%}
+{% macro render_link(node, is_top_level=False) -%}
+    {# low-level node rendering, this actually renders a single node to html #}
+    {% if node.nav_group %}
+        <a data-toggle="collapse" href="#navgroup-{{ node.nav_group }}"
+            {% if nav_group == node.nav_group %}aria-expanded="true"{% endif %}>
+    {% else %}
+        <a href="{{ node.route.url }}">
+    {% endif %}
+        {% if node.icon %}
+            <i class="fa fa-{{ node.icon }}"></i>
+        {% endif %}
+        {% if is_top_level %}
+            <p>
+        {% endif %}
+        {{ node.label | trim }}
+        {% if node.nav_group %}
+            <b class="caret"></b>
+        {% endif %}
+        {% if is_top_level %}
+            </p>
+        {% endif %}
+    </a>
+{%- endmacro %}
+
+{% macro render_node(node, depth=0) -%}
+    {# render a node (and its children, if appropriate) #}
     {% set NODE_LEAF = 1 %}
     <li>
-        {% if nav_node.node_type == NODE_LEAF %}
-            <a href="{{ nav_node.route.url }}">{{ nav_node.label }}</a>
+        {% if node.node_type == NODE_LEAF %}
+        <a href="{{ node.route.url }}">{{ node.label }}</a>
+        {% elif node.nav_group %}
+        {{ render_group(node) }}
         {% else %}
-            <a class="menu-header">{{ nav_node.label }}</a>
+        <a class="menu-header">{{ node.label }}</a>
+        <ul>
+            {% for sub_node in node.permitted_sub_nodes %}
+            {{ render_node(sub_node) }}
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </li>
+{%- endmacro %}
+
+{% macro render_group(node) %}
+    <a class="menu-header group-header" data-toggle="collapse" href="#navgroup-{{ node.nav_group }}"
+        {% if nav_group == node.nav_group %}aria-expanded="true"{% endif %}>
+        {{ node.label | trim }}{{ nav_group }}
+        <b class="caret"></b>
+    </a>
+    <div class="collapse {% if nav_group == node.nav_group %}in{% endif %}"
+         id="navgroup-{{ node.nav_group }}">
+        <ul>
+            {% for sub_node in node.permitted_sub_nodes %}
+            {{ render_node(sub_node) }}
+            {% endfor %}
+        </ul>
+    </div>
+{% endmacro %}
+
+{% macro __render_node(node) -%}
+    {% set NODE_LEAF = 1 %}
+    <li>
+        {% if node.node_type == NODE_LEAF %}
+            <a href="{{ node.route.url }}">{{ node.label }}</a>
+        {% else %}
+            <a class="menu-header">{{ node.label }}</a>
             <ul>
-                {% for sub_node in nav_node.permitted_sub_nodes %}
+                {% for sub_node in node.permitted_sub_nodes %}
                     {{ render_node(sub_node) }}
                 {% endfor %}
             </ul>
@@ -14,8 +73,10 @@
     </li>
 {%- endmacro %}
 
-{% macro render_menu(nav_node) -%}
-    {% for sub_node in nav_node.permitted_sub_nodes %}
+{% macro render_menu(node) -%}
+    {% for sub_node in node.permitted_sub_nodes %}
         {{ render_node(sub_node) }}
     {% endfor %}
 {%- endmacro %}
+
+{{ render_menu(auth_manager.menus['main']) }}
