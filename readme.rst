@@ -202,8 +202,21 @@ Usage
    -  Menus may be tracked on the auth manager, which will reset their cached access on
       login/logout
    -  ``keg_auth/navigation.html`` template has a helper ``render_menu`` to render a given menu as a ul
+
       -  ``{% import "keg_auth/navigation.html" as navigation %}``
       -  ``render_menu(auth_manager.menus['main'])``
+
+   -  Collapsible groups can be added to navigation menus by passing a ``nav_group`` string to the NavItem
+      constructor. NavItems with ``nav_group`` and sub-items will display as a collapsible sub-menu.
+      A group can be made 'open' by default by passing ``nav_group`` in the template context. Note that in
+      order to use this parameter you must import the navigation template helpers with context:
+
+      -  ``{% import "keg_auth/navigation.html" as navigation with context %}``
+
+      Alternatively you can use ``{% include 'keg_auth/navigation.html' %}`` to render the 'main' menu
+      with context.
+   -  NavItems can specify an icon to display in the menu item by passing an ``icon_class`` string to the
+      NavItem constructor. e.g., ``NavItem('Title', NavURL(...), icon_class='fas fa-shopping-cart')``.
    -  Example:
 
    .. code-block:: python

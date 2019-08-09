@@ -8,7 +8,6 @@ import flask
 import flask_login
 import pytest
 
-from keg_auth.extensions import lazy_gettext
 from keg_auth.libs.navigation import NavItem, NavURL
 
 from keg_auth_ta import views
