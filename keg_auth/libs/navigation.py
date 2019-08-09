@@ -137,6 +137,7 @@ class NavItem(object):
         self.route = None
         self.sub_nodes = None
         self.nav_group = nav_group
+        self.icon_class = icon_class
 
         # cache permission-related items
         self._is_permitted = {}
