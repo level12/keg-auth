@@ -1,5 +1,5 @@
 {% macro render_link_text(node) %}
-{% if node.icon_class %}<i class="fa fa-{{ node.icon_class }}"></i>{% endif %}{{ node.label | trim }}
+{% if node.icon_class %}<i class="{{ node.icon_class }}"></i>{% endif %}{{ node.label | trim }}
 {% endmacro %}
 
 {% macro render_node(node, depth=0) -%}
