@@ -20,6 +20,8 @@ from sqlalchemy.dialects import mssql
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy_utils import EmailType, PasswordType, force_auto_coercion, ArrowType
 
+from keg_auth.model.entity_registry import RegistryError
+
 force_auto_coercion()
 
 
@@ -625,6 +627,16 @@ def initialize_mappings(namespace='keg_auth', registry=None):
         table2 = registry.get_entity_cls(type2)
 
         tables[base_name] = table_func(table1, table2, table_name=_make_table_name(base_name))
+
+    try:
+        # Setup an attempts relationship on the user model.
+        user_cls = registry.get_entity_cls('user')
+        attempt_cls = registry.get_entity_cls('attempt')
+        setattr(user_cls, 'attempts', sa.orm.relationship(attempt_cls, backref='user'))
+    except RegistryError:
+        # The app has not registered an attempt class, so we'll ignore this.
+        pass
+
     return tables
 
 

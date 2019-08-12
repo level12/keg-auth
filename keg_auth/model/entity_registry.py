@@ -8,11 +8,12 @@ class RegistryError(Exception):
 
 
 class EntityRegistry(object):
-    def __init__(self, user=None, permission=None, bundle=None, group=None):
+    def __init__(self, user=None, permission=None, bundle=None, group=None, attempt=None):
         self._user_cls = user
         self._permission_cls = permission
         self._bundle_cls = bundle
         self._group_cls = group
+        self._attempt_cls = attempt
 
     def _type_to_attr(self, type):
         return '_{}_cls'.format(type)
@@ -41,6 +42,9 @@ class EntityRegistry(object):
 
     def register_group(self, cls):
         return self.register_entity('group', cls)
+
+    def register_attempt(self, cls):
+        return self.register_entity('attempt', cls)
 
     def get_entity_cls(self, type):
         attr = self._type_to_attr(type)
