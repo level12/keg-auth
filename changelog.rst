@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.2.10 released 2019-09-18
+--------------------------
+
+- fix testing utils mock import to prevent needing mock dependency (da197df_)
+
+.. _da197df: https://github.com/level12/keg-auth/commit/da197df
+
+
 0.2.9 released 2019-07-27
 -------------------------
 
