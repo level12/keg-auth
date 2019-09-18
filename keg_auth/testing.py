@@ -1,12 +1,16 @@
 # Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
 from __future__ import unicode_literals
 
+try:
+    from unittest import mock
+except ImportError:
+    import mock
+
 from blazeutils import tolist
 from blazeutils.containers import LazyDict
 from six.moves import urllib
 import flask
 import flask_webtest
-import mock
 import passlib
 import wrapt
 
