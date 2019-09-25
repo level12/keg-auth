@@ -106,6 +106,12 @@ class TestViews(object):
         client = AuthTestApp(flask.current_app, user=user)
         resp = client.get('/')
         nav_el = resp.pyquery('#navigation')
+        assert nav_el('[href="#navgroup-auth"]').attr('aria-expanded') != 'true'
+        assert len(nav_el('[aria-expanded="true"]')) == 0
+        assert not nav_el('#navgroup-auth').has_class('in')
+
+        resp = client.get('/users')
+        nav_el = resp.pyquery('#navigation')
         assert nav_el('[href="#navgroup-auth"]').attr('aria-expanded') == 'true'
         assert len(nav_el('[aria-expanded="true"]')) == 1
         assert nav_el('#navgroup-auth').has_class('in')

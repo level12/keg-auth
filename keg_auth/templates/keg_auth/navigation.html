@@ -2,32 +2,27 @@
 {% if node.icon_class %}<i class="{{ node.icon_class }}"></i>{% endif %}{{ node.label | trim }}
 {% endmacro %}
 
-{% macro render_node(node, depth=0) -%}
+{% macro render_node(node, expand_to_current) -%}
     {# render a node (and its children, if appropriate) #}
     {% set NODE_LEAF = 1 %}
     <li>
         {% if node.node_type == NODE_LEAF %}
         <a href="{{ node.route.url }}">{{ render_link_text(node) }}</a>
-        {% elif node.nav_group %}
+        {% elif node.sub_nodes %}
         {{ render_group(node) }}
         {% else %}
         <a class="menu-header">{{ render_link_text(node) }}</a>
-        <ul>
-            {% for sub_node in node.permitted_sub_nodes %}
-            {{ render_node(sub_node) }}
-            {% endfor %}
-        </ul>
         {% endif %}
     </li>
 {%- endmacro %}
 
 {% macro render_group(node) %}
     <a class="menu-header group-header" data-toggle="collapse" href="#navgroup-{{ node.nav_group }}"
-        {% if nav_group == node.nav_group %}aria-expanded="true"{% endif %}>
+        {% if node.has_current_route %}aria-expanded="true"{% endif %}>
         {{ render_link_text(node) }}
         <b class="caret"></b>
     </a>
-    <div class="collapse {% if nav_group == node.nav_group %}in{% endif %}"
+    <div class="collapse {% if node.has_current_route %}in{% endif %}"
          id="navgroup-{{ node.nav_group }}">
         <ul>
             {% for sub_node in node.permitted_sub_nodes %}
@@ -37,9 +32,9 @@
     </div>
 {% endmacro %}
 
-{% macro render_menu(node) -%}
+{% macro render_menu(node, expand_to_current) -%}
     {% for sub_node in node.permitted_sub_nodes %}
-        {{ render_node(sub_node) }}
+        {{ render_node(sub_node, expand_to_current) }}
     {% endfor %}
 {%- endmacro %}
 

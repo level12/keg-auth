@@ -81,6 +81,72 @@ class TestNavItem(object):
         ):
             NavItem('Foo', NavURL('pink_unicorns')).is_permitted
 
+    def test_nav_group_not_assigned(self):
+        node = NavItem('Foo', NavURL('public.home'))
+        assert not node.nav_group
+
+    def test_nav_group_auto_assigned(self):
+        node = NavItem(
+            NavItem(
+                'This Beard Stays',
+                NavItem('Foo2', NavURL('public.home')),
+            ),
+            NavItem(
+                'Bar',
+                NavItem('Bar2', NavURL('private.secret1')),
+            )
+        )
+        assert node.sub_nodes[0].nav_group == 'this-beard-stays'
+
+    def test_nav_group_manual_preserved(self):
+        node = NavItem(
+            NavItem(
+                'Foo',
+                NavItem('Foo2', NavURL('public.home')),
+                nav_group='this-beard-stays'
+            ),
+            NavItem(
+                'Bar',
+                NavItem('Bar2', NavURL('private.secret1')),
+            ),
+        )
+        assert node.sub_nodes[0].nav_group == 'this-beard-stays'
+
+    def test_current_route_not_exists(self):
+        node = NavItem('Foo', NavURL('public.home'))
+
+        with flask.current_app.test_request_context('/some-random-route'):
+            assert not node.has_current_route
+
+    def test_current_route_not_matched(self):
+        node = NavItem('Foo', NavURL('public.home'))
+
+        with flask.current_app.test_request_context('/secret1'):
+            assert not node.has_current_route
+
+    def test_current_route_matched(self):
+        node = NavItem('Foo', NavURL('public.home'))
+
+        with flask.current_app.test_request_context('/'):
+            assert node.has_current_route
+
+    def test_current_route_matched_nested(self):
+        node = NavItem(
+            NavItem(
+                'Foo',
+                NavItem('Foo2', NavURL('public.home')),
+            ),
+            NavItem(
+                'Bar',
+                NavItem('Bar2', NavURL('private.secret1')),
+            )
+        )
+
+        with flask.current_app.test_request_context('/'):
+            assert node.has_current_route
+            assert node.sub_nodes[0].has_current_route
+            assert not node.sub_nodes[1].has_current_route
+
     def test_leaf_no_requirement(self):
         node = NavItem('Foo', NavURL('public.home'))
 

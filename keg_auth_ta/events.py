@@ -18,7 +18,7 @@ def init_navigation(app):
             NavItem('Home', NavURL('public.home')),
             NavItem(
                 'Sub-Menu',
-                NavItem('User Manage', NavURL('auth.user:list')),
+                NavItem('User Manage', NavURL('private.secret2')),
                 NavItem('Secret View', NavURL('private.secret_nested')),
             ),
             NavItem(

@@ -1,6 +1,7 @@
 import inspect
 import sys
 
+from blazeutils.strings import simplify_string
 import flask
 import flask_login
 import six
@@ -155,6 +156,8 @@ class NavItem(object):
 
         if len(args):
             self.sub_nodes = args
+            if not self.nav_group:
+                self.nav_group = simplify_string(self.label or '__root__')
 
     def clear_authorization(self, session_key):
         self._is_permitted.pop(session_key, None)
@@ -192,3 +195,13 @@ class NavItem(object):
             ]
 
         return self._permitted_sub_nodes.get(session_key)
+
+    @property
+    def has_current_route(self):
+        if self.route:
+            return self.route.route_string == flask.request.endpoint
+        else:
+            for node in self.permitted_sub_nodes:
+                if node.has_current_route:
+                    return True
+        return False
