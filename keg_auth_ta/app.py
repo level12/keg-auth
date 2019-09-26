@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from flask_bootstrap import Bootstrap
 from keg.app import Keg
 from keg.db import db
+from werkzeug.datastructures import ImmutableDict
 
 from keg_auth_ta.extensions import auth_manager, csrf, mail_ext
 from keg_auth_ta.grids import Grid
@@ -17,6 +18,10 @@ class KegAuthTestApp(Keg):
     visit_modules = ['.events']
 
     def on_init_complete(self):
+        self.template_globals = ImmutableDict(
+            auto_expand_menu=self.config.get('AUTO_EXPAND_MENU')
+        )
+
         auth_manager.init_app(self)
         csrf.init_app(self)
         mail_ext.init_app(self)

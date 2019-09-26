@@ -4,7 +4,11 @@
 
 {% block content %}
 <div id="navigation">
+    {% if auto_expand_menu %}
+    {{ navigation.render_menu(auth_manager.menus['main'], expand_to_current=True) }}
+    {% else %}
     {{ navigation.render_menu(auth_manager.menus['main']) }}
+    {% endif %}
 </div>
 <div class="container" id="flash-messages">
     {%- with messages = get_flashed_messages(with_categories=True) %}

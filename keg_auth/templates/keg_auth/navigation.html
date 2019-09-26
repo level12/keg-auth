@@ -5,34 +5,35 @@
 {% macro render_node(node, expand_to_current) -%}
     {# render a node (and its children, if appropriate) #}
     {% set NODE_LEAF = 1 %}
-    <li>
-        {% if node.node_type == NODE_LEAF %}
+
+    {% if node.node_type == NODE_LEAF %}
+    <li{% if node.has_current_route %} class="nav-current"{% endif %}>
         <a href="{{ node.route.url }}">{{ render_link_text(node) }}</a>
-        {% elif node.sub_nodes %}
-        {{ render_group(node) }}
-        {% else %}
-        <a class="menu-header">{{ render_link_text(node) }}</a>
-        {% endif %}
     </li>
+    {% elif node.sub_nodes %}
+    <li>{{ render_group(node, expand_to_current) }}</li>
+    {% else %}
+    <li><a class="menu-header">{{ render_link_text(node) }}</a></li>
+    {% endif %}
 {%- endmacro %}
 
-{% macro render_group(node) %}
+{% macro render_group(node, expand_to_current) %}
     <a class="menu-header group-header" data-toggle="collapse" href="#navgroup-{{ node.nav_group }}"
-        {% if node.has_current_route %}aria-expanded="true"{% endif %}>
+        {% if expand_to_current and node.has_current_route %}aria-expanded="true"{% endif %}>
         {{ render_link_text(node) }}
         <b class="caret"></b>
     </a>
-    <div class="collapse {% if node.has_current_route %}in{% endif %}"
+    <div class="collapse {% if expand_to_current and node.has_current_route %}in{% endif %}"
          id="navgroup-{{ node.nav_group }}">
         <ul>
             {% for sub_node in node.permitted_sub_nodes %}
-            {{ render_node(sub_node) }}
+            {{ render_node(sub_node, expand_to_current) }}
             {% endfor %}
         </ul>
     </div>
 {% endmacro %}
 
-{% macro render_menu(node, expand_to_current) -%}
+{% macro render_menu(node, expand_to_current=False) -%}
     {% for sub_node in node.permitted_sub_nodes %}
         {{ render_node(sub_node, expand_to_current) }}
     {% endfor %}
