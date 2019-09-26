@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 import sys
+from unittest import mock
 
 import flask
 import flask_login
@@ -79,6 +80,72 @@ class TestNavItem(object):
             Exception, match='Endpoint pink_unicorns in navigation is not registered'
         ):
             NavItem('Foo', NavURL('pink_unicorns')).is_permitted
+
+    def test_nav_group_not_assigned(self):
+        node = NavItem('Foo', NavURL('public.home'))
+        assert not node.nav_group
+
+    def test_nav_group_auto_assigned(self):
+        node = NavItem(
+            NavItem(
+                'This Beard Stays',
+                NavItem('Foo2', NavURL('public.home')),
+            ),
+            NavItem(
+                'Bar',
+                NavItem('Bar2', NavURL('private.secret1')),
+            )
+        )
+        assert node.sub_nodes[0].nav_group == 'this-beard-stays'
+
+    def test_nav_group_manual_preserved(self):
+        node = NavItem(
+            NavItem(
+                'Foo',
+                NavItem('Foo2', NavURL('public.home')),
+                nav_group='this-beard-stays'
+            ),
+            NavItem(
+                'Bar',
+                NavItem('Bar2', NavURL('private.secret1')),
+            ),
+        )
+        assert node.sub_nodes[0].nav_group == 'this-beard-stays'
+
+    def test_current_route_not_exists(self):
+        node = NavItem('Foo', NavURL('public.home'))
+
+        with flask.current_app.test_request_context('/some-random-route'):
+            assert not node.has_current_route
+
+    def test_current_route_not_matched(self):
+        node = NavItem('Foo', NavURL('public.home'))
+
+        with flask.current_app.test_request_context('/secret1'):
+            assert not node.has_current_route
+
+    def test_current_route_matched(self):
+        node = NavItem('Foo', NavURL('public.home'))
+
+        with flask.current_app.test_request_context('/'):
+            assert node.has_current_route
+
+    def test_current_route_matched_nested(self):
+        node = NavItem(
+            NavItem(
+                'Foo',
+                NavItem('Foo2', NavURL('public.home')),
+            ),
+            NavItem(
+                'Bar',
+                NavItem('Bar2', NavURL('private.secret1')),
+            )
+        )
+
+        with flask.current_app.test_request_context('/'):
+            assert node.has_current_route
+            assert node.sub_nodes[0].has_current_route
+            assert not node.sub_nodes[1].has_current_route
 
     def test_leaf_no_requirement(self):
         node = NavItem('Foo', NavURL('public.home'))
@@ -313,3 +380,10 @@ class TestNavItem(object):
                 permissions=[perm1])
             flask_login.login_user(user)
             assert node.is_permitted
+
+    @mock.patch('keg_auth.libs.navigation.is_lazy_string', return_value=True)
+    def test_lazy_string_label(self, _):
+        # Pass a non-string label so is_lazy_string gets called.
+        label = 12
+        node = NavItem(label, NavURL('public.home'))
+        assert node.label == label

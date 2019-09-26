@@ -101,6 +101,37 @@ class TestViews(object):
         assert not doc.find('div#navigation a[href="/users"]')
         assert not doc.find('div#navigation a[href="/secret-nested"]')
 
+    def test_navigation_group(self):
+        user = ents.User.testing_create(permissions=[self.perm_auth])
+        client = AuthTestApp(flask.current_app, user=user)
+        resp = client.get('/')
+        nav_el = resp.pyquery('#navigation')
+        assert nav_el('[href="#navgroup-auth"]').attr('aria-expanded') != 'true'
+        assert len(nav_el('[aria-expanded="true"]')) == 0
+        assert not nav_el('#navgroup-auth').has_class('in')
+        assert nav_el('.nav-current').text() == 'Home'
+
+        resp = client.get('/users')
+        nav_el = resp.pyquery('#navigation')
+        assert nav_el('[href="#navgroup-auth"]').attr('aria-expanded') == 'true'
+        assert len(nav_el('[aria-expanded="true"]')) == 1
+        assert nav_el('#navgroup-auth').has_class('in')
+
+        with mock.patch.object(flask.current_app, 'template_globals', {'auto_expand_menu': False}):
+            resp = client.get('/users')
+            nav_el = resp.pyquery('#navigation')
+            assert nav_el('[href="#navgroup-auth"]').attr('aria-expanded') != 'true'
+
+    def test_navigation_icon(self):
+        user = ents.User.testing_create(permissions=[self.perm_auth])
+        client = AuthTestApp(flask.current_app, user=user)
+        resp = client.get('/')
+        nav_el = resp.pyquery('#navigation')
+        assert nav_el('[href="#navgroup-auth"]')('i.fas.fa-bomb')
+        assert len(nav_el('i.fas.fa-bomb')) == 1
+        assert '<i class="fas fa-ad"/>User Manage 3' in nav_el.html()
+        assert len(nav_el('i.fas.fa-ad')) == 1
+
     def test_authenticated_client(self):
         user = ents.User.testing_create()
         client = AuthTestApp(flask.current_app, user=user)

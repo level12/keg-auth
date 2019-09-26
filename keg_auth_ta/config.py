@@ -12,6 +12,8 @@ class DefaultProfile(object):
     SITE_NAME = 'Keg Auth Demo'
     SITE_ABBR = 'KA Demo'
 
+    AUTO_EXPAND_MENU = True
+
 
 class TestProfile(object):
     # Make tests faster

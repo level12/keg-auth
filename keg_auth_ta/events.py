@@ -18,8 +18,15 @@ def init_navigation(app):
             NavItem('Home', NavURL('public.home')),
             NavItem(
                 'Sub-Menu',
-                NavItem('User Manage', NavURL('auth.user:list')),
+                NavItem('User Manage', NavURL('private.secret2')),
                 NavItem('Secret View', NavURL('private.secret_nested')),
+            ),
+            NavItem(
+                'Menu-Group',
+                NavItem('User Manage 2', NavURL('auth.user:list')),
+                NavItem('User Manage 3', NavURL('auth.user:list'), icon_class='fas fa-ad'),
+                nav_group='auth',
+                icon_class='fas fa-bomb'
             ),
         )
     )

@@ -36,6 +36,8 @@ class Home(keg.web.BaseView):
     blueprint = public_bp
     url = '/'
     template_name = 'home.html'
+    nav_group = 'auth'
+    auto_assign = ['nav_group']
 
     def get(self):
         pass

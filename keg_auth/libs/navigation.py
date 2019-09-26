@@ -1,12 +1,18 @@
 import inspect
 import sys
 
+from blazeutils.strings import simplify_string
 import flask
 import flask_login
 import six
 
 from keg_auth.extensions import lazy_gettext as _
 from keg_auth.model.utils import has_permissions
+
+try:
+    from speaklater import is_lazy_string
+except ImportError:
+    is_lazy_string = lambda value: False  # noqa: E731
 
 
 def get_defining_class(func):
@@ -124,13 +130,15 @@ class NavItem(object):
         STEM = 0
         LEAF = 1
 
-    def __init__(self, *args):
+    def __init__(self, *args, nav_group=None, icon_class=None):
         self.label = None
-        if len(args) and isinstance(args[0], six.string_types):
+        if len(args) and (isinstance(args[0], six.string_types) or is_lazy_string(args[0])):
             self.label = args[0]
             args = args[1:]
         self.route = None
         self.sub_nodes = None
+        self.nav_group = nav_group
+        self.icon_class = icon_class
 
         # cache permission-related items
         self._is_permitted = {}
@@ -148,6 +156,8 @@ class NavItem(object):
 
         if len(args):
             self.sub_nodes = args
+            if not self.nav_group:
+                self.nav_group = simplify_string(self.label or '__root__')
 
     def clear_authorization(self, session_key):
         self._is_permitted.pop(session_key, None)
@@ -185,3 +195,13 @@ class NavItem(object):
             ]
 
         return self._permitted_sub_nodes.get(session_key)
+
+    @property
+    def has_current_route(self):
+        if self.route:
+            return self.route.route_string == flask.request.endpoint
+        else:
+            for node in self.permitted_sub_nodes:
+                if node.has_current_route:
+                    return True
+        return False

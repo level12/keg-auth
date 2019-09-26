@@ -197,13 +197,30 @@ Usage
 
    -  Keg-Auth provides navigation helpers to set up a menu tree, for which nodes on the tree are
       restricted according to the authentication/authorization requirements of the target endpoint
+
+      - Note: requirements are any class-level permission requirements. If authorization is defined
+        by an instance-level ``check_auth`` method, that will not be used by the navigation helpers
+
    -  Usage involves setting up a menu structure with NavItem/NavURL objects. Note that permissions on
       a route may be overridden for navigation purposes
    -  Menus may be tracked on the auth manager, which will reset their cached access on
       login/logout
    -  ``keg_auth/navigation.html`` template has a helper ``render_menu`` to render a given menu as a ul
+
       -  ``{% import "keg_auth/navigation.html" as navigation %}``
       -  ``render_menu(auth_manager.menus['main'])``
+      -  ``render_menu(auth_manager.menus['main'], expand_to_current=True)``
+
+        - Automatically expand/collapse menu groups for the currently-viewed item. Useful for vertical menus.
+
+   -  Collapsible groups can be added to navigation menus by nesting NavItems in the menu. The group item
+      will get a ``nav_group`` attribute, which can be referred to in CSS.
+
+      -  ``NavItem('Auth Menu', NavItem(...))`` will have a ``nav_group`` of ``#navgroup-auth-menu``
+      -  ``NavItem('Auth Menu', NavItem(...), nav_group='foo')`` will have a ``nav_group`` of ``#navgroup-foo``
+
+   -  NavItems can specify an icon to display in the menu item by passing an ``icon_class`` string to the
+      NavItem constructor. e.g., ``NavItem('Title', NavURL(...), icon_class='fas fa-shopping-cart')``.
    -  Example:
 
    .. code-block:: python
