@@ -33,11 +33,8 @@ setup(
         'bcrypt',
         'commonmark',
 
-        # this can be removed once level12/keg#100 has been resolved
-        'Flask<1.*',
-
         'Flask-Login',
-        'Keg>=0.6.0',
+        'Keg>=0.8.0',
         'KegElements',
         'inflect',
         'passlib',
