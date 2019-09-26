@@ -76,7 +76,7 @@ class TestNavItem(object):
 
     def test_node_invalid_endpoint(self):
         with pytest.raises(
-            Exception, message='Endpoint pink_unicorns in navigation is not registered'
+            Exception, match='Endpoint pink_unicorns in navigation is not registered'
         ):
             NavItem('Foo', NavURL('pink_unicorns')).is_permitted
 
