@@ -1127,7 +1127,7 @@ class TestViewTestBase:
             'flask.current_app.auth_manager.permissions', ['foo', 'baz']
         ):
             with pytest.raises(Exception,
-                               message='permission bar not specified in the auth manager'):
+                               match='permission bar not specified in the auth manager'):
                 Foo.setup_class()
 
     def test_multiple_permissions_validated(self):
