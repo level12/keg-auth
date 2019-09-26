@@ -16,6 +16,7 @@ setup(
     version=version_globals['VERSION'],
     description='Authentication plugin for Keg',
     long_description='\n\n'.join((README, CHANGELOG)),
+    long_description_content_type='text/x-rst',
     author='Randy Syring',
     author_email='randy.syring@level12.io',
     url='https://github.com/level12/keg-auth',
