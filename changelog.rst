@@ -1,6 +1,20 @@
 Changelog
 =========
 
+0.2.11 released 2019-09-27
+--------------------------
+
+- fix permission sync method and test hook (a56eda4_)
+- fix FontAwesome usage on CRUD list view template (64f759a_)
+- support lazy strings and icons in navigation helpers and templates (4473571_)
+- remove flask version pin (ab47362_)
+
+.. _a56eda4: https://github.com/level12/keg-auth/commit/a56eda4
+.. _64f759a: https://github.com/level12/keg-auth/commit/64f759a
+.. _4473571: https://github.com/level12/keg-auth/commit/4473571
+.. _ab47362: https://github.com/level12/keg-auth/commit/ab47362
+
+
 0.2.10 released 2019-09-18
 --------------------------
 
