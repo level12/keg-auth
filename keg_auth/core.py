@@ -155,8 +155,7 @@ class AuthManager(object):
         # The tricky thing here is that the db may not be ready. Normal app startup should
         # expect it at this point, but test setup may not have initialized tables by now.
         # So, connect it to the test signal, then try to call it, and trap the exception
-        @db_init_post.connect
-        def sync_permissions():
+        def sync_permissions(app):
             with app.app_context():
                 db_permissions = db.session.query(Permission).all()
 
@@ -192,6 +191,9 @@ class AuthManager(object):
 
                 db.session.commit()
 
+        # store the connected method somewhere, so we don't lose it with current function scope
+        self._sync_permissions = db_init_post.connect(sync_permissions)
+
         try:
             # During normal app startup with models present, this should work just fine. However,
             # if we are running tests where the model is cleaned/restored during test setup,
@@ -199,7 +201,7 @@ class AuthManager(object):
             # and let the testing signal do the setup.
             # syncing permissions during testing was causing some db session issues.
             if not app.testing:
-                sync_permissions()
+                sync_permissions(app)
         except sa.exc.ProgrammingError as exc:
             if 'permissions' not in str(exc):
                 raise
