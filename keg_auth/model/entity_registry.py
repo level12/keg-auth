@@ -73,6 +73,10 @@ class EntityRegistry(object):
     def group_cls(self):
         return self.get_entity_cls('group')
 
+    @property
+    def attempt_cls(self):
+        return self.get_entity_cls('attempt')
+
     def is_registered(self, type):
         attr = self._type_to_attr(type)
         return getattr(self, attr, None) is not None

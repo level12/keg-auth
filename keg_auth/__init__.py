@@ -14,6 +14,7 @@ from keg_auth.model import (
     UserMixin,
     UserEmailMixin,
     UserTokenMixin,
+    AttemptMixin,
     PermissionMixin,
     GroupMixin,
     BundleMixin,
