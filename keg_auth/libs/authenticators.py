@@ -260,19 +260,19 @@ class AttemptLimitMixin(object):
         flash(*self.get_flash_attempts_limit_reached())
 
     def get_flash_attempts_limit_reached(self):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def get_attempt_limit(self):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def get_attempt_timespan(self):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def get_attempt_type(self):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def get_attempt_lockout_period(self):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
 
 class PasswordSetterResponderBase(FormResponderMixin, ViewResponder):

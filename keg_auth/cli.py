@@ -1,7 +1,10 @@
 import click
 import keg
+from keg.db import db
+from sqlalchemy.exc import InvalidRequestError
 
 from keg_auth.extensions import gettext as _
+from keg_auth.model.entity_registry import RegistryError
 
 
 def add_cli_to_app(app, cli_group_name, user_args=['email']):
@@ -49,5 +52,32 @@ def add_cli_to_app(app, cli_group_name, user_args=['email']):
     for arg in user_args:
         create_user = click.argument(arg)(create_user)
     auth.command('create-user')(create_user)
+
+    @click.argument('username')
+    @click.option('--attempt-type', '--type')
+    def purge_attempts(username, attempt_type):
+        auth_manager = keg.current_app.auth_manager
+        try:
+            attempt_ent = auth_manager.entity_registry.attempt_cls
+        except RegistryError:
+            click.echo('No attempt class has been registered.')
+            return
+
+        user_ent = auth_manager.entity_registry.user_cls
+        try:
+            user = user_ent.get_by(username=username) or user_ent.get_by(email=username)
+        except InvalidRequestError:
+            user = None
+
+        assert user is not None, 'No user found with username "{}"'.format(username)
+
+        attempt_query = attempt_ent.query.filter_by(user_id=user.id)
+        if attempt_type:
+            attempt_query = attempt_query.filter_by(attempt_type=attempt_type)
+
+        attempt_query.delete()
+        db.session.commit()
+
+    auth.command('purge-attempts')(purge_attempts)
 
     app.auth_manager.cli_group = auth

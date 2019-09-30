@@ -13,6 +13,9 @@ import wrapt
 from blazeutils import tolist
 from blazeutils.containers import LazyDict
 
+from keg import current_app
+from keg_auth.model.entity_registry import EntityRegistry
+
 
 class AuthTests(object):
     """
@@ -181,11 +184,11 @@ class AuthTests(object):
         assert self.attempt_ent.query.count() == 1
         assert self.attempt_ent.get_by(attempt_type='login', user_id=user.id)
 
-    def do_login(self, client, email, password):
+    def do_login(self, client, email, password, submit_status=200):
         resp = client.get(self.login_url)
         resp.form['login_id'] = email
         resp.form['password'] = password
-        return resp.form.submit(status=200)
+        return resp.form.submit(status=submit_status)
 
     @mock.patch.dict('flask.current_app.config', {
         'KEGAUTH_LOGIN_ATTEMPT_LIMIT': 3,
@@ -197,8 +200,8 @@ class AuthTests(object):
         client = flask_webtest.TestApp(flask.current_app)
         assert self.attempt_ent.query.count() == 0
 
-        def do_test(attempt_count, flashes):
-            resp = self.do_login(client, user.email, 'badpass')
+        def do_test(attempt_count, flashes, password='badpass'):
+            resp = self.do_login(client, user.email, password)
             assert self.attempt_ent.query.filter_by(
                 user_id=user.id, attempt_type='login').count() == attempt_count
             assert resp.flashes == flashes
@@ -207,6 +210,31 @@ class AuthTests(object):
         do_test(2, [('error', 'Invalid password.')])
         do_test(3, [('error', 'Invalid password.')])
         do_test(3, [('error', 'Too many failed login attempts.')])
+        do_test(3, [('error', 'Too many failed login attempts.')], 'pass')
+
+    @mock.patch.dict('flask.current_app.config', {
+        'KEGAUTH_LOGIN_ATTEMPT_LIMIT': 3,
+        'KEGAUTH_LOGIN_ATTEMPT_TIMESPAN': 1,
+        'KEGAUTH_LOGIN_ATTEMPT_LOCKOUT': 2,
+    })
+    @mock.patch.object(current_app.auth_manager.entity_registry, '_attempt_cls',
+                       new_callable=mock.PropertyMock(return_value=None))
+    def test_login_attempts_not_blocked(self, m_ent_registry):
+        user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
+        client = flask_webtest.TestApp(flask.current_app)
+        assert self.attempt_ent.query.count() == 0
+
+        def do_test(attempt_count, flashes, password='badpass', submit_status=200):
+            resp = self.do_login(client, user.email, password, submit_status)
+            assert self.attempt_ent.query.filter_by(
+                user_id=user.id, attempt_type='login').count() == attempt_count
+            assert resp.flashes == flashes
+
+        do_test(0, [('error', 'Invalid password.')])
+        do_test(0, [('error', 'Invalid password.')])
+        do_test(0, [('error', 'Invalid password.')])
+        do_test(0, [('error', 'Invalid password.')])
+        do_test(0, [('success', 'Login successful.')], 'pass', 302)
 
     @mock.patch.dict('flask.current_app.config', {
         'KEGAUTH_LOGIN_ATTEMPT_LIMIT': 3,
