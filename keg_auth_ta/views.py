@@ -63,6 +63,19 @@ class Secret1Class(keg.web.BaseView):
         flask.abort(405)
 
 
+@requires_user
+class Secret1FlaskClass(flask.views.MethodView):
+    def get(self):
+        return 'secret1-flask-class'
+
+    def on_authentication_failure(self):
+        flask.abort(405)
+
+
+private_bp.add_url_rule(
+    '/secret1-flask-class', view_func=Secret1FlaskClass.as_view('secret1-flask-class'))
+
+
 class Secret2(keg.web.BaseView):
     blueprint = private_bp
 
@@ -104,6 +117,25 @@ class Secret3Sub(Secret3):
         return 'secret3-sub'
 
 
+@requires_permissions(has_all('permission1', 'permission2'))
+class SecretFlask(flask.views.MethodView):
+    def get(self):
+        return 'secret-flask'
+
+
+private_bp.add_url_rule(
+    '/secret-flask', view_func=SecretFlask.as_view('secret-flask'))
+
+
+class SecretFlaskSub(SecretFlask):
+    def get(self):
+        return 'secret-flask-sub'
+
+
+private_bp.add_url_rule(
+    '/secret-flask-sub', view_func=SecretFlaskSub.as_view('secret-flask-sub'))
+
+
 @requires_permissions('permission1')
 class Secret4(keg.web.BaseView):
     blueprint = private_bp
@@ -114,6 +146,21 @@ class Secret4(keg.web.BaseView):
 
     def on_authorization_failure(self):
         flask.abort(405)
+
+
+@requires_permissions('permission1')
+class SecretFlask4(flask.views.MethodView):
+
+    @requires_permissions('permission2')
+    def get(self):
+        return 'secret-flask4'
+
+    def on_authorization_failure(self):
+        flask.abort(405)
+
+
+private_bp.add_url_rule(
+    '/secret-flask4', view_func=SecretFlask4.as_view('secret-flask4'))
 
 
 @private_bp.route('/secret-nested')
