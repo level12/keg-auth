@@ -1,11 +1,15 @@
+from datetime import timedelta
 from urllib.parse import urljoin, urlparse
 
+import arrow
 import flask
 import flask_login
+from keg.db import db
 
 from keg_auth import forms
 from keg_auth.extensions import flash, lazy_gettext as _
 from keg_auth.model import get_username_key
+from keg_auth.model.entity_registry import RegistryError
 
 try:
     import flask_jwt_extended
@@ -216,6 +220,61 @@ class FormResponderMixin(object):
         self.assign_template_vars(form)
 
 
+class AttemptLimitMixin(object):
+    @property
+    def attempt_ent(self):
+        return flask.current_app.auth_manager.entity_registry.attempt_cls
+
+    def should_limit_attempts(self):
+        try:
+            return self.attempt_ent is not None
+        except RegistryError:
+            return False
+
+    def is_attempt_blocked(self, user):
+        lockout_time = arrow.utcnow().shift(hours=-self.get_attempt_lockout_period())
+        last_attempt = self.attempt_ent.query.filter(
+            self.attempt_ent.datetime_utc > lockout_time,
+            self.attempt_ent.user_id == user.id,
+        ).order_by(
+            self.attempt_ent.datetime_utc.desc()
+        ).first()
+
+        if not last_attempt:
+            return False
+
+        timespan_delta = timedelta(hours=-self.get_attempt_timespan())
+        beginning_of_timespan = last_attempt.datetime_utc + timespan_delta
+        attempts_within_timespan = self.attempt_ent.query.filter(
+            self.attempt_ent.datetime_utc > beginning_of_timespan,
+            self.attempt_ent.user_id == user.id
+        )
+        return attempts_within_timespan.count() >= self.get_attempt_limit()
+
+    def log_attempt(self, user):
+        attempt = self.attempt_ent(attempt_type=self.get_attempt_type(), user_id=user.id)
+        db.session.add(attempt)
+        db.session.commit()
+
+    def on_attempt_blocked(self):
+        flash(*self.get_flash_attempts_limit_reached())
+
+    def get_flash_attempts_limit_reached(self):
+        raise NotImplementedError
+
+    def get_attempt_limit(self):
+        raise NotImplementedError
+
+    def get_attempt_timespan(self):
+        raise NotImplementedError
+
+    def get_attempt_type(self):
+        raise NotImplementedError
+
+    def get_attempt_lockout_period(self):
+        raise NotImplementedError
+
+
 class PasswordSetterResponderBase(FormResponderMixin, ViewResponder):
     """ Base logic for resetting passwords and verifying accounts via token"""
     form_cls = forms.SetPassword
@@ -267,13 +326,40 @@ class PasswordSetterResponderBase(FormResponderMixin, ViewResponder):
         self.assign('submit_button_text', self.submit_button_text)
 
 
-class ResetPasswordViewResponder(PasswordSetterResponderBase):
+class ResetPasswordViewResponder(AttemptLimitMixin, PasswordSetterResponderBase):
     """ Responder for resetting passwords via token on keg-auth logins"""
     url = '/reset-password/<int:user_id>/<token>'
     page_title = _('Complete Password Reset')
     submit_button_text = _('Change Password')
     flash_success = _('Password changed.  Please use the new password to login below.'), 'success'
     on_success_endpoint = 'after-reset'
+
+    def on_form_valid(self, form):
+        if self.should_limit_attempts():
+            if self.is_attempt_blocked(self.user):
+                self.on_attempt_blocked()
+                return
+            else:
+                self.log_attempt(self.user)
+
+        new_password = form.password.data
+        self.user.change_password(self.token, new_password)
+        self.flash_and_redirect(self.flash_success, self.on_success_endpoint)
+
+    def get_flash_attempts_limit_reached(self):
+        return _('Too many password reset attempts.'), 'error'
+
+    def get_attempt_limit(self):
+        return flask.current_app.config.get('KEGAUTH_RESET_ATTEMPT_LIMIT')
+
+    def get_attempt_timespan(self):
+        return flask.current_app.config.get('KEGAUTH_RESET_ATTEMPT_TIMESPAN')
+
+    def get_attempt_lockout_period(self):
+        return flask.current_app.config.get('KEGAUTH_RESET_ATTEMPT_LOCKOUT')
+
+    def get_attempt_type(self):
+        return 'reset'
 
 
 class VerifyAccountViewResponder(PasswordSetterResponderBase):
@@ -286,7 +372,8 @@ class VerifyAccountViewResponder(PasswordSetterResponderBase):
     on_success_endpoint = 'after-verify-account'
 
 
-class PasswordFormViewResponder(LoginResponderMixin, FormResponderMixin, ViewResponder):
+class PasswordFormViewResponder(AttemptLimitMixin, LoginResponderMixin,
+                                FormResponderMixin, ViewResponder):
     """ Master responder for username/password-style logins, using a login form"""
     template_name = 'keg_auth/login.html'
     page_title = _('Log In')
@@ -300,18 +387,44 @@ class PasswordFormViewResponder(LoginResponderMixin, FormResponderMixin, ViewRes
         try:
             user = self.parent.verify_user(login_id=form.login_id.data, password=form.password.data)
 
+            if self.should_limit_attempts() and self.is_attempt_blocked(user):
+                self.on_attempt_blocked()
+                return
+
             # User is active and password is verified
             return self.on_success(user)
         except UserNotFound:
             self.on_invalid_user(form.login_id.data)
         except UserInactive as exc:
             self.on_inactive_user(exc.user)
-        except UserInvalidAuth:
-            self.on_invalid_password()
+        except UserInvalidAuth as exc:
+            self.on_invalid_password(exc.user)
 
-    def on_invalid_password(self):
+    def on_invalid_password(self, user):
+        if self.should_limit_attempts():
+            if self.is_attempt_blocked(user):
+                self.on_attempt_blocked()
+                return
+            else:
+                self.log_attempt(user)
+
         if self.flash_invalid_password:
             flash(*self.flash_invalid_password)
+
+    def get_flash_attempts_limit_reached(self):
+        return _('Too many failed login attempts.'), 'error'
+
+    def get_attempt_limit(self):
+        return flask.current_app.config.get('KEGAUTH_LOGIN_ATTEMPT_LIMIT')
+
+    def get_attempt_timespan(self):
+        return flask.current_app.config.get('KEGAUTH_LOGIN_ATTEMPT_TIMESPAN')
+
+    def get_attempt_lockout_period(self):
+        return flask.current_app.config.get('KEGAUTH_LOGIN_ATTEMPT_LOCKOUT')
+
+    def get_attempt_type(self):
+        return 'login'
 
 
 class ForgotPasswordViewResponder(UserResponderMixin, FormResponderMixin, ViewResponder):

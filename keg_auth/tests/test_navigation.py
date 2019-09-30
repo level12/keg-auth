@@ -71,9 +71,10 @@ class TestNavItem(object):
         self.Permission.delete_cascaded()
 
     def test_no_args(self):
-        with pytest.raises(Exception) as e_info:
+        with pytest.raises(
+            Exception, match='must provide a NavURL or a list of NavItems'
+        ):
             NavItem()
-        assert str(e_info.value) == 'must provide a NavURL or a list of NavItems'
 
     def test_node_invalid_endpoint(self):
         with pytest.raises(

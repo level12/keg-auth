@@ -107,6 +107,17 @@ class AuthManager(object):
         app.config.setdefault('OIDC_USERINFO_URI', '/oauth2/userinfo')
         app.config.setdefault('KEGAUTH_OIDC_LOGOUT_REDIRECT', None)
 
+        # Attempt lockout parameters.
+        # - Limit: maximum number of attempts within the timespan.
+        # - Timespan: number of hours in which the limit can be reached.
+        # - Lockout: number of hours until an attempt can be made after the limit is reached.
+        app.config.setdefault('KEGAUTH_LOGIN_ATTEMPT_LIMIT', 3)
+        app.config.setdefault('KEGAUTH_LOGIN_ATTEMPT_TIMESPAN', 1)
+        app.config.setdefault('KEGAUTH_LOGIN_ATTEMPT_LOCKOUT', 1)
+        app.config.setdefault('KEGAUTH_RESET_ATTEMPT_LIMIT', 1)
+        app.config.setdefault('KEGAUTH_RESET_ATTEMPT_TIMESPAN', 24)
+        app.config.setdefault('KEGAUTH_RESET_ATTEMPT_LOCKOUT', 24)
+
     def init_cli(self, app):
         keg_auth.cli.add_cli_to_app(app, self.cli_group_name,
                                     user_args=app.config.get('KEGAUTH_CLI_USER_ARGS'))

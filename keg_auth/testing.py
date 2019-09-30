@@ -1,9 +1,11 @@
 # Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
 from __future__ import unicode_literals
 
+from datetime import timedelta
 from unittest import mock
 from urllib.parse import quote, urlparse
 
+import arrow
 import flask
 import flask_webtest
 import passlib
@@ -22,6 +24,7 @@ class AuthTests(object):
 
     def setup(self):
         self.user_ent.delete_cascaded()
+        self.attempt_ent.delete_cascaded()
 
     def test_login_get(self):
         app = flask.current_app
@@ -67,6 +70,7 @@ class AuthTests(object):
         category = flash_success[1]
         message = flash_success[0]
         assert resp.flashes == [(category, message)]
+        assert self.attempt_ent.query.count() == 0
 
     def test_login_field_success_next_parameter(self):
         self.user_ent.testing_create(email='foo@bar.com', password='pass')
@@ -159,7 +163,8 @@ class AuthTests(object):
         assert resp.flashes == [(category, message)]
 
     def test_login_invalid_password(self):
-        self.user_ent.testing_create(email='foo@bar.com', password='pass')
+        user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
+        assert self.attempt_ent.query.count() == 0
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(flask.url_for(flask.current_app.auth_manager.endpoint('login')))
@@ -173,6 +178,75 @@ class AuthTests(object):
         category = flash_invalid_password[1]
         message = flash_invalid_password[0]
         assert resp.flashes == [(category, message)]
+        assert self.attempt_ent.query.count() == 1
+        assert self.attempt_ent.get_by(attempt_type='login', user_id=user.id)
+
+    def do_login(self, client, email, password):
+        resp = client.get(self.login_url)
+        resp.form['login_id'] = email
+        resp.form['password'] = password
+        return resp.form.submit(status=200)
+
+    @mock.patch.dict('flask.current_app.config', {
+        'KEGAUTH_LOGIN_ATTEMPT_LIMIT': 3,
+        'KEGAUTH_LOGIN_ATTEMPT_TIMESPAN': 1,
+        'KEGAUTH_LOGIN_ATTEMPT_LOCKOUT': 2,
+    })
+    def test_login_attempts_blocked(self):
+        user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
+        client = flask_webtest.TestApp(flask.current_app)
+        assert self.attempt_ent.query.count() == 0
+
+        def do_test(attempt_count, flashes):
+            resp = self.do_login(client, user.email, 'badpass')
+            assert self.attempt_ent.query.filter_by(
+                user_id=user.id, attempt_type='login').count() == attempt_count
+            assert resp.flashes == flashes
+
+        do_test(1, [('error', 'Invalid password.')])
+        do_test(2, [('error', 'Invalid password.')])
+        do_test(3, [('error', 'Invalid password.')])
+        do_test(3, [('error', 'Too many failed login attempts.')])
+
+    @mock.patch.dict('flask.current_app.config', {
+        'KEGAUTH_LOGIN_ATTEMPT_LIMIT': 3,
+        'KEGAUTH_LOGIN_ATTEMPT_TIMESPAN': 1,
+        'KEGAUTH_LOGIN_ATTEMPT_LOCKOUT': 2,
+    })
+    def test_login_attempt_after_lockout(self):
+        user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
+        client = flask_webtest.TestApp(flask.current_app)
+        assert self.attempt_ent.query.count() == 0
+
+        def do_test(attempt_count, flashes):
+            resp = self.do_login(client, user.email, 'badpass')
+            assert self.attempt_ent.query.filter_by(
+                user_id=user.id, attempt_type='login').count() == attempt_count
+            assert resp.flashes == flashes
+
+        def create_attempt(delta):
+            return self.attempt_ent.testing_create(
+                user_id=user.id,
+                datetime_utc=arrow.utcnow() + delta,
+                attempt_type='login',
+            )
+
+        create_attempt(timedelta(hours=-2))
+        create_attempt(timedelta(hours=-2))
+        create_attempt(timedelta(hours=-2))
+
+        # Not locked out because the lockout period has passed since last attempt.
+        do_test(4, [('error', 'Invalid password.')])
+
+        self.attempt_ent.delete_cascaded()
+        create_attempt(timedelta(hours=-1))
+        create_attempt(timedelta(hours=0))
+        create_attempt(timedelta(hours=0))
+
+        # Not locked out because one attempt occurred outside timespan.
+        do_test(4, [('error', 'Invalid password.')])
+        # Locked out because 3 attempts occured inside timespan.
+        do_test(4, [('error', 'Too many failed login attempts.')])
 
     def test_login_user_missing(self):
         client = flask_webtest.TestApp(flask.current_app)
@@ -305,6 +379,7 @@ class AuthTests(object):
 
     def test_reset_pw_success(self):
         user = self.user_ent.testing_create()
+        assert self.attempt_ent.query.count() == 0
         token = user.token_generate()
         url = flask.url_for(flask.current_app.auth_manager.endpoint('reset-password'),
                             user_id=user.id, token=token)
@@ -326,6 +401,8 @@ class AuthTests(object):
             urlparse(flask.url_for(flask.current_app.auth_manager.endpoint('login'))).path
         )
         assert resp.headers['Location'] == full_login_url
+        assert self.attempt_ent.query.count() == 1
+        assert self.attempt_ent.get_by(attempt_type='reset', user_id=user.id)
 
     def test_reset_pw_form_error(self):
         user = self.user_ent.testing_create()
@@ -368,6 +445,75 @@ class AuthTests(object):
             urlparse(flask.url_for(flask.current_app.auth_manager.endpoint('forgot-password'))).path
         )
         assert resp.headers['Location'] == full_forgot_password_url
+
+    @mock.patch.dict('flask.current_app.config', {
+        'KEGAUTH_RESET_ATTEMPT_LIMIT': 1,
+        'KEGAUTH_RESET_ATTEMPT_TIMESPAN': 24,
+        'KEGAUTH_RESET_ATTEMPT_LOCKOUT': 24,
+    })
+    def test_reset_pw_attempts_blocked(self):
+        user = self.user_ent.testing_create()
+        assert self.attempt_ent.query.count() == 0
+
+        client = flask_webtest.TestApp(flask.current_app)
+
+        def do_test(attempt_count, submit_status, msg, flash_level):
+            token = user.token_generate()
+            url = '/{}/{}/{}'.format(self.reset_password_url, user.id, token)
+            resp = client.get(url, status=200)
+            resp.form['password'] = 'foo'
+            resp.form['confirm'] = 'foo'
+            resp = resp.form.submit(status=submit_status)
+            assert resp.flashes == [(flash_level, msg)]
+            assert self.attempt_ent.query.count() == attempt_count
+            assert self.attempt_ent.query.filter_by(
+                user_id=user.id, attempt_type='reset'
+            ).count() == attempt_count
+
+        msg = 'Password changed.  Please use the new password to login below.'
+        do_test(1, 302, msg, 'success')
+        do_test(1, 200, 'Too many password reset attempts.', 'error')
+
+    @mock.patch.dict('flask.current_app.config', {
+        'KEGAUTH_RESET_ATTEMPT_LIMIT': 1,
+        'KEGAUTH_RESET_ATTEMPT_TIMESPAN': 24,
+        'KEGAUTH_RESET_ATTEMPT_LOCKOUT': 24,
+    })
+    def test_reset_pw_attempt_after_lockout(self):
+        user = self.user_ent.testing_create()
+        assert self.attempt_ent.query.count() == 0
+
+        client = flask_webtest.TestApp(flask.current_app)
+
+        def do_test(attempt_count, submit_status, msg, flash_level):
+            token = user.token_generate()
+            url = '/{}/{}/{}'.format(self.reset_password_url, user.id, token)
+            resp = client.get(url)
+            resp.form['password'] = 'foo'
+            resp.form['confirm'] = 'foo'
+            resp = resp.form.submit(status=submit_status)
+            assert resp.flashes == [(flash_level, msg)]
+            assert self.attempt_ent.query.count() == attempt_count
+            assert self.attempt_ent.query.filter_by(
+                user_id=user.id, attempt_type='reset'
+            ).count() == attempt_count
+
+        def create_attempt(delta):
+            return self.attempt_ent.testing_create(
+                user_id=user.id,
+                datetime_utc=arrow.utcnow() + delta,
+                attempt_type='reset',
+            )
+
+        create_attempt(timedelta(hours=-24))
+
+        # Not locked out because the lockout period has passed since last attempt.
+        msg = 'Password changed.  Please use the new password to login below.'
+        do_test(2, 302, msg, 'success')
+
+        self.attempt_ent.delete_cascaded()
+        create_attempt(timedelta(hours=-12))
+        do_test(1, 200, 'Too many password reset attempts.', 'error')
 
     def test_verify_account_success(self):
         user = self.user_ent.testing_create(is_verified=False)

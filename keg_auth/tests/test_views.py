@@ -23,6 +23,7 @@ from keg_auth import get_current_user
 
 class TestAuthIntegration(AuthTests):
     user_ent = ents.User
+    attempt_ent = ents.Attempt
 
 
 class TestViews(object):
@@ -1217,8 +1218,9 @@ class TestViewTestBase:
         with mock.patch(
             'flask.current_app.auth_manager.permissions', ['foo', 'baz']
         ):
-            with pytest.raises(Exception,
-                               match='permission bar not specified in the auth manager'):
+            with pytest.raises(
+                Exception, match='permission bar not specified in the auth manager'
+            ):
                 Foo.setup_class()
 
     def test_multiple_permissions_validated(self):

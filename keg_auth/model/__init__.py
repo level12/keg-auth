@@ -6,6 +6,7 @@ import json
 import arrow
 import flask
 import itsdangerous
+import keg_elements.db.utils as dbutils
 import passlib.hash
 import passlib.pwd
 import shortuuid
@@ -17,6 +18,7 @@ from blazeutils.strings import randchars
 from keg.db import db
 from keg_elements.db.mixins import might_commit, might_flush
 from sqlalchemy.dialects import mssql
+from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy_utils import EmailType, PasswordType, force_auto_coercion, ArrowType
 
@@ -491,6 +493,20 @@ class GroupMixin(object):
         return sa.union(direct, via_bundle)
 
 
+class AttemptMixin(object):
+    users_tablename = 'users'
+
+    @declared_attr
+    def user_id(cls):
+        fk = sa.ForeignKey('{}.id'.format(cls.users_tablename),
+                           ondelete='CASCADE', onupdate='CASCADE')
+        return sa.Column(sa.Integer, fk, nullable=False)
+
+    datetime_utc = sa.Column(ArrowType, nullable=False, default=arrow.utcnow,
+                             server_default=dbutils.utcnow())
+    attempt_type = sa.Column(sa.Enum('login', 'reset', name='ka_attempt_types'))
+
+
 def get_username_key(user_cls):
     obj = user_cls.username
     if not isinstance(obj, (sa.Column, sa_orm.attributes.InstrumentedAttribute)):
@@ -632,7 +648,12 @@ def initialize_mappings(namespace='keg_auth', registry=None):
         # Setup an attempts relationship on the user model.
         user_cls = registry.get_entity_cls('user')
         attempt_cls = registry.get_entity_cls('attempt')
-        setattr(user_cls, 'attempts', sa.orm.relationship(attempt_cls, backref='user'))
+        relationship = sa.orm.relationship(
+            attempt_cls,
+            backref='user',
+            cascade='all, delete-orphan'
+        )
+        setattr(user_cls, 'attempts', relationship)
     except RegistryError:
         # The app has not registered an attempt class, so we'll ignore this.
         pass
