@@ -112,29 +112,36 @@ class TestUser(object):
         assert not user.is_verified
         assert user.password == 'bar'
 
-    def test_is_active_python_attribute(self):
-        # By default, user is inactive because email has not been verified.
-        user = ents.User.testing_create(is_verified=False)
-        assert user.is_enabled
-        assert not user.is_verified
-        assert not user.is_active
+    @pytest.mark.parametrize('is_enabled, is_verified, disable_date, is_active', [
+        (True, True, None, True),
+        (True, True, arrow.utcnow().shift(minutes=+5), True),
+        (True, False, None, False),
+        (False, True, None, False),
+        (True, True, arrow.utcnow().shift(minutes=-5), False),
+    ])
+    def test_is_active_python_attribute(self, is_enabled, is_verified, disable_date, is_active):
+        user = ents.User.testing_create(
+            is_verified=is_verified,
+            is_enabled=is_enabled,
+            disable_date=disable_date,
+        )
+        assert user.is_active == is_active
 
-        # Once email has been verified, user should be active.
-        user = ents.User.testing_create()
-        assert user.is_active
-
-        # Verified but disabled is also inactive.
-        user = ents.User.testing_create(is_verified=True, is_enabled=False)
-        assert not user.is_active
-
-    def test_is_active_sql_expression(self):
-        ents.User.testing_create(email='1', is_verified=False, is_enabled=True)
-        ents.User.testing_create(email='2', is_verified=True, is_enabled=True)
-        ents.User.testing_create(email='3', is_verified=True, is_enabled=False)
-
-        assert ents.User.query.filter_by(email='1', is_active=False).one()
-        assert ents.User.query.filter_by(email='2', is_active=True).one()
-        assert ents.User.query.filter_by(email='3', is_active=False).one()
+    @pytest.mark.parametrize('is_enabled, is_verified, disable_date, is_active', [
+        (True, True, None, True),
+        (True, True, arrow.utcnow().shift(minutes=+5), True),
+        (True, False, None, False),
+        (False, True, None, False),
+        (True, True, arrow.utcnow().shift(minutes=-5), False),
+    ])
+    def test_is_active_sql_expression(self, is_enabled, is_verified, disable_date, is_active):
+        ents.User.testing_create(
+            email='email',
+            is_verified=is_verified,
+            is_enabled=is_enabled,
+            disable_date=disable_date,
+        )
+        assert ents.User.query.filter_by(email='email', is_active=is_active).one()
 
     def test_token_validation(self):
         user = ents.User.testing_create()
@@ -359,20 +366,33 @@ class TestUserNoEmail(object):
     def setup(self):
         ents.UserNoEmail.delete_cascaded()
 
-    def test_is_active_python_attribute(self):
-        user = ents.User.testing_create()
-        assert user.is_enabled
-        assert user.is_active
+    @pytest.mark.parametrize('is_enabled, disable_date, is_active', [
+        (True, None, True),
+        (True, arrow.utcnow().shift(minutes=+5), True),
+        (False, None, False),
+        (True, arrow.utcnow().shift(minutes=-5), False),
+    ])
+    def test_is_active_python_attribute(self, is_enabled, disable_date, is_active):
+        user = ents.UserNoEmail.testing_create(
+            is_enabled=is_enabled,
+            disable_date=disable_date,
+        )
+        assert user.is_active == is_active
 
-        user = ents.User.testing_create(is_enabled=False)
-        assert not user.is_active
+    @pytest.mark.parametrize('is_enabled, disable_date, is_active', [
+        (True, None, True),
+        (True, arrow.utcnow().shift(minutes=+5), True),
+        (False, None, False),
+        (True, arrow.utcnow().shift(minutes=-5), False),
+    ])
+    def test_is_active_sql_expression(self, is_enabled, disable_date, is_active):
+        ents.UserNoEmail.testing_create(
+            username='name',
+            is_enabled=is_enabled,
+            disable_date=disable_date,
+        )
 
-    def test_is_active_sql_expression(self):
-        ents.User.testing_create(email='2', is_enabled=True)
-        ents.User.testing_create(email='3', is_enabled=False)
-
-        assert ents.User.query.filter_by(email='2', is_active=True).one()
-        assert ents.User.query.filter_by(email='3', is_active=False).one()
+        assert ents.UserNoEmail.query.filter_by(username='name', is_active=is_active).one()
 
 
 class TestPermission(object):

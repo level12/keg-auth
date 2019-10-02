@@ -3,6 +3,7 @@ import base64
 import hashlib
 import json
 
+import arrow
 import flask
 import itsdangerous
 import passlib.hash
@@ -75,7 +76,24 @@ class UserMixin(object):
     # is_active defines the complexities of how to determine what users are active. For instance,
     #   if email is in scope, we need to have an additional flag to verify users, and that would
     #   get included in is_active logic.
-    is_active = is_enabled
+    @hybrid_property
+    def is_active(self):
+        is_disabled = self.disable_date is not None and self.disable_date < arrow.utcnow()
+        return not is_disabled and self.is_enabled
+
+    @is_active.expression
+    def is_active(cls):
+        not_disabled = sa_sql.or_(
+            cls.disable_date.is_(None),
+            cls.disable_date > arrow.utcnow(),
+        )
+        expr = sa_sql.and_(not_disabled, cls.is_enabled == sa.true())
+        # need to wrap the expression in a case to work with MSSQL
+        return sa.sql.case([(expr, sa.true())], else_=sa.false())
+
+    # The datetime when a user will be disabled. User will be inactive if this is set
+    # to a datetime in the past.
+    disable_date = sa.Column(ArrowType, nullable=True, default=None, server_default=None)
 
     def get_id(self):
         # Flask-Login requires that this return a string value for the session
@@ -92,6 +110,7 @@ class UserMixin(object):
     @classmethod
     def testing_create(cls, **kwargs):
         kwargs['password'] = kwargs.get('password') or randchars()
+        kwargs.setdefault('disable_date', None)
 
         if 'permissions' in kwargs:
             perm_cls = registry().permission_cls
@@ -357,12 +376,17 @@ class UserEmailMixin(object):
 
     @hybrid_property
     def is_active(self):
-        return self.is_verified and self.is_enabled
+        is_disabled = self.disable_date is not None and self.disable_date < arrow.utcnow()
+        return not is_disabled and self.is_verified and self.is_enabled
 
     @is_active.expression
     def is_active(cls):
+        not_disabled = sa_sql.or_(
+            cls.disable_date.is_(None),
+            cls.disable_date > arrow.utcnow(),
+        )
+        expr = sa_sql.and_(not_disabled, cls.is_verified == sa.true(), cls.is_enabled == sa.true())
         # need to wrap the expression in a case to work with MSSQL
-        expr = sa_sql.and_(cls.is_verified == sa.true(), cls.is_enabled == sa.true())
         return sa.sql.case([(expr, sa.true())], else_=sa.false())
 
     @classmethod
