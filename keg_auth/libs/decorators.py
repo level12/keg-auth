@@ -55,52 +55,33 @@ class RequiresUser(object):
         # when decorating a view class, all of the class's route methods will submit to the given
         #   auth. The view may already have check_auth defined, though, so make sure we still call
         #   it.
-        old_check_auth = getattr(cls, 'check_auth', None)
+        method_name, old_method = next((
+            (method_name, getattr(cls, method_name, None))
+            for method_name in ['check_auth', 'dispatch_request']
+            if callable(getattr(cls, method_name, None))
+        ), (None, None))
 
-        if callable(old_check_auth):
-            def new_check_auth(*args, **kwargs):
-                self.check_auth(instance=args[0])
+        if not old_method:
+            raise TypeError('Class must inherit from a Keg or Flask view')
 
-                # the original check_auth method on the view may take any number of args/kwargs. Use
-                #   logic similar to keg.web's _call_with_expected_args, except that method does not
-                #   fit this case for bound methods
-                try:
-                    # validate_arguments is made for a function, not a class method
-                    # so we need to "trick" it by sending self here, but then
-                    # removing it before the bound method is called below
-                    pass_args, pass_kwargs = validate_arguments(old_check_auth, args, kwargs.copy())
-                except ArgumentValidationError as e:
-                    msg = _('Argument mismatch occurred: method=%s, missing=%s, '
-                            'extra_keys=%s, extra_pos=%s.'
-                            '  Arguments available: %s') % (old_check_auth, e.missing,
-                                                            e.extra, e.extra_positional,
-                                                            kwargs)  # pragma: no cover
-                    raise ViewArgumentError(msg)  # pragma: no cover
+        def new_method(*args, **kwargs):
+            self.check_auth(instance=args[0])
+            try:
+                # validate_arguments is made for a function, not a class method
+                # so we need to "trick" it by sending self here, but then
+                # removing it before the bound method is called below
+                pass_args, pass_kwargs = validate_arguments(old_method, args, kwargs.copy())
+            except ArgumentValidationError as e:
+                msg = _('Argument mismatch occurred: method=%s, missing=%s, '
+                        'extra_keys=%s, extra_pos=%s.'
+                        '  Arguments available: %s') % (old_method, e.missing,
+                                                        e.extra, e.extra_positional,
+                                                        kwargs)  # pragma: no cover
+                raise ViewArgumentError(msg)  # pragma: no cover
 
-                return old_check_auth(*pass_args, **pass_kwargs)
+            return old_method(*pass_args, **pass_kwargs)
 
-            cls.check_auth = new_check_auth
-        # If check_auth not defined on the view, assume the class
-        # is a Flask view with dispatch_request rather than a Keg view
-        else:
-            old_dispatch_request = getattr(cls, 'dispatch_request', lambda: None)
-
-            def new_dispatch_request(*args, **kwargs):
-                self.check_auth(instance=args[0])
-                try:
-                    pass_args, pass_kwargs = validate_arguments(
-                        old_dispatch_request, args, kwargs.copy())
-                except ArgumentValidationError as e:
-                    msg = _('Argument mismatch occurred: method=%s, missing=%s, '
-                            'extra_keys=%s, extra_pos=%s.'
-                            ' Arguments available: %s') % (old_dispatch_request, e.missing,
-                                                           e.extra, e.extra_positional,
-                                                           kwargs)  # pragma: no cover
-                    raise ViewArgumentError(msg)  # pragma: no cover
-
-                return old_dispatch_request(*args, **kwargs)
-
-            cls.dispatch_request = new_dispatch_request
+        setattr(cls, method_name, new_method)
 
         # store auth info on the class itself
         self.store_auth_info(cls)

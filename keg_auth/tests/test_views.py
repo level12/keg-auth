@@ -10,6 +10,7 @@ import pytest
 import sqlalchemy as sa
 from werkzeug.datastructures import MultiDict
 from keg_auth_ta.app import mail_ext
+from keg_auth.libs.decorators import requires_user
 from keg_auth.testing import AuthTests, AuthTestApp, ViewTestBase
 
 from keg_auth_ta.model import entities as ents
@@ -39,6 +40,12 @@ class TestViews(object):
 
     def setup(self):
         ents.User.delete_cascaded()
+
+    def test_class_decorator_throws_exception(self):
+        with pytest.raises(TypeError):
+            @requires_user
+            class NotKegOrFlask:
+                pass
 
     def test_home(self):
         client = flask_webtest.TestApp(flask.current_app)
