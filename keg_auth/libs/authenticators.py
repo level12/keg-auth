@@ -8,6 +8,7 @@ from keg_auth.extensions import (
     flash,
     lazy_gettext as _
 )
+from keg_auth.model import get_username_key
 
 try:
     import flask_jwt_extended
@@ -391,6 +392,17 @@ class LdapAuthenticator(KegAuthenticator):
 
         Most responder types won't be relevant here.
     """
+    def verify_user(self, login_id=None, password=None):
+        user = self.user_ent.query.filter_by(username=login_id).one_or_none()
+
+        if not user:
+            username_key = get_username_key(self.user_ent)
+            user = self.user_ent.add(**{username_key: login_id})
+        if password and not self.verify_password(user, password):
+            raise UserInvalidAuth(user)
+
+        return user
+
     def verify_password(self, user, password):
         """
         Check the given username/password combination at the

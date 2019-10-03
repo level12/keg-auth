@@ -42,17 +42,23 @@ class TestLdapAuthenticator:
         flask.current_app.config['KEGAUTH_LDAP_SERVER_URL'] = 'abc123'
         flask.current_app.config['KEGAUTH_LDAP_DN_FORMAT'] = '{}'
 
-    def test_user_not_found(self):
-        with pytest.raises(auth.UserNotFound):
-            authenticator = auth.LdapAuthenticator(app=flask.current_app)
-            authenticator.verify_user(login_id='nobodybythisnamehere')
+    @mock.patch('ldap.initialize', autospec=True, spec_set=True)
+    def test_user_not_found(self, mocked_ldap):
+        mocked_ldap.return_value.simple_bind_s.return_value = (ldap.RES_BIND, )
 
-    def test_user_not_active(self):
+        authenticator = auth.LdapAuthenticator(app=flask.current_app)
+        success = authenticator.verify_user(login_id='nobodybythisnamehere', password='foo')
+        assert mocked_ldap.call_count
+        assert success
+        assert User.get_by(username='nobodybythisnamehere')
+
+    @mock.patch('ldap.initialize', autospec=True, spec_set=True)
+    def test_user_not_active(self, mocked_ldap):
+        # internal flag should have no effect on LDAP auth
+        mocked_ldap.return_value.simple_bind_s.return_value = (ldap.RES_BIND, )
         user = User.testing_create(is_enabled=False)
-        with pytest.raises(auth.UserInactive) as e_info:
-            authenticator = auth.LdapAuthenticator(app=flask.current_app)
-            authenticator.verify_user(login_id=user.email)
-        assert e_info.value.user is user
+        authenticator = auth.LdapAuthenticator(app=flask.current_app)
+        assert authenticator.verify_user(login_id=user.email)
 
     @mock.patch('ldap.initialize', autospec=True, spec_set=True)
     def test_no_server_url_set(self, mocked_ldap):
