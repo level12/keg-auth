@@ -1,6 +1,16 @@
 Changelog
 =========
 
+0.2.12 released 2019-10-03
+--------------------------
+
+- support decorating flask class-based views (3d8a6cb_)
+- fix LDAP authenticator for missing user case (19d184e_)
+
+.. _3d8a6cb: https://github.com/level12/keg-auth/commit/3d8a6cb
+.. _19d184e: https://github.com/level12/keg-auth/commit/19d184e
+
+
 0.2.11 released 2019-09-27
 --------------------------
 
