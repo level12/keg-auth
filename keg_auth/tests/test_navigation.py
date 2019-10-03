@@ -171,8 +171,9 @@ class TestNavItem(object):
             node.clear_authorization(user.get_id())
             assert node.is_permitted
 
-    def test_leaf_class_requires_user(self):
-        node = NavItem('Foo', NavURL('private.secret1-class'))
+    @pytest.mark.parametrize('endpoint', ['private.secret1-class', 'private.secret1-flask-class'])
+    def test_leaf_class_requires_user(self, endpoint):
+        node = NavItem('Foo', NavURL(endpoint))
 
         with flask.current_app.test_request_context('/'):
             flask_login.logout_user()
@@ -203,8 +204,9 @@ class TestNavItem(object):
             node.clear_authorization(user.get_id())
             assert node.is_permitted
 
-    def test_leaf_class_requires_permissions(self):
-        node = NavItem('Foo', NavURL('private.secret3'))
+    @pytest.mark.parametrize('endpoint', ['private.secret3', 'private.secret-flask'])
+    def test_leaf_class_requires_permissions(self, endpoint):
+        node = NavItem('Foo', NavURL(endpoint))
 
         with flask.current_app.test_request_context('/'):
             flask_login.logout_user()
@@ -223,8 +225,9 @@ class TestNavItem(object):
             node.clear_authorization(user.get_id())
             assert node.is_permitted
 
-    def test_leaf_method_and_class_both_require(self):
-        node = NavItem('Foo', NavURL('private.secret4'))
+    @pytest.mark.parametrize('endpoint', ['private.secret4', 'private.secret-flask4'])
+    def test_leaf_method_and_class_both_require(self, endpoint):
+        node = NavItem('Foo', NavURL(endpoint))
 
         with flask.current_app.test_request_context('/'):
             flask_login.logout_user()

@@ -10,6 +10,7 @@ import pytest
 import sqlalchemy as sa
 from werkzeug.datastructures import MultiDict
 from keg_auth_ta.app import mail_ext
+from keg_auth.libs.decorators import requires_user
 from keg_auth.testing import AuthTests, AuthTestApp, ViewTestBase
 
 from keg_auth_ta.model import entities as ents
@@ -39,6 +40,12 @@ class TestViews(object):
 
     def setup(self):
         ents.User.delete_cascaded()
+
+    def test_class_decorator_throws_exception(self):
+        with pytest.raises(TypeError):
+            @requires_user
+            class NotKegOrFlask:
+                pass
 
     def test_home(self):
         client = flask_webtest.TestApp(flask.current_app)
@@ -359,53 +366,56 @@ class TestPermissionsRequired:
         client = AuthTestApp(flask.current_app, user=disallowed)
         client.post('/secret2', {}, status=403)
 
-    def test_class_level(self):
+    @pytest.mark.parametrize('endpoint', ['secret3', 'secret-flask'])
+    def test_class_level(self, endpoint):
         allowed = ents.User.testing_create(permissions=[self.perm1, self.perm2])
         disallowed = ents.User.testing_create(permissions=[self.perm1])
 
         client = AuthTestApp(flask.current_app, user=allowed)
-        resp = client.get('/secret3', status=200)
-        assert resp.text == 'secret3'
+        resp = client.get('/{}'.format(endpoint), status=200)
+        assert resp.text == endpoint
 
         client = AuthTestApp(flask.current_app, user=disallowed)
-        client.get('/secret3', {}, status=403)
+        client.get('/{}'.format(endpoint), {}, status=403)
 
         client = flask_webtest.TestApp(flask.current_app)
-        client.get('/secret3', status=302)
+        client.get('/{}'.format(endpoint), status=302)
 
-    def test_class_level_inheritance(self):
+    @pytest.mark.parametrize('endpoint', ['secret3-sub', 'secret-flask-sub'])
+    def test_class_level_inheritance(self, endpoint):
         allowed = ents.User.testing_create(permissions=[self.perm1, self.perm2])
         disallowed = ents.User.testing_create(permissions=[self.perm1])
 
         client = AuthTestApp(flask.current_app, user=allowed)
-        resp = client.get('/secret3-sub', status=200)
-        assert resp.text == 'secret3-sub'
+        resp = client.get('/{}'.format(endpoint), status=200)
+        assert resp.text == endpoint
 
         client = AuthTestApp(flask.current_app, user=disallowed)
-        client.get('/secret3-sub', {}, status=403)
+        client.get('/{}'.format(endpoint), {}, status=403)
 
         client = flask_webtest.TestApp(flask.current_app)
-        client.get('/secret3-sub', status=302)
+        client.get('/{}'.format(endpoint), status=302)
 
-    def test_class_and_method_level_combined(self):
+    @pytest.mark.parametrize('endpoint', ['secret4', 'secret-flask4'])
+    def test_class_and_method_level_combined(self, endpoint):
         allowed = ents.User.testing_create(permissions=[self.perm1, self.perm2])
         disallowed1 = ents.User.testing_create(permissions=[self.perm1])
         disallowed2 = ents.User.testing_create(permissions=[self.perm2])
 
         client = AuthTestApp(flask.current_app, user=allowed)
-        resp = client.get('/secret4', status=200)
-        assert resp.text == 'secret4'
+        resp = client.get('/{}'.format(endpoint), status=200)
+        assert resp.text == endpoint
 
         client = AuthTestApp(flask.current_app, user=disallowed1)
-        client.get('/secret4', {}, status=403)
+        client.get('/{}'.format(endpoint), {}, status=403)
 
         # missing the class-level permission requirement triggers the class's custom auth
         # failure handler
         client = AuthTestApp(flask.current_app, user=disallowed2)
-        client.get('/secret4', {}, status=405)
+        client.get('/{}'.format(endpoint), {}, status=405)
 
         client = flask_webtest.TestApp(flask.current_app)
-        client.get('/secret4', status=302)
+        client.get('/{}'.format(endpoint), status=302)
 
     def test_nested_conditions(self):
         def check(perms, allowed):
