@@ -99,6 +99,9 @@ class AuthManager(object):
 
         app.config.setdefault('KEGAUTH_CLI_USER_ARGS', ['email'])
 
+        # Use select2 for form selects in templates extending keg_auth/form-base.
+        app.config.setdefault('KEGAUTH_USE_SELECT2', True)
+
     def init_cli(self, app):
         keg_auth.cli.add_cli_to_app(app, self.cli_group_name,
                                     user_args=app.config.get('KEGAUTH_CLI_USER_ARGS'))
@@ -111,7 +114,10 @@ class AuthManager(object):
             jinja2.PackageLoader('keg_elements', 'templates'),
         ])
         app.jinja_loader = loader
-        app.context_processor(lambda: {'auth_manager': self})
+        app.context_processor(lambda: {
+            'auth_manager': self,
+            'use_select2': app.config.get('KEGAUTH_USE_SELECT2'),
+        })
 
     def init_model(self, app):
         if not self._model_initialized:
