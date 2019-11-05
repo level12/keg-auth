@@ -59,7 +59,9 @@ class AuthTests(object):
         resp = resp.form.submit()
 
         assert resp.status_code == 302, resp.html
-        assert resp.headers['Location'] == 'http://keg.example.com/'
+        assert resp.headers['Location'] == flask.url_for(
+            flask.current_app.auth_manager.endpoints['after-login']
+        )
         assert resp.flashes == [('success', 'Login successful.')]
 
     def test_login_field_success_next_parameter(self):
@@ -110,7 +112,9 @@ class AuthTests(object):
 
         assert resp.status_code == 302, resp.html
         # verify the 'next' parameter was ignored
-        assert resp.headers['Location'] == 'http://keg.example.com/'
+        assert resp.headers['Location'] == flask.url_for(
+            flask.current_app.auth_manager.endpoints['after-login']
+        )
         assert resp.flashes == [('success', 'Login successful.')]
 
         # quoted next parameter
@@ -123,7 +127,9 @@ class AuthTests(object):
 
         assert resp.status_code == 302, resp.html
         # verify the 'next' parameter was ignored
-        assert resp.headers['Location'] == 'http://keg.example.com/'
+        assert resp.headers['Location'] == flask.url_for(
+            flask.current_app.auth_manager.endpoints['after-login']
+        )
         assert resp.flashes == [('success', 'Login successful.')]
 
     def test_login_invalid_password(self):
