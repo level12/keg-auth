@@ -313,15 +313,8 @@ class VerifyAccount(AuthRespondedView):
     responder_key = 'verify-account'
 
 
-class Logout(keg.web.BaseView):
-    url = '/logout'
-    flash_success = _('You have been logged out.'), 'success'
-
-    def get(self):
-        flask_login.logout_user()
-        flash(*self.flash_success)
-        redirect_to = flask.current_app.auth_manager.url_for('after-logout')
-        flask.abort(flask.redirect(redirect_to))
+class Logout(AuthRespondedView):
+    responder_key = 'logout'
 
 
 @requires_permissions('auth-manage')
@@ -523,6 +516,7 @@ def make_blueprint(import_name, _auth_manager, bp_name='auth', login_cls=Login,
 
     class Logout(logout_cls):
         blueprint = _blueprint
+        auth_manager = _auth_manager
 
     class User(user_crud_cls):
         blueprint = _blueprint

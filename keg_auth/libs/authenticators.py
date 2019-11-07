@@ -339,6 +339,17 @@ class ForgotPasswordViewResponder(UserResponderMixin, FormResponderMixin, ViewRe
         flask.current_app.auth_manager.mail_manager.send_reset_password(user)
 
 
+class LogoutViewResponder(ViewResponder):
+    url = '/logout'
+    flash_success = _('You have been logged out.'), 'success'
+
+    def get(self):
+        flask_login.logout_user()
+        flash(*self.flash_success)
+        redirect_to = flask.current_app.auth_manager.url_for('after-logout')
+        flask.abort(flask.redirect(redirect_to))
+
+
 class PasswordAuthenticatorMixin(object):
     """ Username/password authenticators will need a way to verify a user is valid
         prior to making it the current user in flask login """
@@ -369,6 +380,7 @@ class KegAuthenticator(PasswordAuthenticatorMixin, LoginAuthenticator):
         'forgot-password': ForgotPasswordViewResponder,
         'reset-password': ResetPasswordViewResponder,
         'verify-account': VerifyAccountViewResponder,
+        'logout': LogoutViewResponder,
     }
 
     def verify_user(self, login_id=None, password=None):
