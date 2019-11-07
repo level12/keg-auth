@@ -19,9 +19,6 @@ class AuthTests(object):
     """
         These tests are designed so they can can be imported into an application's tests
         and ran to ensure customization of KegAuth hasn't broken basic functionality.
-
-        TODO: the messages we test for need to be configurable on the class in case the app
-        customizes then.  Ditto some of the redirect logic.
     """
     login_url = '/login'
     protected_url = '/secret1'
@@ -46,7 +43,11 @@ class AuthTests(object):
         resp.form['login_id'] = 'foo'
         resp = resp.form.submit(status=200)
 
-        assert resp.flashes == [('error', 'The form has errors, please see below.')]
+        flash_form_error = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['login'].flash_form_error
+        category = flash_form_error[1]
+        message = flash_form_error[0]
+        assert resp.flashes == [(category, message)]
 
     def test_login_field_success(self):
         self.user_ent.testing_create(email='foo@bar.com', password='pass')
@@ -62,7 +63,11 @@ class AuthTests(object):
         assert resp.headers['Location'] == flask.url_for(
             flask.current_app.auth_manager.endpoints['after-login']
         )
-        assert resp.flashes == [('success', 'Login successful.')]
+        flash_success = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['login'].flash_success
+        category = flash_success[1]
+        message = flash_success[0]
+        assert resp.flashes == [(category, message)]
 
     def test_login_field_success_next_parameter(self):
         self.user_ent.testing_create(email='foo@bar.com', password='pass')
@@ -77,7 +82,11 @@ class AuthTests(object):
 
         assert resp.status_code == 302, resp.html
         assert resp.headers['Location'] == 'http://keg.example.com{}'.format(next)
-        assert resp.flashes == [('success', 'Login successful.')]
+        flash_success = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['login'].flash_success
+        category = flash_success[1]
+        message = flash_success[0]
+        assert resp.flashes == [(category, message)]
 
     def test_login_field_success_next_session(self):
         self.user_ent.testing_create(email='foo@bar.com', password='pass')
@@ -95,7 +104,11 @@ class AuthTests(object):
 
         assert resp.status_code == 302, resp.html
         assert resp.headers['Location'] == 'http://keg.example.com{}'.format(next)
-        assert resp.flashes == [('success', 'Login successful.')]
+        flash_success = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['login'].flash_success
+        category = flash_success[1]
+        message = flash_success[0]
+        assert resp.flashes == [(category, message)]
 
     def test_next_parameter_not_open_redirect(self):
         """ensure following the "next" parameter doesn't allow for an open redirect"""
@@ -115,7 +128,11 @@ class AuthTests(object):
         assert resp.headers['Location'] == flask.url_for(
             flask.current_app.auth_manager.endpoints['after-login']
         )
-        assert resp.flashes == [('success', 'Login successful.')]
+        flash_success = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['login'].flash_success
+        category = flash_success[1]
+        message = flash_success[0]
+        assert resp.flashes == [(category, message)]
 
         # quoted next parameter
         client = flask_webtest.TestApp(flask.current_app)
@@ -130,7 +147,11 @@ class AuthTests(object):
         assert resp.headers['Location'] == flask.url_for(
             flask.current_app.auth_manager.endpoints['after-login']
         )
-        assert resp.flashes == [('success', 'Login successful.')]
+        flash_success = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['login'].flash_success
+        category = flash_success[1]
+        message = flash_success[0]
+        assert resp.flashes == [(category, message)]
 
     def test_login_invalid_password(self):
         self.user_ent.testing_create(email='foo@bar.com', password='pass')
@@ -142,7 +163,11 @@ class AuthTests(object):
         resp.form['password'] = 'badpass'
         resp = resp.form.submit(status=200)
 
-        assert resp.flashes == [('error', 'Invalid password.')]
+        flash_invalid_password = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['login'].flash_invalid_password
+        category = flash_invalid_password[1]
+        message = flash_invalid_password[0]
+        assert resp.flashes == [(category, message)]
 
     def test_login_user_missing(self):
         client = flask_webtest.TestApp(flask.current_app)
@@ -152,7 +177,11 @@ class AuthTests(object):
         resp.form['password'] = 'badpass'
         resp = resp.form.submit(status=200)
 
-        assert resp.flashes == [('error', 'No user account matches: foo@bar.com')]
+        flash_invalid_user = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['login'].flash_invalid_user
+        category = flash_invalid_user[1]
+        message = flash_invalid_user[0]
+        assert resp.flashes == [(category, message.format('foo@bar.com'))]
 
     def test_login_user_unverified(self):
         self.user_ent.testing_create(email='foo@bar.com', password='pass', is_verified=False)
@@ -164,10 +193,11 @@ class AuthTests(object):
         resp.form['password'] = 'badpass'
         resp = resp.form.submit(status=200)
 
-        msg = 'The user account "foo@bar.com" has an unverified email address.  Please check' \
-            ' your email for a verification link from this website.  Or, use the "forgot' \
-            ' password" link to verify the account.'
-        assert resp.flashes == [('error', msg)]
+        flash_unverified_user = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['login'].flash_unverified_user
+        category = flash_unverified_user[1]
+        message = flash_unverified_user[0]
+        assert resp.flashes == [(category, message.format('foo@bar.com'))]
 
     def test_login_user_disabled(self):
         self.user_ent.testing_create(email='foo@bar.com', password='pass', is_enabled=False)
@@ -179,10 +209,11 @@ class AuthTests(object):
         resp.form['password'] = 'badpass'
         resp = resp.form.submit(status=200)
 
-        msg = 'The user account "foo@bar.com" has been disabled.  Please contact this site\'s' \
-            ' administrators for more information.'
-
-        assert resp.flashes == [('error', msg)]
+        flash_disabled_user = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['login'].flash_disabled_user
+        category = flash_disabled_user[1]
+        message = flash_disabled_user[0]
+        assert resp.flashes == [(category, message.format('foo@bar.com'))]
 
     def test_login_protection(self):
         self.user_ent.testing_create(email='foo@bar.com', password='pass')
@@ -196,7 +227,11 @@ class AuthTests(object):
         resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'pass'
         resp = resp.form.submit(status=302)
-        assert resp.flashes == [('success', 'Login successful.')]
+        flash_success = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['login'].flash_success
+        category = flash_success[1]
+        message = flash_success[0]
+        assert resp.flashes == [(category, message)]
 
         # Now that we have logged in, we should be able to get to the page.
         client.get(self.protected_url, status=200)
@@ -206,7 +241,11 @@ class AuthTests(object):
         resp = client.get(self.forgot_password_url)
         resp = resp.form.submit(status=200)
 
-        assert resp.flashes == [('error', 'The form has errors, please see below.')]
+        flash_form_error = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['forgot-password'].flash_form_error
+        category = flash_form_error[1]
+        message = flash_form_error[0]
+        assert resp.flashes == [(category, message)]
 
     def test_forgot_pw_invalid_user(self):
         client = flask_webtest.TestApp(flask.current_app)
@@ -215,7 +254,11 @@ class AuthTests(object):
         resp.form['email'] = 'foo@bar.com'
         resp = resp.form.submit(status=200)
 
-        assert resp.flashes == [('error', 'No user account matches: foo@bar.com')]
+        flash_invalid_user = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['forgot-password'].flash_invalid_user
+        category = flash_invalid_user[1]
+        message = flash_invalid_user[0]
+        assert resp.flashes == [(category, message.format('foo@bar.com'))]
 
     def test_forgot_pw_user_disabled(self):
         self.user_ent.testing_create(email='foo@bar.com', password='pass', is_enabled=False)
@@ -226,10 +269,11 @@ class AuthTests(object):
         resp.form['email'] = 'foo@bar.com'
         resp = resp.form.submit(status=200)
 
-        msg = 'The user account "foo@bar.com" has been disabled.  Please contact this site\'s' \
-            ' administrators for more information.'
-
-        assert resp.flashes == [('error', msg)]
+        flash_disabled_user = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['forgot-password'].flash_disabled_user
+        category = flash_disabled_user[1]
+        message = flash_disabled_user[0]
+        assert resp.flashes == [(category, message.format('foo@bar.com'))]
 
     def test_forgot_pw_success(self):
         self.user_ent.testing_create(email='foo@bar.com')
@@ -240,9 +284,11 @@ class AuthTests(object):
         resp.form['email'] = 'foo@bar.com'
         resp = resp.form.submit(status=302)
 
-        msg = 'Please check your email for the link to change your password.'
-
-        assert resp.flashes == [('success', msg)]
+        flash_success = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['forgot-password'].flash_success
+        category = flash_success[1]
+        message = flash_success[0]
+        assert resp.flashes == [(category, message)]
 
         full_login_url = 'http://keg.example.com{}'.format(self.login_url)
         assert resp.headers['Location'] == full_login_url
@@ -259,8 +305,11 @@ class AuthTests(object):
         resp.form['confirm'] = 'foo'
         resp = resp.form.submit(status=302)
 
-        msg = 'Password changed.  Please use the new password to login below.'
-        assert resp.flashes == [('success', msg)]
+        flash_success = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['reset-password'].flash_success
+        category = flash_success[1]
+        message = flash_success[0]
+        assert resp.flashes == [(category, message)]
 
         full_login_url = 'http://keg.example.com{}'.format(self.login_url)
         assert resp.headers['Location'] == full_login_url
@@ -274,7 +323,11 @@ class AuthTests(object):
         resp = client.get(url, status=200)
         resp = resp.form.submit(status=200)
 
-        assert resp.flashes == [('error', 'The form has errors, please see below.')]
+        flash_form_error = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['reset-password'].flash_form_error
+        category = flash_form_error[1]
+        message = flash_form_error[0]
+        assert resp.flashes == [(category, message)]
 
     def test_reset_pw_missing_user(self):
         url = '{}/99999999/123'.format(self.reset_password_url)
@@ -289,9 +342,11 @@ class AuthTests(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(url, status=302)
 
-        msg = 'Authentication token was invalid or expired.  Please fill out the form below to' \
-            ' get a new token.'
-        assert resp.flashes == [('error', msg)]
+        flash_invalid_token = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['reset-password'].flash_invalid_token
+        category = flash_invalid_token[1]
+        message = flash_invalid_token[0]
+        assert resp.flashes == [(category, message)]
 
         full_login_url = 'http://keg.example.com{}'.format(self.forgot_password_url)
         assert resp.headers['Location'] == full_login_url
@@ -310,8 +365,11 @@ class AuthTests(object):
         resp.form['confirm'] = 'foo'
         resp = resp.form.submit(status=302)
 
-        msg = 'Account verified & password set.  Please use the new password to login below.'
-        assert resp.flashes == [('success', msg)]
+        flash_success = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['verify-account'].flash_success
+        category = flash_success[1]
+        message = flash_success[0]
+        assert resp.flashes == [(category, message)]
 
         full_login_url = 'http://keg.example.com{}'.format(self.login_url)
         assert resp.headers['Location'] == full_login_url
@@ -327,7 +385,11 @@ class AuthTests(object):
         resp = client.get(url, status=200)
         resp = resp.form.submit(status=200)
 
-        assert resp.flashes == [('error', 'The form has errors, please see below.')]
+        flash_form_error = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['verify-account'].flash_form_error
+        category = flash_form_error[1]
+        message = flash_form_error[0]
+        assert resp.flashes == [(category, message)]
 
     def test_verify_account_missing_user(self):
         user = LazyDict(id=9999999, _token_plain='123')
@@ -344,9 +406,11 @@ class AuthTests(object):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(url, status=302)
 
-        msg = 'Authentication token was invalid or expired.  Please fill out the form below to' \
-            ' get a new token.'
-        assert resp.flashes == [('error', msg)]
+        flash_invalid_token = flask.current_app.auth_manager.login_authenticator_cls.\
+            responder_cls['verify-account'].flash_invalid_token
+        category = flash_invalid_token[1]
+        message = flash_invalid_token[0]
+        assert resp.flashes == [(category, message)]
 
         full_login_url = 'http://keg.example.com{}'.format(self.forgot_password_url)
         assert resp.headers['Location'] == full_login_url
