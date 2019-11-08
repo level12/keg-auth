@@ -34,7 +34,8 @@ class CrudView(keg.web.BaseView):
     @classmethod
     def map_method_route(cls, method_name, route, methods):
         method_route = keg.web.MethodRoute(method_name, route, {'methods': methods},
-                                           cls.calc_url(), cls.calc_endpoint())
+                                           cls.calc_url(use_blueprint=False),
+                                           cls.calc_endpoint(use_blueprint=False))
         mr_options = method_route.options()
         view_func = cls.as_view(method_route.view_func_name,
                                 method_route.sanitized_method_name('_'))
@@ -51,10 +52,20 @@ class CrudView(keg.web.BaseView):
                 ex. `cls.map_method_route('read', '/foo', ('GET', ))`"""
         super(CrudView, cls).init_routes()
 
-        cls.map_method_route('add', '{}/add'.format(cls.calc_url()), ('GET', 'POST'))
-        cls.map_method_route('edit', '{}/<int:objid>/edit'.format(cls.calc_url()), ('GET', 'POST'))
-        cls.map_method_route('delete', '{}/<int:objid>/delete'.format(cls.calc_url()), ('GET', ))
-        cls.map_method_route('list', '{}'.format(cls.calc_url()), ('GET', 'POST'))
+        cls.map_method_route('add', '{}/add'.format(cls.calc_url(use_blueprint=False)),
+                             ('GET', 'POST'))
+        cls.map_method_route(
+            'edit',
+            '{}/<int:objid>/edit'.format(cls.calc_url(use_blueprint=False)),
+            ('GET', 'POST')
+        )
+        cls.map_method_route(
+            'delete',
+            '{}/<int:objid>/delete'.format(cls.calc_url(use_blueprint=False)),
+            ('GET', )
+        )
+        cls.map_method_route('list', '{}'.format(cls.calc_url(use_blueprint=False)),
+                             ('GET', 'POST'))
 
     def __init__(self, *args, **kwargs):
         super(CrudView, self).__init__(*args, **kwargs)
@@ -208,7 +219,7 @@ class CrudView(keg.web.BaseView):
 
     @classmethod
     def endpoint_for_action(cls, action):
-        return '{}.{}:{}'.format(cls.blueprint.name, cls.calc_endpoint(), case_cw2dash(action))
+        return '{}:{}'.format(cls.calc_endpoint(), case_cw2dash(action))
 
     def make_grid(self):
         grid = self.grid_cls()
@@ -260,7 +271,7 @@ class AuthRespondedView(keg.web.BaseView):
         self.responding_method = 'responder'
 
     @classmethod
-    def calc_url(cls):
+    def calc_url(cls, **kwargs):
         authenticator_cls = cls.auth_manager.login_authenticator_cls
         responder_cls = authenticator_cls.responder_cls.get(cls.responder_key)
         return getattr(responder_cls, 'url', None)
