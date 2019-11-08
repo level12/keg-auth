@@ -22,6 +22,7 @@ class AuthTests(object):
         and ran to ensure customization of KegAuth hasn't broken basic functionality.
     """
     protected_url = '/secret1'
+    protected_url_permissions = None
 
     def setup(self):
         self.user_ent.delete_cascaded()
@@ -59,8 +60,7 @@ class AuthTests(object):
         assert resp.headers['Location'] == flask.url_for(
             flask.current_app.auth_manager.endpoint('after-login')
         )
-        flash_success = flask.current_app.auth_manager.login_authenticator_cls.\
-            responder_cls['login'].flash_success
+        flash_success = flask.current_app.auth_manager.login_authenticator_cls.responder_cls['login'].flash_success  # noqa
         category = flash_success[1]
         message = flash_success[0]
         assert resp.flashes == [(category, message)]
@@ -71,8 +71,7 @@ class AuthTests(object):
         next = '/foo'
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get('{}?next={}'.format(
-            flask.url_for(flask.current_app.auth_manager.endpoint('login')), next
-            )
+            flask.url_for(flask.current_app.auth_manager.endpoint('login')), next)
         )
 
         resp.form['login_id'] = 'foo@bar.com'
@@ -81,8 +80,7 @@ class AuthTests(object):
 
         assert resp.status_code == 302, resp.html
         assert resp.headers['Location'] == 'http://keg.example.com{}'.format(next)
-        flash_success = flask.current_app.auth_manager.login_authenticator_cls.\
-            responder_cls['login'].flash_success
+        flash_success = flask.current_app.auth_manager.login_authenticator_cls.responder_cls['login'].flash_success  # noqa
         category = flash_success[1]
         message = flash_success[0]
         assert resp.flashes == [(category, message)]
@@ -103,8 +101,7 @@ class AuthTests(object):
 
         assert resp.status_code == 302, resp.html
         assert resp.headers['Location'] == 'http://keg.example.com{}'.format(next)
-        flash_success = flask.current_app.auth_manager.login_authenticator_cls.\
-            responder_cls['login'].flash_success
+        flash_success = flask.current_app.auth_manager.login_authenticator_cls.responder_cls['login'].flash_success  # noqa
         category = flash_success[1]
         message = flash_success[0]
         assert resp.flashes == [(category, message)]
@@ -130,8 +127,7 @@ class AuthTests(object):
         assert resp.headers['Location'] == flask.url_for(
             flask.current_app.auth_manager.endpoint('after-login')
         )
-        flash_success = flask.current_app.auth_manager.login_authenticator_cls.\
-            responder_cls['login'].flash_success
+        flash_success = flask.current_app.auth_manager.login_authenticator_cls.responder_cls['login'].flash_success  # noqa
         category = flash_success[1]
         message = flash_success[0]
         assert resp.flashes == [(category, message)]
@@ -153,8 +149,7 @@ class AuthTests(object):
         assert resp.headers['Location'] == flask.url_for(
             flask.current_app.auth_manager.endpoint('after-login')
         )
-        flash_success = flask.current_app.auth_manager.login_authenticator_cls.\
-            responder_cls['login'].flash_success
+        flash_success = flask.current_app.auth_manager.login_authenticator_cls.responder_cls['login'].flash_success  # noqa
         category = flash_success[1]
         message = flash_success[0]
         assert resp.flashes == [(category, message)]
@@ -222,7 +217,9 @@ class AuthTests(object):
         assert resp.flashes == [(category, message.format('foo@bar.com'))]
 
     def test_login_protection(self):
-        self.user_ent.testing_create(email='foo@bar.com', password='pass')
+        self.user_ent.testing_create(
+            email='foo@bar.com', password='pass', permissions=self.protected_url_permissions
+        )
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(self.protected_url, status=302)
@@ -235,8 +232,7 @@ class AuthTests(object):
         resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'pass'
         resp = resp.form.submit(status=302)
-        flash_success = flask.current_app.auth_manager.login_authenticator_cls.\
-            responder_cls['login'].flash_success
+        flash_success = flask.current_app.auth_manager.login_authenticator_cls.responder_cls['login'].flash_success  # noqa
         category = flash_success[1]
         message = flash_success[0]
         assert resp.flashes == [(category, message)]
@@ -438,7 +434,7 @@ class AuthTests(object):
         assert resp.headers['Location'] == full_forgot_password_url
 
     def test_logout(self):
-        user = self.user_ent.testing_create()
+        user = self.user_ent.testing_create(permissions=self.protected_url_permissions)
         client = flask_webtest.TestApp(flask.current_app)
         with client.session_transaction() as sess:
             sess['user_id'] = user.session_key
