@@ -257,8 +257,14 @@ Usage
 
    -  templates are provided for the auth views, as well as base crud templates
    -  base templates are referenced from settings. The first of these defined is used:
+
       -  `BASE_TEMPLATE`
       -  `KEGAUTH_BASE_TEMPLATE`
+
+   - Form selects are rendered with select2 in templates extending ``keg_auth/form-base.html``.
+     ``keg_auth/select2-scripts.html`` and ``keg_auth/select2-styles.html`` can be included
+     in templates to render select2s without extending form-base. Apps can opt out of select2
+     rendering with ``KEGAUTH_USE_SELECT2`` config.
 
 -  Views
 

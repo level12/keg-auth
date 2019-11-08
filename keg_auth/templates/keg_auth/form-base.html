@@ -2,6 +2,21 @@
 
 {% block title %}{{ page_title }} | {{ super() }}{% endblock %}
 
+{% block scripts %}
+{{ super() }}
+{% if (use_select2 == true) %}
+    {% include 'keg_auth/select2-scripts.html' %}
+{% endif %}
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+{{ use_select2 }}
+{% if (use_select2 == true) %}
+    {% include 'keg_auth/select2-styles.html' %}
+{% endif %}
+{% endblock %}
+
 {% block page_content %}
 <h1>{{ page_heading }}</h1>
 {% block form %}{% endblock %}
