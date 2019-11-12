@@ -5,6 +5,7 @@ try:
     from unittest import mock
 except ImportError:
     import mock
+from urllib.parse import urlparse
 
 from blazeutils import tolist
 from blazeutils.containers import LazyDict
@@ -20,12 +21,7 @@ class AuthTests(object):
         These tests are designed so they can can be imported into an application's tests
         and ran to ensure customization of KegAuth hasn't broken basic functionality.
     """
-    login_url = '/login'
     protected_url = '/secret1'
-    forgot_password_url = '/forgot-password'
-    reset_password_url = '/reset-password'
-    logout_url = '/logout'
-    after_logout_url = '/login'
 
     def setup(self):
         self.user_ent.delete_cascaded()
@@ -33,12 +29,12 @@ class AuthTests(object):
     def test_login_get(self):
         app = flask.current_app
         client = flask_webtest.TestApp(app)
-        resp = client.get(self.login_url)
+        resp = client.get(flask.url_for(flask.current_app.auth_manager.endpoint('login')))
         assert resp.status_code == 200
 
     def test_login_form_error(self):
         client = flask_webtest.TestApp(flask.current_app)
-        resp = client.get(self.login_url)
+        resp = client.get(flask.url_for(flask.current_app.auth_manager.endpoint('login')))
 
         resp.form['login_id'] = 'foo'
         resp = resp.form.submit(status=200)
@@ -53,7 +49,7 @@ class AuthTests(object):
         self.user_ent.testing_create(email='foo@bar.com', password='pass')
 
         client = flask_webtest.TestApp(flask.current_app)
-        resp = client.get(self.login_url)
+        resp = client.get(flask.url_for(flask.current_app.auth_manager.endpoint('login')))
 
         resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'pass'
@@ -61,7 +57,7 @@ class AuthTests(object):
 
         assert resp.status_code == 302, resp.html
         assert resp.headers['Location'] == flask.url_for(
-            flask.current_app.auth_manager.endpoints['after-login']
+            flask.current_app.auth_manager.endpoint('after-login')
         )
         flash_success = flask.current_app.auth_manager.login_authenticator_cls.\
             responder_cls['login'].flash_success
@@ -74,7 +70,10 @@ class AuthTests(object):
 
         next = '/foo'
         client = flask_webtest.TestApp(flask.current_app)
-        resp = client.get('{}?next={}'.format(self.login_url, next))
+        resp = client.get('{}?next={}'.format(
+            flask.url_for(flask.current_app.auth_manager.endpoint('login')), next
+            )
+        )
 
         resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'pass'
@@ -96,7 +95,7 @@ class AuthTests(object):
             client = flask_webtest.TestApp(flask.current_app)
             with client.session_transaction() as sess:
                 sess['next'] = next
-            resp = client.get(self.login_url)
+            resp = client.get(flask.url_for(flask.current_app.auth_manager.endpoint('login')))
 
             resp.form['login_id'] = 'foo@bar.com'
             resp.form['password'] = 'pass'
@@ -117,7 +116,10 @@ class AuthTests(object):
         # unquoted next parameter
         next = 'http://www.example.com'
         client = flask_webtest.TestApp(flask.current_app)
-        resp = client.get('{}?next={}'.format(self.login_url, next))
+        resp = client.get('{}?next={}'.format(
+            flask.url_for(flask.current_app.auth_manager.endpoint('login')), next
+            )
+        )
 
         resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'pass'
@@ -126,7 +128,7 @@ class AuthTests(object):
         assert resp.status_code == 302, resp.html
         # verify the 'next' parameter was ignored
         assert resp.headers['Location'] == flask.url_for(
-            flask.current_app.auth_manager.endpoints['after-login']
+            flask.current_app.auth_manager.endpoint('after-login')
         )
         flash_success = flask.current_app.auth_manager.login_authenticator_cls.\
             responder_cls['login'].flash_success
@@ -136,7 +138,11 @@ class AuthTests(object):
 
         # quoted next parameter
         client = flask_webtest.TestApp(flask.current_app)
-        resp = client.get('{}?next={}'.format(self.login_url, urllib.parse.quote(next)))
+        resp = client.get('{}?next={}'.format(
+            flask.url_for(flask.current_app.auth_manager.endpoint('login')),
+            urllib.parse.quote(next)
+            )
+        )
 
         resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'pass'
@@ -145,7 +151,7 @@ class AuthTests(object):
         assert resp.status_code == 302, resp.html
         # verify the 'next' parameter was ignored
         assert resp.headers['Location'] == flask.url_for(
-            flask.current_app.auth_manager.endpoints['after-login']
+            flask.current_app.auth_manager.endpoint('after-login')
         )
         flash_success = flask.current_app.auth_manager.login_authenticator_cls.\
             responder_cls['login'].flash_success
@@ -157,7 +163,7 @@ class AuthTests(object):
         self.user_ent.testing_create(email='foo@bar.com', password='pass')
 
         client = flask_webtest.TestApp(flask.current_app)
-        resp = client.get(self.login_url)
+        resp = client.get(flask.url_for(flask.current_app.auth_manager.endpoint('login')))
 
         resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'badpass'
@@ -171,7 +177,7 @@ class AuthTests(object):
 
     def test_login_user_missing(self):
         client = flask_webtest.TestApp(flask.current_app)
-        resp = client.get(self.login_url)
+        resp = client.get(flask.url_for(flask.current_app.auth_manager.endpoint('login')))
 
         resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'badpass'
@@ -187,7 +193,7 @@ class AuthTests(object):
         self.user_ent.testing_create(email='foo@bar.com', password='pass', is_verified=False)
 
         client = flask_webtest.TestApp(flask.current_app)
-        resp = client.get(self.login_url)
+        resp = client.get(flask.url_for(flask.current_app.auth_manager.endpoint('login')))
 
         resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'badpass'
@@ -203,7 +209,7 @@ class AuthTests(object):
         self.user_ent.testing_create(email='foo@bar.com', password='pass', is_enabled=False)
 
         client = flask_webtest.TestApp(flask.current_app)
-        resp = client.get(self.login_url)
+        resp = client.get(flask.url_for(flask.current_app.auth_manager.endpoint('login')))
 
         resp.form['login_id'] = 'foo@bar.com'
         resp.form['password'] = 'badpass'
@@ -220,7 +226,9 @@ class AuthTests(object):
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(self.protected_url, status=302)
-        full_login_url = 'http://keg.example.com{}'.format(self.login_url)
+        full_login_url = 'http://keg.example.com{}'.format(
+            urlparse(flask.url_for(flask.current_app.auth_manager.endpoint('login'))).path
+        )
         assert resp.headers['Location'].startswith(full_login_url)
 
         resp = resp.follow()
@@ -238,7 +246,7 @@ class AuthTests(object):
 
     def test_forgot_pw_form_error(self):
         client = flask_webtest.TestApp(flask.current_app)
-        resp = client.get(self.forgot_password_url)
+        resp = client.get(flask.url_for(flask.current_app.auth_manager.endpoint('forgot-password')))
         resp = resp.form.submit(status=200)
 
         flash_form_error = flask.current_app.auth_manager.login_authenticator_cls.\
@@ -249,7 +257,7 @@ class AuthTests(object):
 
     def test_forgot_pw_invalid_user(self):
         client = flask_webtest.TestApp(flask.current_app)
-        resp = client.get(self.forgot_password_url)
+        resp = client.get(flask.url_for(flask.current_app.auth_manager.endpoint('forgot-password')))
 
         resp.form['email'] = 'foo@bar.com'
         resp = resp.form.submit(status=200)
@@ -264,7 +272,7 @@ class AuthTests(object):
         self.user_ent.testing_create(email='foo@bar.com', password='pass', is_enabled=False)
 
         client = flask_webtest.TestApp(flask.current_app)
-        resp = client.get(self.forgot_password_url)
+        resp = client.get(flask.url_for(flask.current_app.auth_manager.endpoint('forgot-password')))
 
         resp.form['email'] = 'foo@bar.com'
         resp = resp.form.submit(status=200)
@@ -279,7 +287,7 @@ class AuthTests(object):
         self.user_ent.testing_create(email='foo@bar.com')
 
         client = flask_webtest.TestApp(flask.current_app)
-        resp = client.get(self.forgot_password_url)
+        resp = client.get(flask.url_for(flask.current_app.auth_manager.endpoint('forgot-password')))
 
         resp.form['email'] = 'foo@bar.com'
         resp = resp.form.submit(status=302)
@@ -290,13 +298,16 @@ class AuthTests(object):
         message = flash_success[0]
         assert resp.flashes == [(category, message)]
 
-        full_login_url = 'http://keg.example.com{}'.format(self.login_url)
+        full_login_url = 'http://keg.example.com{}'.format(
+            urlparse(flask.url_for(flask.current_app.auth_manager.endpoint('login'))).path
+        )
         assert resp.headers['Location'] == full_login_url
 
     def test_reset_pw_success(self):
         user = self.user_ent.testing_create()
         token = user.token_generate()
-        url = '/{}/{}/{}'.format(self.reset_password_url, user.id, token)
+        url = flask.url_for(flask.current_app.auth_manager.endpoint('reset-password'),
+                            user_id=user.id, token=token)
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(url, status=200)
@@ -311,13 +322,16 @@ class AuthTests(object):
         message = flash_success[0]
         assert resp.flashes == [(category, message)]
 
-        full_login_url = 'http://keg.example.com{}'.format(self.login_url)
+        full_login_url = 'http://keg.example.com{}'.format(
+            urlparse(flask.url_for(flask.current_app.auth_manager.endpoint('login'))).path
+        )
         assert resp.headers['Location'] == full_login_url
 
     def test_reset_pw_form_error(self):
         user = self.user_ent.testing_create()
         token = user.token_generate()
-        url = '{}/{}/{}'.format(self.reset_password_url, user.id, token)
+        url = flask.url_for(flask.current_app.auth_manager.endpoint('reset-password'),
+                            user_id=user.id, token=token)
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(url, status=200)
@@ -330,14 +344,16 @@ class AuthTests(object):
         assert resp.flashes == [(category, message)]
 
     def test_reset_pw_missing_user(self):
-        url = '{}/99999999/123'.format(self.reset_password_url)
+        url = flask.url_for(flask.current_app.auth_manager.endpoint('reset-password'),
+                            user_id='99999999', token='123')
 
         client = flask_webtest.TestApp(flask.current_app)
         client.get(url, status=404)
 
     def test_reset_pw_bad_token(self):
         user = self.user_ent.testing_create()
-        url = '{}/{}/abc'.format(self.reset_password_url, user.id)
+        url = flask.url_for(flask.current_app.auth_manager.endpoint('reset-password'),
+                            user_id=user.id, token='abc')
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(url, status=302)
@@ -348,8 +364,10 @@ class AuthTests(object):
         message = flash_invalid_token[0]
         assert resp.flashes == [(category, message)]
 
-        full_login_url = 'http://keg.example.com{}'.format(self.forgot_password_url)
-        assert resp.headers['Location'] == full_login_url
+        full_forgot_password_url = 'http://keg.example.com{}'.format(
+            urlparse(flask.url_for(flask.current_app.auth_manager.endpoint('forgot-password'))).path
+        )
+        assert resp.headers['Location'] == full_forgot_password_url
 
     def test_verify_account_success(self):
         user = self.user_ent.testing_create(is_verified=False)
@@ -371,7 +389,9 @@ class AuthTests(object):
         message = flash_success[0]
         assert resp.flashes == [(category, message)]
 
-        full_login_url = 'http://keg.example.com{}'.format(self.login_url)
+        full_login_url = 'http://keg.example.com{}'.format(
+            urlparse(flask.url_for(flask.current_app.auth_manager.endpoint('login'))).path
+        )
         assert resp.headers['Location'] == full_login_url
 
         assert user.is_verified
@@ -412,8 +432,10 @@ class AuthTests(object):
         message = flash_invalid_token[0]
         assert resp.flashes == [(category, message)]
 
-        full_login_url = 'http://keg.example.com{}'.format(self.forgot_password_url)
-        assert resp.headers['Location'] == full_login_url
+        full_forgot_password_url = 'http://keg.example.com{}'.format(
+            urlparse(flask.url_for(flask.current_app.auth_manager.endpoint('forgot-password'))).path
+        )
+        assert resp.headers['Location'] == full_forgot_password_url
 
     def test_logout(self):
         user = self.user_ent.testing_create()
@@ -425,12 +447,14 @@ class AuthTests(object):
         client.get(self.protected_url, status=200)
 
         # logout
-        resp = client.get(self.logout_url, status=302)
+        resp = client.get(flask.url_for(flask.current_app.auth_manager.endpoint('logout')),
+                          status=302)
         assert resp.flashes == [('success', 'You have been logged out.')]
 
         # Check redirect location
-        full_login_url = 'http://keg.example.com{}'.format(self.after_logout_url)
-        assert resp.headers['Location'] == full_login_url
+        full_after_logout_url = flask.url_for(flask.current_app.auth_manager.
+                                              endpoint('after-logout'))
+        assert resp.headers['Location'] == full_after_logout_url
 
         # Confirm logout occured
         client.get(self.protected_url, status=302)
