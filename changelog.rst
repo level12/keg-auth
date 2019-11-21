@@ -1,6 +1,16 @@
 Changelog
 =========
 
+0.2.14 released 2019-11-21
+--------------------------
+
+- fix template issue related to select2 updates (373739b_)
+- make auth testing helpers more generic (b90ee96_)
+
+.. _373739b: https://github.com/level12/keg-auth/commit/373739b
+.. _b90ee96: https://github.com/level12/keg-auth/commit/b90ee96
+
+
 0.2.13 released 2019-11-08
 --------------------------
 
