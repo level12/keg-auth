@@ -11,7 +11,6 @@
 
 {% block styles %}
 {{ super() }}
-{{ use_select2 }}
 {% if (use_select2 == true) %}
     {% include 'keg_auth/select2-styles.html' %}
 {% endif %}
