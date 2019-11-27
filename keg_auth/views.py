@@ -439,7 +439,7 @@ class Bundle(CrudView):
 
     @property
     def grid_cls(self):
-        return grids.make_group_grid(
+        return grids.make_bundle_grid(
             edit_endpoint=self.endpoint_for_action('edit'),
             edit_permission=self.permissions['edit'],
             delete_endpoint=self.endpoint_for_action('delete'),

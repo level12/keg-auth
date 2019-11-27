@@ -993,6 +993,12 @@ class TestGroupCrud(ViewTestBase):
 class TestBundleCrud(ViewTestBase):
     permissions = 'auth-manage'
 
+    @classmethod
+    def setup_class(cls):
+        super().setup_class()
+        ents.Group.delete_cascaded()
+        ents.Bundle.delete_cascaded()
+
     def test_add(self):
         perm_approve = ents.Permission.testing_create()
         ents.Permission.testing_create()
@@ -1092,10 +1098,11 @@ class TestBundleCrud(ViewTestBase):
         assert ents.Bundle.query.get(bundle_delete_id)
 
     def test_list(self):
-        ents.Bundle.testing_create()
+        obj = ents.Bundle.testing_create()
         resp = self.client.get('/bundles')
         assert resp.pyquery('.grid-header-add-link a').attr('href').startswith('/bundles/add')
         assert 'datagrid' in resp
+        assert obj.name in resp
 
     def test_list_export(self):
         ents.Bundle.testing_create()
