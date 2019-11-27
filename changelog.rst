@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.2.15 released 2019-11-27
+--------------------------
+
+- fix bundle grid setup for CRUD view (b772f01_)
+
+.. _b772f01: https://github.com/level12/keg-auth/commit/b772f01
+
+
 0.2.14 released 2019-11-21
 --------------------------
 
