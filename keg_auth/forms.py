@@ -75,7 +75,7 @@ class GroupsMixin(object):
 
     def after_init(self, args, kwargs):
         self.group_ids.choices = get_group_options()
-        if kwargs.get('obj'):
+        if kwargs.get('obj') and self.group_ids.raw_data is None:
             self.group_ids.process_data([group.id for group in kwargs['obj'].groups])
         super().after_init(args, kwargs)
 
@@ -89,7 +89,7 @@ class PermissionsMixin(object):
 
     def after_init(self, args, kwargs):
         self.permission_ids.choices = get_permission_options()
-        if kwargs.get('obj'):
+        if kwargs.get('obj') and self.permission_ids.raw_data is None:
             self.permission_ids.process_data([perm.id for perm in kwargs['obj'].permissions])
         super().after_init(args, kwargs)
 
@@ -103,7 +103,7 @@ class BundlesMixin(object):
 
     def after_init(self, args, kwargs):
         self.bundle_ids.choices = get_bundle_options()
-        if kwargs.get('obj'):
+        if kwargs.get('obj') and self.bundle_ids.raw_data is None:
             self.bundle_ids.process_data([bundle.id for bundle in kwargs['obj'].bundles])
         super().after_init(args, kwargs)
 
