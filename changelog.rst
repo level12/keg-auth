@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.2.16 released 2019-12-02
+--------------------------
+
+- fix CRUD edit form default values for relationships (01893f9_)
+
+.. _01893f9: https://github.com/level12/keg-auth/commit/01893f9
+
+
 0.2.15 released 2019-11-27
 --------------------------
 
