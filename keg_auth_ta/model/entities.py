@@ -21,6 +21,11 @@ class User(keg_auth.UserEmailMixin, keg_auth.UserMixin, EntityMixin, db.Model):
 class UserNoEmail(keg_auth.UserMixin, EntityMixin, db.Model):
     __tablename__ = 'users_no_email'
 
+    # this model will not be assigned the relationships the form expects to be present
+    permissions = []
+    bundles = []
+    groups = []
+
 
 class UserWithToken(keg_auth.UserEmailMixin, keg_auth.UserTokenMixin,  EntityMixin, db.Model):
     __tablename__ = 'users_with_token'
