@@ -70,8 +70,28 @@ def entities_from_ids(cls, ids):
     return cls.query.filter(cls.id.in_(ids)).all()
 
 
+class GroupsMixin(object):
+    group_ids = SelectMultipleField('Groups')
+
+    def after_init(self, args, kwargs):
+        self.group_ids.choices = get_group_options()
+        if kwargs.get('obj'):
+            self.group_ids.process_data([group.id for group in kwargs['obj'].groups])
+        super().after_init(args, kwargs)
+
+    def get_selected_groups(self):
+        return entities_from_ids(flask.current_app.auth_manager.entity_registry.group_cls,
+                                 self.group_ids.data)
+
+
 class PermissionsMixin(object):
     permission_ids = SelectMultipleField('Permissions')
+
+    def after_init(self, args, kwargs):
+        self.permission_ids.choices = get_permission_options()
+        if kwargs.get('obj'):
+            self.permission_ids.process_data([perm.id for perm in kwargs['obj'].permissions])
+        super().after_init(args, kwargs)
 
     def get_selected_permissions(self):
         return entities_from_ids(flask.current_app.auth_manager.entity_registry.permission_cls,
@@ -80,6 +100,12 @@ class PermissionsMixin(object):
 
 class BundlesMixin(object):
     bundle_ids = SelectMultipleField('Bundles')
+
+    def after_init(self, args, kwargs):
+        self.bundle_ids.choices = get_bundle_options()
+        if kwargs.get('obj'):
+            self.bundle_ids.process_data([bundle.id for bundle in kwargs['obj'].bundles])
+        super().after_init(args, kwargs)
 
     def get_selected_bundles(self):
         return entities_from_ids(flask.current_app.auth_manager.entity_registry.bundle_cls,
@@ -114,7 +140,7 @@ def user_form(config=None, allow_superuser=False, endpoint='', fields=['is_enabl
             flask.url_for(endpoint, objid=obj.id)
         )
 
-    class User(PermissionsMixin, BundlesMixin, ModelForm):
+    class User(PermissionsMixin, BundlesMixin, GroupsMixin, ModelForm):
         class Meta:
             model = user_cls
             only = _fields
@@ -142,17 +168,6 @@ def user_form(config=None, allow_superuser=False, endpoint='', fields=['is_enabl
             ])
             confirm = PasswordField(_('Confirm Password'))
             field_order = field_order + ('reset_password', 'confirm')
-
-        group_ids = SelectMultipleField(_('Groups'))
-
-        def after_init(self, args, kwargs):
-            self.permission_ids.choices = get_permission_options()
-            self.bundle_ids.choices = get_bundle_options()
-            self.group_ids.choices = get_group_options()
-
-        def get_selected_groups(self):
-            return entities_from_ids(flask.current_app.auth_manager.entity_registry.group_cls,
-                                     self.group_ids.data)
 
         def get_object_by_field(self, field):
             return user_cls.get_by(username=field.data)
@@ -182,10 +197,6 @@ def group_form(endpoint):
         class FieldsMeta:
             name = FieldMeta(extra_validators=[ValidateUnique(html_link)])
 
-        def after_init(self, args, kwargs):
-            self.permission_ids.choices = get_permission_options()
-            self.bundle_ids.choices = get_bundle_options()
-
         def get_object_by_field(self, field):
             return group_cls.get_by(name=field.data)
 
@@ -209,9 +220,6 @@ def bundle_form(endpoint):
 
         class FieldsMeta:
             name = FieldMeta(extra_validators=[ValidateUnique(html_link)])
-
-        def after_init(self, args, kwargs):
-            self.permission_ids.choices = get_permission_options()
 
         def get_object_by_field(self, field):
             return bundle_cls.get_by(name=field.data)

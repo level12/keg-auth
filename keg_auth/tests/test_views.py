@@ -708,11 +708,18 @@ class TestUserCrud(ViewTestBase):
         assert resp.location.endswith('/users?session_key=foo')
 
     def test_edit(self):
-        user_edit = ents.User.testing_create()
+        user_edit = ents.User.testing_create(
+            groups=[ents.Group.testing_create()],
+            bundles=[ents.Bundle.testing_create()],
+            permissions=[ents.Permission.testing_create()],
+        )
 
         resp = self.client.get('/users/{}/edit'.format(user_edit.id))
         assert resp.pyquery('#page-content')('h1').eq(0).text() == 'Edit User'
         assert resp.form['email'].value == user_edit.email
+        assert resp.form['group_ids'].value == [str(obj.id) for obj in user_edit.groups]
+        assert resp.form['bundle_ids'].value == [str(obj.id) for obj in user_edit.bundles]
+        assert resp.form['permission_ids'].value == [str(obj.id) for obj in user_edit.permissions]
         resp.form['email'] = 'foo@bar.baz'
         resp = resp.form.submit()
 
@@ -900,10 +907,13 @@ class TestGroupCrud(ViewTestBase):
         assert group.bundles == [bundle_approve]
 
     def test_edit(self):
-        group_edit = ents.Group.testing_create()
+        group_edit = ents.Group.testing_create(bundles=[ents.Bundle.testing_create()],
+                                               permissions=[ents.Permission.testing_create()])
 
         resp = self.client.get('/groups/{}/edit'.format(group_edit.id))
         assert resp.form['name'].value == group_edit.name
+        assert resp.form['bundle_ids'].value == [str(obj.id) for obj in group_edit.bundles]
+        assert resp.form['permission_ids'].value == [str(obj.id) for obj in group_edit.permissions]
         resp.form['name'] = 'test editing a group'
         resp = resp.form.submit()
 
@@ -1019,10 +1029,11 @@ class TestBundleCrud(ViewTestBase):
         assert bundle.permissions == [perm_approve]
 
     def test_edit(self):
-        bundle_edit = ents.Bundle.testing_create()
+        bundle_edit = ents.Bundle.testing_create(permissions=[ents.Permission.testing_create()])
 
         resp = self.client.get('/bundles/{}/edit'.format(bundle_edit.id))
         assert resp.form['name'].value == bundle_edit.name
+        assert resp.form['permission_ids'].value == [str(obj.id) for obj in bundle_edit.permissions]
         resp.form['name'] = 'test editing a bundle'
         resp = resp.form.submit()
 
