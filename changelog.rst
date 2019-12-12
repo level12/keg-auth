@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.2.17 released 2019-12-12
+--------------------------
+
+- ensure token is present for resending verification email (01b566f_)
+
+.. _01b566f: https://github.com/level12/keg-auth/commit/01b566f
+
+
 0.2.16 released 2019-12-02
 --------------------------
 
