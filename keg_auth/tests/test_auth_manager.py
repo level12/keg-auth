@@ -91,5 +91,8 @@ class TestAuthManager(object):
         with mail_ext.record_messages() as outbox:
             self.am.resend_verification_email(user.id)
 
+        assert user._token_plain
+
         assert len(outbox) == 1
         assert outbox[0].subject == '[KA Demo] User Welcome & Verification'
+        assert '/verify-account/{}/{}'.format(user.id, user._token_plain) in outbox[0].body

@@ -287,6 +287,8 @@ class AuthManager(object):
         user = self.user_by_id(user_id)
         if not self.mail_manager:
             raise Exception("Tried to resend verification email, but email is not setup.")
+        # ensure the user object has a fresh token
+        user.token_generate()
         self.mail_manager.send_new_user(user)
 
 
