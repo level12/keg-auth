@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.2.18 released 2020-01-10
+--------------------------
+
+- add CLI command for dev to set password (d488bc9_)
+
+.. _d488bc9: https://github.com/level12/keg-auth/commit/d488bc9
+
+
 0.2.17 released 2019-12-12
 --------------------------
 
