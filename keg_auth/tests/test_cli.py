@@ -74,6 +74,18 @@ class TestCLI(CLIBase):
         assert 'Verification URL: http://keg.example.com/verify-account' in result.output
         assert not m_send.call_count
 
+    @mock.patch('keg_auth.cli.click.prompt', return_value='Hello123!', autospec=True, spec_set=True)
+    def test_set_password(self, m_prompt):
+        ents.User.testing_create(email='test@level12.com')
+        self.invoke('auth', 'set-password', 'test@level12.com')
+        m_prompt.assert_called_once_with('Password', hide_input=True, confirmation_prompt=True)
+        assert ents.User.get_by(email='test@level12.com').password == 'Hello123!'
+
+    @mock.patch('keg_auth.cli.click.echo', autospec=True, spec_set=True)
+    def test_set_password_error(self, m_echo):
+        self.invoke('auth', 'set-password', 'test@dne.com')
+        m_echo.assert_called_once_with('Unknown user', err=True)
+
     def test_command_extension(self):
         result = self.invoke('auth', 'command-extension')
 
