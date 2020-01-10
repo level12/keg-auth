@@ -10,6 +10,18 @@ def add_cli_to_app(app, cli_group_name, user_args=['email']):
     def auth():
         """ User and authentication related commands."""
 
+    @auth.command('set-password', short_help='Set a user\'s password')
+    @click.argument('username')
+    def set_user_password(username):
+        user_ent = app.auth_manager.entity_registry.user_cls
+        user = user_ent.get_by(username=username)
+        if user is None:
+            click.echo('Unknown user', err=True)
+            return
+
+        password = click.prompt('Password', hide_input=True, confirmation_prompt=True)
+        user.change_password(user.token_generate(), password)
+
     # note: no group attached here. We will apply the arguments and group it below
     @click.argument('extra_args', nargs=-1)
     @click.option('--as-superuser', is_flag=True)
