@@ -81,7 +81,26 @@ class ThreeColumnListWidget(widgets.ListWidget):
         kwargs.setdefault("id", field.id)
         html = ["<%s %s>" % (self.html_tag, widgets.html_params(**kwargs))]
         for subfield in field:
-            html.append("<li class='col-sm-4' style='overflow-wrap:break-word;'>%s %s</li>" % (subfield(class_='form-check-input'), subfield.label))
+            html.append(
+                "<li class='col-sm-4' style='overflow-wrap:break-word;'>%s %s</li>" % (
+                    subfield(class_='form-check-input'), subfield.label
+                )
+            )
+        html.append("</%s>" % self.html_tag)
+        return Markup("".join(html))
+
+
+class InlineListWidget(widgets.ListWidget):
+
+    def __call__(self, field, **kwargs):
+        kwargs.setdefault("id", field.id)
+        html = ["<%s %s>" % (self.html_tag, widgets.html_params(**kwargs))]
+        for subfield in field:
+            html.append(
+                "<li style='display:inline;margin-right:20px;'>%s %s</li>" % (
+                    subfield(), subfield.label(style='font-weight:400;')
+                )
+            )
         html.append("</%s>" % self.html_tag)
         return Markup("".join(html))
 
@@ -89,13 +108,7 @@ class ThreeColumnListWidget(widgets.ListWidget):
 class MultiCheckboxField(SelectMultipleField):
     """
     A multiple-select, except displays a list of checkboxes.
-
-    Iterating the field will produce subfields, allowing custom rendering of
-    the enclosed checkbox fields.
-
-    from: https://wtforms.readthedocs.io/en/stable/specific_problems.html#specialty-field-tricks
     """
-    widget = ThreeColumnListWidget()
     option_widget = widgets.CheckboxInput()
 
 
@@ -114,8 +127,20 @@ class GroupsMixin(object):
 
 
 class PermissionsMixin(object):
-    select_all = BooleanField('Select All')
-    permission_ids = MultiCheckboxField('Permissions', render_kw={'class': 'row list-unstyled'})
+    select_deselect_all = MultiCheckboxField(
+        '',
+        choices=(
+            ('select_all', 'Select All'),
+            ('deselect_all', 'Deselect All')
+        ),
+        render_kw={'class': 'list-unstyled', 'style': 'margin-bottom:0;'},
+        widget=InlineListWidget(),
+    )
+    permission_ids = MultiCheckboxField(
+        'Permissions',
+        render_kw={'class': 'list-unstyled'},
+        widget=ThreeColumnListWidget()
+    )
 
     def after_init(self, args, kwargs):
         self.permission_ids.choices = get_permission_options()
@@ -124,8 +149,13 @@ class PermissionsMixin(object):
         super().after_init(args, kwargs)
 
     def get_selected_permissions(self):
+        selected_ids = self.permission_ids.data
+        if 'select_all' in self.select_deselect_all.data:
+            selected_ids = [choice[0] for choice in self.permission_ids.choices]
+        elif 'deselect_all' in self.select_deselect_all.data:
+            selected_ids = []
         return entities_from_ids(flask.current_app.auth_manager.entity_registry.permission_cls,
-                                 self.permission_ids.data)
+                                 selected_ids)
 
 
 class BundlesMixin(object):
@@ -180,7 +210,8 @@ def user_form(config=None, allow_superuser=False, endpoint='', fields=['is_enabl
             is_superuser = FieldMeta('Superuser')
             __default__ = FieldMeta
 
-        field_order = tuple(_fields + ['group_ids', 'bundle_ids', 'permission_ids'])
+        field_order = tuple(_fields + ['group_ids', 'bundle_ids', 'select_deselect_all',
+                                       'permission_ids'])
 
         setattr(FieldsMeta, username_key, FieldMeta(
             extra_validators=[validators.data_required(),
@@ -205,6 +236,18 @@ def user_form(config=None, allow_superuser=False, endpoint='', fields=['is_enabl
         @property
         def obj(self):
             return self._obj
+
+        def validate(self):
+            if not ModelForm.validate(self):
+                return False
+
+            if 'select_all' in self.select_deselect_all.data and 'deselect_all' in self.select_deselect_all.data:  # noqa
+                error_list = list(self.select_deselect_all.errors)
+                error_list.append('You may not select all and deselect all. Please choose one.')
+                self.select_deselect_all.errors = tuple(error_list)
+                return False
+
+            return True
 
         def __iter__(self):
             order = ('csrf_token', ) + self.field_order
@@ -234,6 +277,18 @@ def group_form(endpoint):
         def obj(self):
             return self._obj
 
+        def validate(self):
+            if not ModelForm.validate(self):
+                return False
+
+            if 'select_all' in self.select_deselect_all.data and 'deselect_all' in self.select_deselect_all.data:   # noqa
+                error_list = list(self.select_deselect_all.errors)
+                error_list.append('You may not select all and deselect all. Please choose one.')
+                self.select_deselect_all.errors = tuple(error_list)
+                return False
+
+            return True
+
     return Group
 
 
@@ -257,5 +312,17 @@ def bundle_form(endpoint):
         @property
         def obj(self):
             return self._obj
+
+        def validate(self):
+            if not ModelForm.validate(self):
+                return False
+
+            if 'select_all' in self.select_deselect_all.data and 'deselect_all' in self.select_deselect_all.data:   # noqa
+                error_list = list(self.select_deselect_all.errors)
+                error_list.append('You may not select all and deselect all. Please choose one.')
+                self.select_deselect_all.errors = tuple(error_list)
+                return False
+
+            return True
 
     return Bundle
