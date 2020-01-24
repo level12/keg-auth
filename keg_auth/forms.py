@@ -1,6 +1,7 @@
 import flask
 from keg_elements.forms import Form, ModelForm, FieldMeta
 from keg_elements.forms.validators import ValidateUnique
+from sqlalchemy.sql.functions import coalesce
 from sqlalchemy_utils import EmailType
 from webhelpers2.html.tags import link_to
 from wtforms.fields import (
@@ -8,7 +9,7 @@ from wtforms.fields import (
     PasswordField,
     StringField,
     SelectMultipleField)
-from wtforms import ValidationError, validators
+from wtforms import ValidationError, validators, widgets
 from wtforms_components.widgets import EmailInput
 
 from keg_auth.extensions import lazy_gettext as _
@@ -51,7 +52,10 @@ class SetPassword(Form):
 
 def get_permission_options():
     perm_cls = flask.current_app.auth_manager.entity_registry.permission_cls
-    return [(str(perm.id), perm.description) for perm in perm_cls.query.order_by('description')]
+    query = perm_cls.query.with_entities(
+        perm_cls.id, coalesce(perm_cls.description, perm_cls.token).label('desc')
+    ).order_by('desc').all()
+    return [(str(perm.id), perm.desc) for perm in query]
 
 
 def get_bundle_options():
@@ -70,6 +74,19 @@ def entities_from_ids(cls, ids):
     return cls.query.filter(cls.id.in_(ids)).all()
 
 
+class MultiCheckboxField(SelectMultipleField):
+    """
+    A multiple-select, except displays a list of checkboxes.
+
+    Iterating the field will produce subfields, allowing custom rendering of
+    the enclosed checkbox fields.
+
+    from: https://wtforms.readthedocs.io/en/stable/specific_problems.html#specialty-field-tricks
+    """
+    widget = widgets.ListWidget(prefix_label=False)
+    option_widget = widgets.CheckboxInput()
+
+
 class GroupsMixin(object):
     group_ids = SelectMultipleField('Groups')
 
@@ -85,7 +102,7 @@ class GroupsMixin(object):
 
 
 class PermissionsMixin(object):
-    permission_ids = SelectMultipleField('Permissions')
+    permission_ids = MultiCheckboxField('Permissions')
 
     def after_init(self, args, kwargs):
         self.permission_ids.choices = get_permission_options()
