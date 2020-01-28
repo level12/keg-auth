@@ -1,6 +1,7 @@
 import flask
 from keg_elements.forms import Form, ModelForm, FieldMeta
 from keg_elements.forms.validators import ValidateUnique
+from markupsafe import Markup
 from sqlalchemy.sql.functions import coalesce
 from sqlalchemy_utils import EmailType
 from webhelpers2.html.tags import link_to
@@ -74,6 +75,17 @@ def entities_from_ids(cls, ids):
     return cls.query.filter(cls.id.in_(ids)).all()
 
 
+class ThreeColumnListWidget(widgets.ListWidget):
+
+    def __call__(self, field, **kwargs):
+        kwargs.setdefault("id", field.id)
+        html = ["<%s %s>" % (self.html_tag, widgets.html_params(**kwargs))]
+        for subfield in field:
+            html.append("<li class='col-sm-4' style='overflow-wrap:break-word;'>%s %s</li>" % (subfield(class_='form-check-input'), subfield.label))
+        html.append("</%s>" % self.html_tag)
+        return Markup("".join(html))
+
+
 class MultiCheckboxField(SelectMultipleField):
     """
     A multiple-select, except displays a list of checkboxes.
@@ -83,7 +95,7 @@ class MultiCheckboxField(SelectMultipleField):
 
     from: https://wtforms.readthedocs.io/en/stable/specific_problems.html#specialty-field-tricks
     """
-    widget = widgets.ListWidget(prefix_label=False)
+    widget = ThreeColumnListWidget()
     option_widget = widgets.CheckboxInput()
 
 
@@ -102,7 +114,8 @@ class GroupsMixin(object):
 
 
 class PermissionsMixin(object):
-    permission_ids = MultiCheckboxField('Permissions')
+    select_all = BooleanField('Select All')
+    permission_ids = MultiCheckboxField('Permissions', render_kw={'class': 'row list-unstyled'})
 
     def after_init(self, args, kwargs):
         self.permission_ids.choices = get_permission_options()
