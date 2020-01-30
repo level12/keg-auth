@@ -83,7 +83,8 @@ class ThreeColumnListWidget(widgets.ListWidget):
         for subfield in field:
             html.append(
                 "<li class='col-sm-4' style='overflow-wrap:break-word;'>%s %s</li>" % (
-                    subfield(class_='form-check-input'), subfield.label
+                    subfield(class_='form-check-input', style='display:inline;'),
+                    subfield.label(style='font-weight:400;display:inline;')
                 )
             )
         html.append("</%s>" % self.html_tag)
