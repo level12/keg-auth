@@ -1053,7 +1053,9 @@ def with_crypto_context(field, context=None):
     :param context (optional): :class:`passlib.context.CryptoContext` to use for this test. The
         default value is `keg_auth.core.DEFAULT_CRYPTO_SCHEMES`.
 
-    .. NOTE: In most situations we don't want a real crypto scheme to run in the tests, it is
+    .. NOTE:
+
+    In most situations we don't want a real crypto scheme to run in the tests, it is
     slow on entities like Users which have a password. ``User.testing_create`` will generate a value
     for that instance and then hash which takes a bunch of time. However, when testing certain
     schemes, it is useful to execute the real behavior instead of the ``plaintext`` behaviour.

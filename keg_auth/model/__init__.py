@@ -273,6 +273,7 @@ class UserMixin(object):
             * expiration
             * password was not already reset since token was generated
             * user has not signed in since token was generated
+
         :param token: string representation of token to verify
         :return: bool indicating token validity
         """

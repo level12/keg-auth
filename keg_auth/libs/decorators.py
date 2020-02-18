@@ -178,6 +178,7 @@ def requires_user(arg=None, *args, **kwargs):
         a class decorator or method decorator.
 
         Usage: @requires_user OR @requires_user() (both usage forms are identical)
+
         Parameters:
             on_authentication_failure: method called on authentication failures. If one is not
                 specified, behavior is derived from login manager (redirect or 401)
