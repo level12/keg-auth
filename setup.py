@@ -34,7 +34,7 @@ setup(
         'bcrypt',
         'commonmark',
 
-        'Flask-Login',
+        'Flask-Login==0.4.1',
         'Keg>=0.8.1',
         'KegElements',
         'inflect',
