@@ -1,4 +1,4 @@
-# Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
+#s Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
 from __future__ import unicode_literals
 import flask
 import freezegun
@@ -768,14 +768,12 @@ class TestUserCrud(ViewTestBase):
         assert resp.form['bundle_ids'].value == [str(obj.id) for obj in user_edit.bundles]
         all_permissions = [p.description or p.token for p in ents.Permission.query.all()]
         user_permissions = [p.description or p.token for p in user_edit.permissions]
-        listed_permissions = resp.pyquery('#permission_ids')('li')
+        listed_permissions = resp.pyquery('#permission_ids')('option')
         assert len(listed_permissions) == len(all_permissions)
         for permission_list_item in listed_permissions:
-            label = permission_list_item.find('label')
-            checkbox = permission_list_item.find('input')
-            assert label.text in all_permissions
-            if label.text in user_permissions:
-                assert checkbox.checked
+            assert permission_list_item.text in all_permissions
+            if permission_list_item.text in user_permissions:
+                assert 'selected' in permission_list_item.attrib
         assert resp.pyquery('#select_deselect_all')
         resp.form['email'] = 'foo@bar.baz'
         resp = resp.form.submit()
@@ -1018,14 +1016,12 @@ class TestGroupCrud(ViewTestBase):
         assert resp.form['bundle_ids'].value == [str(obj.id) for obj in group_edit.bundles]
         all_permissions = [p.description or p.token for p in ents.Permission.query.all()]
         user_permissions = [p.description or p.token for p in group_edit.permissions]
-        listed_permissions = resp.pyquery('#permission_ids')('li')
+        listed_permissions = resp.pyquery('#permission_ids')('option')
         assert len(listed_permissions) == len(all_permissions)
         for permission_list_item in listed_permissions:
-            label = permission_list_item.find('label')
-            checkbox = permission_list_item.find('input')
-            assert label.text in all_permissions
-            if label.text in user_permissions:
-                assert checkbox.checked
+            assert permission_list_item.text in all_permissions
+            if permission_list_item.text in user_permissions:
+                assert 'selected' in permission_list_item.attrib
         assert resp.pyquery('#select_deselect_all')
         resp.form['name'] = 'test editing a group'
         resp = resp.form.submit()
@@ -1194,14 +1190,12 @@ class TestBundleCrud(ViewTestBase):
         assert resp.form['name'].value == bundle_edit.name
         all_permissions = [p.description or p.token for p in ents.Permission.query.all()]
         user_permissions = [p.description or p.token for p in bundle_edit.permissions]
-        listed_permissions = resp.pyquery('#permission_ids')('li')
+        listed_permissions = resp.pyquery('#permission_ids')('option')
         assert len(listed_permissions) == len(all_permissions)
         for permission_list_item in listed_permissions:
-            label = permission_list_item.find('label')
-            checkbox = permission_list_item.find('input')
-            assert label.text in all_permissions
-            if label.text in user_permissions:
-                assert checkbox.checked
+            assert permission_list_item.text in all_permissions
+            if permission_list_item.text in user_permissions:
+                assert 'selected' in permission_list_item.attrib
         assert resp.pyquery('#select_deselect_all')
         resp.form['name'] = 'test editing a bundle'
         resp = resp.form.submit()
