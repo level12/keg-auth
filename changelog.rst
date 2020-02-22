@@ -1,6 +1,16 @@
 Changelog
 =========
 
+0.2.19 released 2020-02-21
+--------------------------
+
+- Improve Usability of Permission Dropdown (479e985_)
+- Pin Flask Login (00ea957_)
+
+.. _479e985: https://github.com/level12/keg-auth/commit/479e985
+.. _00ea957: https://github.com/level12/keg-auth/commit/00ea957
+
+
 0.2.18 released 2020-01-10
 --------------------------
 
