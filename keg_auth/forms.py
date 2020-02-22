@@ -1,7 +1,6 @@
 import flask
-from keg_elements.forms import Form, ModelForm, FieldMeta
+from keg_elements.forms import Form, ModelForm, FieldMeta, MultiCheckboxField
 from keg_elements.forms.validators import ValidateUnique
-from markupsafe import Markup
 from sqlalchemy.sql.functions import coalesce
 from sqlalchemy_utils import EmailType
 from webhelpers2.html.tags import link_to
@@ -10,7 +9,7 @@ from wtforms.fields import (
     PasswordField,
     StringField,
     SelectMultipleField)
-from wtforms import ValidationError, validators, widgets
+from wtforms import ValidationError, validators
 from wtforms_components.widgets import EmailInput
 
 from keg_auth.extensions import lazy_gettext as _
@@ -75,44 +74,6 @@ def entities_from_ids(cls, ids):
     return cls.query.filter(cls.id.in_(ids)).all()
 
 
-class ThreeColumnListWidget(widgets.ListWidget):
-
-    def __call__(self, field, **kwargs):
-        kwargs.setdefault("id", field.id)
-        html = ["<%s %s>" % (self.html_tag, widgets.html_params(**kwargs))]
-        for subfield in field:
-            html.append(
-                "<li class='col-sm-4' style='overflow-wrap:break-word;'>%s %s</li>" % (
-                    subfield(class_='form-check-input', style='display:inline;'),
-                    subfield.label(style='font-weight:400;display:inline;')
-                )
-            )
-        html.append("</%s>" % self.html_tag)
-        return Markup("".join(html))
-
-
-class InlineListWidget(widgets.ListWidget):
-
-    def __call__(self, field, **kwargs):
-        kwargs.setdefault("id", field.id)
-        html = ["<%s %s>" % (self.html_tag, widgets.html_params(**kwargs))]
-        for subfield in field:
-            html.append(
-                "<li style='display:inline;margin-right:20px;'>%s %s</li>" % (
-                    subfield(), subfield.label(style='font-weight:400;')
-                )
-            )
-        html.append("</%s>" % self.html_tag)
-        return Markup("".join(html))
-
-
-class MultiCheckboxField(SelectMultipleField):
-    """
-    A multiple-select, except displays a list of checkboxes.
-    """
-    option_widget = widgets.CheckboxInput()
-
-
 class GroupsMixin(object):
     group_ids = SelectMultipleField('Groups')
 
@@ -129,18 +90,16 @@ class GroupsMixin(object):
 
 class PermissionsMixin(object):
     select_deselect_all = MultiCheckboxField(
-        '',
+        'Bulk Permission Action (takes effect after submit)',
         choices=(
             ('select_all', 'Select All'),
             ('deselect_all', 'Deselect All')
         ),
         render_kw={'class': 'list-unstyled', 'style': 'margin-bottom:0;'},
-        widget=InlineListWidget(),
     )
     permission_ids = MultiCheckboxField(
         'Permissions',
         render_kw={'class': 'list-unstyled'},
-        widget=ThreeColumnListWidget()
     )
 
     def after_init(self, args, kwargs):
@@ -265,6 +224,8 @@ def group_form(endpoint):
         return link_to(obj.name, flask.url_for(endpoint, objid=obj.id))
 
     class Group(PermissionsMixin, BundlesMixin, ModelForm):
+        _field_order = ('name', 'bundle_ids', 'select_deselect_all', 'permission_ids',)
+
         class Meta:
             model = group_cls
 
