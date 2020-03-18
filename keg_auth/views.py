@@ -472,6 +472,7 @@ class Permission(keg.web.BaseView):
         return flask.render_template(
             self.grid_template,
             page_title=_('Permissions'),
+            page_heading=_('Permissions'),
             grid=grid
         )
 
