@@ -499,36 +499,45 @@ def make_blueprint(import_name, _auth_manager, bp_name='auth', login_cls=Login,
     # It's not ideal we have to redefine the classes, but it's needed because of how
     # Keg.web.BaseView does it's meta programming.  If we don't redefine the class, then
     # the view doesn't actually get created on blueprint.
-    class Login(login_cls):
-        blueprint = _blueprint
-        auth_manager = _auth_manager
+    if login_cls:
+        class Login(login_cls):
+            blueprint = _blueprint
+            auth_manager = _auth_manager
 
-    class ForgotPassword(forgot_cls):
-        blueprint = _blueprint
-        auth_manager = _auth_manager
+    if forgot_cls:
+        class ForgotPassword(forgot_cls):
+            blueprint = _blueprint
+            auth_manager = _auth_manager
 
-    class ResetPassword(reset_cls):
-        blueprint = _blueprint
-        auth_manager = _auth_manager
+    if reset_cls:
+        class ResetPassword(reset_cls):
+            blueprint = _blueprint
+            auth_manager = _auth_manager
 
-    class VerifyAccount(verify_cls):
-        blueprint = _blueprint
-        auth_manager = _auth_manager
+    if verify_cls:
+        class VerifyAccount(verify_cls):
+            blueprint = _blueprint
+            auth_manager = _auth_manager
 
-    class Logout(logout_cls):
-        blueprint = _blueprint
-        auth_manager = _auth_manager
+    if logout_cls:
+        class Logout(logout_cls):
+            blueprint = _blueprint
+            auth_manager = _auth_manager
 
-    class User(user_crud_cls):
-        blueprint = _blueprint
+    if user_crud_cls:
+        class User(user_crud_cls):
+            blueprint = _blueprint
 
-    class Group(group_crud_cls):
-        blueprint = _blueprint
+    if group_crud_cls:
+        class Group(group_crud_cls):
+            blueprint = _blueprint
 
-    class Bundle(bundle_crud_cls):
-        blueprint = _blueprint
+    if bundle_crud_cls:
+        class Bundle(bundle_crud_cls):
+            blueprint = _blueprint
 
-    class Permission(permission_cls):
-        blueprint = _blueprint
+    if permission_cls:
+        class Permission(permission_cls):
+            blueprint = _blueprint
 
     return _blueprint
