@@ -481,7 +481,7 @@ def make_blueprint(import_name, _auth_manager, bp_name='auth', login_cls=Login,
                    forgot_cls=ForgotPassword, reset_cls=ResetPassword, logout_cls=Logout,
                    verify_cls=VerifyAccount, user_crud_cls=User, group_crud_cls=Group,
                    bundle_crud_cls=Bundle, permission_cls=Permission,
-                   blueprint_class=flask.Blueprint):
+                   blueprint_class=flask.Blueprint, **kwargs):
     """ Blueprint factory for keg-auth views
 
         Naming the blueprint here requires us to create separate view classes so that the routes
@@ -494,7 +494,7 @@ def make_blueprint(import_name, _auth_manager, bp_name='auth', login_cls=Login,
         blueprint_class is the class to be instantiated as the Flask blueprint for auth views. The
         default is flask.blueprint, but a custom blueprint may be provided.
     """
-    _blueprint = blueprint_class(bp_name, import_name)
+    _blueprint = blueprint_class(bp_name, import_name, **kwargs)
 
     # It's not ideal we have to redefine the classes, but it's needed because of how
     # Keg.web.BaseView does it's meta programming.  If we don't redefine the class, then
