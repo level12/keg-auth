@@ -462,6 +462,119 @@ class LdapAuthenticator(KegAuthenticator):
             return False
 
 
+class OidcLoginViewResponder(LoginResponderMixin, ViewResponder):
+    """ OIDC logins, using an oauth token"""
+
+    flash_success = None
+    page_title = 'Log In'
+    template_name = 'keg_auth/flash-messages-only.html'
+
+    def get(self, *args, **kwargs):
+        oidc = flask.current_app.auth_manager.oidc
+        oidc_check = oidc.require_login(lambda: True)()
+        if oidc_check is not True:
+            return oidc_check
+
+        login_id = oidc.user_getfield("preferred_username")
+
+        try:
+            user = self.parent.verify_user(login_id=login_id)
+
+            # User is active and password is verified
+            return self.on_success(user)
+        except UserNotFound:
+            self.on_invalid_user(login_id)
+        except UserInactive as exc:
+            self.on_inactive_user(exc.user)
+
+    def post(self, *args, **kwargs):
+        return flask.abort(405)
+
+
+class OidcLogoutViewResponder(LogoutViewResponder):
+    """ OIDC logout requires some extra leg-work, because token gets refreshed server-side"""
+
+    def get(self):
+        oidc = flask.current_app.auth_manager.oidc
+        url_after_login = flask.url_for(flask.current_app.auth_manager.endpoints['after-login'])
+        bad_token_redirect_resp = flask.current_app.login_manager.unauthorized()
+
+        """ Logout won't work if user isn't authenticated to begin with, i.e. there won't be a
+            token to use. Just redirect to a sane place to force a login to continue."""
+        try:
+            user_sub = oidc.user_getfield('sub')
+        except Exception as exc:
+            if 'User was not authenticated' not in str(exc):
+                raise
+            return flask.abort(flask.redirect(url_after_login))
+
+        """ In some cases e.g. app restart, credentials store may not have valid information in the
+            flask server-side info. In that case, clear the client token and refresh info from
+            the oauth source. We have to have a valid id token to make logout work."""
+        try:
+            from oauth2client.client import OAuth2Credentials
+            id_token = OAuth2Credentials.from_json(
+                oidc.credentials_store[user_sub]
+            ).token_response['id_token']
+        except KeyError:
+            oidc.logout()
+            return flask.abort(bad_token_redirect_resp)
+
+        """ Build the oauth request URI, which has to include the ID token. But, logout all client
+            session info before redirecting there."""
+        logout_request = '{}{}?id_token_hint={}&post_logout_redirect_uri={}'.format(
+            flask.current_app.config.get('OIDC_PROVIDER_URL'),
+            flask.current_app.config.get('OIDC_LOGOUT'),
+            str(id_token),
+            flask.current_app.config.get('OIDC_REDIRECT_BASE') + url_after_login,
+        )
+        oidc.logout()
+        flask_login.logout_user()
+        return flask.redirect(logout_request)
+
+
+class OidcAuthenticator(LoginAuthenticator):
+    """ Uses OIDC authentication with an oauth provider, validates against keg-auth db"""
+    responder_cls = {
+        'login': OidcLoginViewResponder,
+        'logout': OidcLogoutViewResponder,
+    }
+
+    def __init__(self, app):
+        from flask_oidc import OpenIDConnect
+
+        oidc_settings = {
+            'web': {
+                'client_id': app.config.get('OIDC_CLIENT_ID'),
+                'client_secret': app.config.get('OIDC_CLIENT_SECRET'),
+                'auth_uri': app.config.get('OIDC_PROVIDER_URL') + '/oauth2/default/v1/authorize',
+                'token_uri': app.config.get('OIDC_PROVIDER_URL') + '/oauth2/default/v1/token',
+                'issuer': app.config.get('OIDC_PROVIDER_URL') + '/oauth2/default',
+                'userinfo_uri': app.config.get('OIDC_PROVIDER_URL') + '/oauth2/default/userinfo',
+                'redirect_uris': [
+                    app.config.get('OIDC_REDIRECT_BASE') + app.config.get('OIDC_CALLBACK_ROUTE')
+                ]
+            }
+        }
+
+        class KAOpenIDConnect(OpenIDConnect):
+            def load_secrets(self, app):
+                return oidc_settings
+        app.auth_manager.oidc = KAOpenIDConnect(app)
+
+        super().__init__(app)
+
+    def verify_user(self, login_id=None):
+        user = self.user_ent.query().filter_by(username=login_id).one_or_none()
+
+        if not user:
+            raise UserNotFound
+        if not user.is_active:
+            raise UserInactive(user)
+
+        return user
+
+
 class JwtRequestLoader(TokenLoaderMixin, RequestLoader):
     """ Loader for JWT tokens contained in the Authorization header.
 
