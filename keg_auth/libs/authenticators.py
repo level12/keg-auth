@@ -123,18 +123,21 @@ class UserResponderMixin(object):
 
     def on_inactive_user(self, user):
         if flask.current_app.auth_manager.mail_manager and not user.is_verified:
-            message, category = self.flash_unverified_user
-            flash(message.format(user.email), category)
+            if self.flash_unverified_user:
+                message, category = self.flash_unverified_user
+                flash(message.format(user.email), category)
         if not user.is_enabled:
             self.on_disabled_user(user)
 
     def on_invalid_user(self, username):
-        message, category = self.flash_invalid_user
-        flash(message.format(username), category)
+        if self.flash_invalid_user:
+            message, category = self.flash_invalid_user
+            flash(message.format(username), category)
 
     def on_disabled_user(self, user):
-        message, category = self.flash_disabled_user
-        flash(message.format(user.display_value), category)
+        if self.flash_disabled_user:
+            message, category = self.flash_disabled_user
+            flash(message.format(user.display_value), category)
 
 
 class LoginResponderMixin(UserResponderMixin):
@@ -159,7 +162,8 @@ class LoginResponderMixin(UserResponderMixin):
 
     def on_success(self, user):
         flask_login.login_user(user)
-        flash(*self.flash_success)
+        if self.flash_success:
+            flash(*self.flash_success)
 
         # support Flask-Login "next" parameter
         next_parameter = flask.request.values.get('next')
@@ -180,7 +184,8 @@ class FormResponderMixin(object):
     page_title = None
 
     def on_form_error(self, form):
-        flash(*self.flash_form_error)
+        if self.flash_form_error:
+            flash(*self.flash_form_error)
 
     def on_form_valid(self, form):
         raise NotImplementedError  # pragma: no cover
@@ -227,7 +232,8 @@ class PasswordSetterResponderBase(FormResponderMixin, ViewResponder):
         return super(PasswordSetterResponderBase, self).__call__(*args, **kwargs)
 
     def flash_and_redirect(self, flash_parts, auth_ident):
-        flash(*flash_parts)
+        if flash_parts:
+            flash(*flash_parts)
         redirect_to = flask.current_app.auth_manager.url_for(auth_ident)
         flask.abort(flask.redirect(redirect_to))
 
@@ -300,7 +306,8 @@ class PasswordFormViewResponder(LoginResponderMixin, FormResponderMixin, ViewRes
             self.on_invalid_password()
 
     def on_invalid_password(self):
-        flash(*self.flash_invalid_password)
+        if self.flash_invalid_password:
+            flash(*self.flash_invalid_password)
 
 
 class ForgotPasswordViewResponder(UserResponderMixin, FormResponderMixin, ViewResponder):
@@ -330,7 +337,8 @@ class ForgotPasswordViewResponder(UserResponderMixin, FormResponderMixin, ViewRe
 
     def on_success(self, user):
         self.send_email(user)
-        flash(*self.flash_success)
+        if self.flash_success:
+            flash(*self.flash_success)
         redirect_to = flask.current_app.auth_manager.url_for('after-forgot')
         return flask.redirect(redirect_to)
 
@@ -345,7 +353,8 @@ class LogoutViewResponder(ViewResponder):
 
     def get(self):
         flask_login.logout_user()
-        flash(*self.flash_success)
+        if self.flash_success:
+            flash(*self.flash_success)
         redirect_to = flask.current_app.auth_manager.url_for('after-logout')
         flask.abort(flask.redirect(redirect_to))
 
