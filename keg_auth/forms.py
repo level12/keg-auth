@@ -89,14 +89,6 @@ class GroupsMixin(object):
 
 
 class PermissionsMixin(object):
-    select_deselect_all = MultiCheckboxField(
-        'Bulk Permission Action (takes effect after submit)',
-        choices=(
-            ('select_all', 'Select All'),
-            ('deselect_all', 'Deselect All')
-        ),
-        render_kw={'class': 'list-unstyled', 'style': 'margin-bottom:0;'},
-    )
     permission_ids = MultiCheckboxField(
         'Permissions',
         render_kw={'class': 'list-unstyled'},
@@ -110,10 +102,6 @@ class PermissionsMixin(object):
 
     def get_selected_permissions(self):
         selected_ids = self.permission_ids.data
-        if 'select_all' in self.select_deselect_all.data:
-            selected_ids = [choice[0] for choice in self.permission_ids.choices]
-        elif 'deselect_all' in self.select_deselect_all.data:
-            selected_ids = []
         return entities_from_ids(flask.current_app.auth_manager.entity_registry.permission_cls,
                                  selected_ids)
 
@@ -170,7 +158,7 @@ def user_form(config=None, allow_superuser=False, endpoint='', fields=['is_enabl
             is_superuser = FieldMeta('Superuser')
             __default__ = FieldMeta
 
-        field_order = tuple(_fields + ['group_ids', 'bundle_ids', 'select_deselect_all',
+        field_order = tuple(_fields + ['group_ids', 'bundle_ids',
                                        'permission_ids'])
 
         setattr(FieldsMeta, username_key, FieldMeta(
@@ -197,18 +185,6 @@ def user_form(config=None, allow_superuser=False, endpoint='', fields=['is_enabl
         def obj(self):
             return self._obj
 
-        def validate(self):
-            if not ModelForm.validate(self):
-                return False
-
-            if 'select_all' in self.select_deselect_all.data and 'deselect_all' in self.select_deselect_all.data:  # noqa
-                error_list = list(self.select_deselect_all.errors)
-                error_list.append('You may not select all and deselect all. Please choose one.')
-                self.select_deselect_all.errors = tuple(error_list)
-                return False
-
-            return True
-
         def __iter__(self):
             order = ('csrf_token', ) + self.field_order
             return (getattr(self, field_id) for field_id in order)
@@ -224,7 +200,7 @@ def group_form(endpoint):
         return link_to(obj.name, flask.url_for(endpoint, objid=obj.id))
 
     class Group(PermissionsMixin, BundlesMixin, ModelForm):
-        _field_order = ('name', 'bundle_ids', 'select_deselect_all', 'permission_ids',)
+        _field_order = ('name', 'bundle_ids', 'permission_ids',)
 
         class Meta:
             model = group_cls
@@ -238,18 +214,6 @@ def group_form(endpoint):
         @property
         def obj(self):
             return self._obj
-
-        def validate(self):
-            if not ModelForm.validate(self):
-                return False
-
-            if 'select_all' in self.select_deselect_all.data and 'deselect_all' in self.select_deselect_all.data:   # noqa
-                error_list = list(self.select_deselect_all.errors)
-                error_list.append('You may not select all and deselect all. Please choose one.')
-                self.select_deselect_all.errors = tuple(error_list)
-                return False
-
-            return True
 
     return Group
 
@@ -274,17 +238,5 @@ def bundle_form(endpoint):
         @property
         def obj(self):
             return self._obj
-
-        def validate(self):
-            if not ModelForm.validate(self):
-                return False
-
-            if 'select_all' in self.select_deselect_all.data and 'deselect_all' in self.select_deselect_all.data:   # noqa
-                error_list = list(self.select_deselect_all.errors)
-                error_list.append('You may not select all and deselect all. Please choose one.')
-                self.select_deselect_all.errors = tuple(error_list)
-                return False
-
-            return True
 
     return Bundle

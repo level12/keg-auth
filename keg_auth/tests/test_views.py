@@ -556,53 +556,6 @@ class TestUserCrud(ViewTestBase):
         assert user.groups == [group_approve]
         assert user.bundles == [bundle_approve]
 
-    def test_add_select_all_permissions(self):
-        for i in range(3):
-            ents.Permission.testing_create()
-
-        resp = self.client.get('/users/add')
-
-        resp.form['email'] = 'select_all@test.com'
-        resp.form['select_deselect_all'] = ['select_all']
-
-        resp = resp.form.submit()
-        # import pdb; pdb.set_trace()
-        assert resp.status_code == 302
-        assert resp.location.endswith('/users')
-        assert resp.flashes == [('success', 'Successfully created User')]
-
-        user = ents.User.get_by(email='select_all@test.com')
-        assert user.permissions == ents.Permission.query.all()
-
-    def test_add_deselect_all_permissions(self):
-        p1 = ents.Permission.testing_create()
-        p2 = ents.Permission.testing_create()
-
-        resp = self.client.get('/users/add')
-
-        resp.form['email'] = 'deselect_all@test.com'
-        resp.form['select_deselect_all'] = ['deselect_all']
-        resp.form['permission_ids'] = [p1.id, p2.id]
-
-        resp = resp.form.submit()
-        assert resp.status_code == 302
-        assert resp.location.endswith('/users')
-        assert resp.flashes == [('success', 'Successfully created User')]
-
-        user = ents.User.get_by(email='deselect_all@test.com')
-        assert user.permissions == []
-
-    def test_select_and_deselect_throws_error(self):
-        resp = self.client.get('/users/add')
-
-        resp.form['email'] = 'select_and_deselect_all@test.com'
-        resp.form['select_deselect_all'] = ['select_all', 'deselect_all']
-
-        resp = resp.form.submit()
-        assert resp.flashes == [('error', 'Form errors detected.  Please see below for details.')]
-        assert resp.pyquery('#select_deselect_all').siblings('.help-block').text() ==\
-            'You may not select all and deselect all. Please choose one.'
-
     def test_resend_verification(self):
         self.current_user.is_verified = True
         self.current_user.permissions = ents.Permission.query.filter_by(token='auth-manage').all()
@@ -768,13 +721,12 @@ class TestUserCrud(ViewTestBase):
         assert resp.form['bundle_ids'].value == [str(obj.id) for obj in user_edit.bundles]
         all_permissions = [p.description or p.token for p in ents.Permission.query.all()]
         user_permissions = [p.description or p.token for p in user_edit.permissions]
-        listed_permissions = resp.pyquery('#permission_ids')('option')
+        listed_permissions = resp.pyquery('#permission_ids')('.custom-checkbox')
         assert len(listed_permissions) == len(all_permissions)
         for permission_list_item in listed_permissions:
-            assert permission_list_item.text in all_permissions
-            if permission_list_item.text in user_permissions:
-                assert 'selected' in permission_list_item.attrib
-        assert resp.pyquery('#select_deselect_all')
+            assert permission_list_item.find('label').text in all_permissions
+            if permission_list_item.find('label').text in user_permissions:
+                assert 'checked' in permission_list_item.find('input').attrib
         resp.form['email'] = 'foo@bar.baz'
         resp = resp.form.submit()
 
@@ -961,52 +913,6 @@ class TestGroupCrud(ViewTestBase):
         assert group.permissions == [perm_approve]
         assert group.bundles == [bundle_approve]
 
-    def test_add_select_all_permissions(self):
-        for i in range(3):
-            ents.Permission.testing_create()
-
-        resp = self.client.get('/groups/add')
-
-        resp.form['name'] = 'test adding a group with select all permissions'
-        resp.form['select_deselect_all'] = ['select_all']
-
-        resp = resp.form.submit()
-        assert resp.status_code == 302
-        assert resp.location.endswith('/groups')
-        assert resp.flashes == [('success', 'Successfully created Group')]
-
-        group = ents.Group.get_by(name='test adding a group with select all permissions')
-        assert group.permissions == ents.Permission.query.all()
-
-    def test_add_deselect_all_permissions(self):
-        p1 = ents.Permission.testing_create()
-        p2 = ents.Permission.testing_create()
-
-        resp = self.client.get('/groups/add')
-
-        resp.form['name'] = 'test adding a group with deselect all permissions'
-        resp.form['select_deselect_all'] = ['deselect_all']
-        resp.form['permission_ids'] = [p1.id, p2.id]
-
-        resp = resp.form.submit()
-        assert resp.status_code == 302
-        assert resp.location.endswith('/groups')
-        assert resp.flashes == [('success', 'Successfully created Group')]
-
-        group = ents.Group.get_by(name='test adding a group with deselect all permissions')
-        assert group.permissions == []
-
-    def test_select_and_deselect_throws_error(self):
-        resp = self.client.get('/groups/add')
-
-        resp.form['name'] = 'test adding a group with select and deselect all permissions'
-        resp.form['select_deselect_all'] = ['select_all', 'deselect_all']
-
-        resp = resp.form.submit()
-        assert resp.flashes == [('error', 'Form errors detected.  Please see below for details.')]
-        assert resp.pyquery('#select_deselect_all').siblings('.help-block').text() ==\
-            'You may not select all and deselect all. Please choose one.'
-
     def test_edit(self):
         group_edit = ents.Group.testing_create(bundles=[ents.Bundle.testing_create()],
                                                permissions=[ents.Permission.testing_create()])
@@ -1016,13 +922,12 @@ class TestGroupCrud(ViewTestBase):
         assert resp.form['bundle_ids'].value == [str(obj.id) for obj in group_edit.bundles]
         all_permissions = [p.description or p.token for p in ents.Permission.query.all()]
         user_permissions = [p.description or p.token for p in group_edit.permissions]
-        listed_permissions = resp.pyquery('#permission_ids')('option')
+        listed_permissions = resp.pyquery('#permission_ids')('.custom-checkbox')
         assert len(listed_permissions) == len(all_permissions)
         for permission_list_item in listed_permissions:
-            assert permission_list_item.text in all_permissions
-            if permission_list_item.text in user_permissions:
-                assert 'selected' in permission_list_item.attrib
-        assert resp.pyquery('#select_deselect_all')
+            assert permission_list_item.find('label').text in all_permissions
+            if permission_list_item.find('label').text in user_permissions:
+                assert 'checked' in permission_list_item.find('input').attrib
         resp.form['name'] = 'test editing a group'
         resp = resp.form.submit()
 
@@ -1137,52 +1042,6 @@ class TestBundleCrud(ViewTestBase):
         bundle = ents.Bundle.get_by(name='test adding a bundle')
         assert bundle.permissions == [perm_approve]
 
-    def test_add_select_all_permissions(self):
-        for i in range(3):
-            ents.Permission.testing_create()
-
-        resp = self.client.get('/bundles/add')
-
-        resp.form['name'] = 'test adding a bundle with select all permissions'
-        resp.form['select_deselect_all'] = ['select_all']
-
-        resp = resp.form.submit()
-        assert resp.status_code == 302
-        assert resp.location.endswith('/bundles')
-        assert resp.flashes == [('success', 'Successfully created Bundle')]
-
-        bundle = ents.Bundle.get_by(name='test adding a bundle with select all permissions')
-        assert bundle.permissions == ents.Permission.query.all()
-
-    def test_add_deselect_all_permissions(self):
-        p1 = ents.Permission.testing_create()
-        p2 = ents.Permission.testing_create()
-
-        resp = self.client.get('/bundles/add')
-
-        resp.form['name'] = 'test adding a bundle with deselect all permissions'
-        resp.form['select_deselect_all'] = ['deselect_all']
-        resp.form['permission_ids'] = [p1.id, p2.id]
-
-        resp = resp.form.submit()
-        assert resp.status_code == 302
-        assert resp.location.endswith('/bundles')
-        assert resp.flashes == [('success', 'Successfully created Bundle')]
-
-        bundle = ents.Bundle.get_by(name='test adding a bundle with deselect all permissions')
-        assert bundle.permissions == []
-
-    def test_select_and_deselect_throws_error(self):
-        resp = self.client.get('/bundles/add')
-
-        resp.form['name'] = 'test adding a bundle with select and deselect all permissions'
-        resp.form['select_deselect_all'] = ['select_all', 'deselect_all']
-
-        resp = resp.form.submit()
-        assert resp.flashes == [('error', 'Form errors detected.  Please see below for details.')]
-        assert resp.pyquery('#select_deselect_all').siblings('.help-block').text() ==\
-            'You may not select all and deselect all. Please choose one.'
-
     def test_edit(self):
         bundle_edit = ents.Bundle.testing_create(permissions=[ents.Permission.testing_create()])
 
@@ -1190,13 +1049,12 @@ class TestBundleCrud(ViewTestBase):
         assert resp.form['name'].value == bundle_edit.name
         all_permissions = [p.description or p.token for p in ents.Permission.query.all()]
         user_permissions = [p.description or p.token for p in bundle_edit.permissions]
-        listed_permissions = resp.pyquery('#permission_ids')('option')
+        listed_permissions = resp.pyquery('#permission_ids')('.custom-checkbox')
         assert len(listed_permissions) == len(all_permissions)
         for permission_list_item in listed_permissions:
-            assert permission_list_item.text in all_permissions
-            if permission_list_item.text in user_permissions:
-                assert 'selected' in permission_list_item.attrib
-        assert resp.pyquery('#select_deselect_all')
+            assert permission_list_item.find('label').text in all_permissions
+            if permission_list_item.find('label').text in user_permissions:
+                assert 'checked' in permission_list_item.find('input').attrib
         resp.form['name'] = 'test editing a bundle'
         resp = resp.form.submit()
 
