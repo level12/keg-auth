@@ -1,6 +1,20 @@
 Changelog
 =========
 
+0.2.20 released 2020-03-24
+--------------------------
+
+- OIDC and related updates (fab68f5_)
+- Add OIDC authenticator and login/logout view responders
+- Fix missing page header for Permissions view
+- Allow passing blueprint kwargs to make_blueprint
+- Easier disabling of specific auth views
+- Allow view responder flash messages to be disabled
+- Drop bulk permission controls (better templating now in keg-elements)
+
+.. _fab68f5: https://github.com/level12/keg-auth/commit/fab68f5
+
+
 0.2.19 released 2020-02-21
 --------------------------
 
