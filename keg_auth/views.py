@@ -472,6 +472,7 @@ class Permission(keg.web.BaseView):
         return flask.render_template(
             self.grid_template,
             page_title=_('Permissions'),
+            page_heading=_('Permissions'),
             grid=grid
         )
 
@@ -480,7 +481,7 @@ def make_blueprint(import_name, _auth_manager, bp_name='auth', login_cls=Login,
                    forgot_cls=ForgotPassword, reset_cls=ResetPassword, logout_cls=Logout,
                    verify_cls=VerifyAccount, user_crud_cls=User, group_crud_cls=Group,
                    bundle_crud_cls=Bundle, permission_cls=Permission,
-                   blueprint_class=flask.Blueprint):
+                   blueprint_class=flask.Blueprint, **kwargs):
     """ Blueprint factory for keg-auth views
 
         Naming the blueprint here requires us to create separate view classes so that the routes
@@ -493,41 +494,50 @@ def make_blueprint(import_name, _auth_manager, bp_name='auth', login_cls=Login,
         blueprint_class is the class to be instantiated as the Flask blueprint for auth views. The
         default is flask.blueprint, but a custom blueprint may be provided.
     """
-    _blueprint = blueprint_class(bp_name, import_name)
+    _blueprint = blueprint_class(bp_name, import_name, **kwargs)
 
     # It's not ideal we have to redefine the classes, but it's needed because of how
     # Keg.web.BaseView does it's meta programming.  If we don't redefine the class, then
     # the view doesn't actually get created on blueprint.
-    class Login(login_cls):
-        blueprint = _blueprint
-        auth_manager = _auth_manager
+    if login_cls:
+        class Login(login_cls):
+            blueprint = _blueprint
+            auth_manager = _auth_manager
 
-    class ForgotPassword(forgot_cls):
-        blueprint = _blueprint
-        auth_manager = _auth_manager
+    if forgot_cls:
+        class ForgotPassword(forgot_cls):
+            blueprint = _blueprint
+            auth_manager = _auth_manager
 
-    class ResetPassword(reset_cls):
-        blueprint = _blueprint
-        auth_manager = _auth_manager
+    if reset_cls:
+        class ResetPassword(reset_cls):
+            blueprint = _blueprint
+            auth_manager = _auth_manager
 
-    class VerifyAccount(verify_cls):
-        blueprint = _blueprint
-        auth_manager = _auth_manager
+    if verify_cls:
+        class VerifyAccount(verify_cls):
+            blueprint = _blueprint
+            auth_manager = _auth_manager
 
-    class Logout(logout_cls):
-        blueprint = _blueprint
-        auth_manager = _auth_manager
+    if logout_cls:
+        class Logout(logout_cls):
+            blueprint = _blueprint
+            auth_manager = _auth_manager
 
-    class User(user_crud_cls):
-        blueprint = _blueprint
+    if user_crud_cls:
+        class User(user_crud_cls):
+            blueprint = _blueprint
 
-    class Group(group_crud_cls):
-        blueprint = _blueprint
+    if group_crud_cls:
+        class Group(group_crud_cls):
+            blueprint = _blueprint
 
-    class Bundle(bundle_crud_cls):
-        blueprint = _blueprint
+    if bundle_crud_cls:
+        class Bundle(bundle_crud_cls):
+            blueprint = _blueprint
 
-    class Permission(permission_cls):
-        blueprint = _blueprint
+    if permission_cls:
+        class Permission(permission_cls):
+            blueprint = _blueprint
 
     return _blueprint

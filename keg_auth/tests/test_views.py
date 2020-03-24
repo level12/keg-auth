@@ -1,5 +1,6 @@
 #s Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
 from __future__ import unicode_literals
+from blazeutils.datastructures import BlankObject
 import flask
 import freezegun
 import arrow
@@ -556,53 +557,6 @@ class TestUserCrud(ViewTestBase):
         assert user.groups == [group_approve]
         assert user.bundles == [bundle_approve]
 
-    def test_add_select_all_permissions(self):
-        for i in range(3):
-            ents.Permission.testing_create()
-
-        resp = self.client.get('/users/add')
-
-        resp.form['email'] = 'select_all@test.com'
-        resp.form['select_deselect_all'] = ['select_all']
-
-        resp = resp.form.submit()
-        # import pdb; pdb.set_trace()
-        assert resp.status_code == 302
-        assert resp.location.endswith('/users')
-        assert resp.flashes == [('success', 'Successfully created User')]
-
-        user = ents.User.get_by(email='select_all@test.com')
-        assert user.permissions == ents.Permission.query.all()
-
-    def test_add_deselect_all_permissions(self):
-        p1 = ents.Permission.testing_create()
-        p2 = ents.Permission.testing_create()
-
-        resp = self.client.get('/users/add')
-
-        resp.form['email'] = 'deselect_all@test.com'
-        resp.form['select_deselect_all'] = ['deselect_all']
-        resp.form['permission_ids'] = [p1.id, p2.id]
-
-        resp = resp.form.submit()
-        assert resp.status_code == 302
-        assert resp.location.endswith('/users')
-        assert resp.flashes == [('success', 'Successfully created User')]
-
-        user = ents.User.get_by(email='deselect_all@test.com')
-        assert user.permissions == []
-
-    def test_select_and_deselect_throws_error(self):
-        resp = self.client.get('/users/add')
-
-        resp.form['email'] = 'select_and_deselect_all@test.com'
-        resp.form['select_deselect_all'] = ['select_all', 'deselect_all']
-
-        resp = resp.form.submit()
-        assert resp.flashes == [('error', 'Form errors detected.  Please see below for details.')]
-        assert resp.pyquery('#select_deselect_all').siblings('.help-block').text() ==\
-            'You may not select all and deselect all. Please choose one.'
-
     def test_resend_verification(self):
         self.current_user.is_verified = True
         self.current_user.permissions = ents.Permission.query.filter_by(token='auth-manage').all()
@@ -768,13 +722,12 @@ class TestUserCrud(ViewTestBase):
         assert resp.form['bundle_ids'].value == [str(obj.id) for obj in user_edit.bundles]
         all_permissions = [p.description or p.token for p in ents.Permission.query.all()]
         user_permissions = [p.description or p.token for p in user_edit.permissions]
-        listed_permissions = resp.pyquery('#permission_ids')('option')
+        listed_permissions = resp.pyquery('#permission_ids')('.custom-checkbox')
         assert len(listed_permissions) == len(all_permissions)
         for permission_list_item in listed_permissions:
-            assert permission_list_item.text in all_permissions
-            if permission_list_item.text in user_permissions:
-                assert 'selected' in permission_list_item.attrib
-        assert resp.pyquery('#select_deselect_all')
+            assert permission_list_item.find('label').text in all_permissions
+            if permission_list_item.find('label').text in user_permissions:
+                assert 'checked' in permission_list_item.find('input').attrib
         resp.form['email'] = 'foo@bar.baz'
         resp = resp.form.submit()
 
@@ -961,52 +914,6 @@ class TestGroupCrud(ViewTestBase):
         assert group.permissions == [perm_approve]
         assert group.bundles == [bundle_approve]
 
-    def test_add_select_all_permissions(self):
-        for i in range(3):
-            ents.Permission.testing_create()
-
-        resp = self.client.get('/groups/add')
-
-        resp.form['name'] = 'test adding a group with select all permissions'
-        resp.form['select_deselect_all'] = ['select_all']
-
-        resp = resp.form.submit()
-        assert resp.status_code == 302
-        assert resp.location.endswith('/groups')
-        assert resp.flashes == [('success', 'Successfully created Group')]
-
-        group = ents.Group.get_by(name='test adding a group with select all permissions')
-        assert group.permissions == ents.Permission.query.all()
-
-    def test_add_deselect_all_permissions(self):
-        p1 = ents.Permission.testing_create()
-        p2 = ents.Permission.testing_create()
-
-        resp = self.client.get('/groups/add')
-
-        resp.form['name'] = 'test adding a group with deselect all permissions'
-        resp.form['select_deselect_all'] = ['deselect_all']
-        resp.form['permission_ids'] = [p1.id, p2.id]
-
-        resp = resp.form.submit()
-        assert resp.status_code == 302
-        assert resp.location.endswith('/groups')
-        assert resp.flashes == [('success', 'Successfully created Group')]
-
-        group = ents.Group.get_by(name='test adding a group with deselect all permissions')
-        assert group.permissions == []
-
-    def test_select_and_deselect_throws_error(self):
-        resp = self.client.get('/groups/add')
-
-        resp.form['name'] = 'test adding a group with select and deselect all permissions'
-        resp.form['select_deselect_all'] = ['select_all', 'deselect_all']
-
-        resp = resp.form.submit()
-        assert resp.flashes == [('error', 'Form errors detected.  Please see below for details.')]
-        assert resp.pyquery('#select_deselect_all').siblings('.help-block').text() ==\
-            'You may not select all and deselect all. Please choose one.'
-
     def test_edit(self):
         group_edit = ents.Group.testing_create(bundles=[ents.Bundle.testing_create()],
                                                permissions=[ents.Permission.testing_create()])
@@ -1016,13 +923,12 @@ class TestGroupCrud(ViewTestBase):
         assert resp.form['bundle_ids'].value == [str(obj.id) for obj in group_edit.bundles]
         all_permissions = [p.description or p.token for p in ents.Permission.query.all()]
         user_permissions = [p.description or p.token for p in group_edit.permissions]
-        listed_permissions = resp.pyquery('#permission_ids')('option')
+        listed_permissions = resp.pyquery('#permission_ids')('.custom-checkbox')
         assert len(listed_permissions) == len(all_permissions)
         for permission_list_item in listed_permissions:
-            assert permission_list_item.text in all_permissions
-            if permission_list_item.text in user_permissions:
-                assert 'selected' in permission_list_item.attrib
-        assert resp.pyquery('#select_deselect_all')
+            assert permission_list_item.find('label').text in all_permissions
+            if permission_list_item.find('label').text in user_permissions:
+                assert 'checked' in permission_list_item.find('input').attrib
         resp.form['name'] = 'test editing a group'
         resp = resp.form.submit()
 
@@ -1137,52 +1043,6 @@ class TestBundleCrud(ViewTestBase):
         bundle = ents.Bundle.get_by(name='test adding a bundle')
         assert bundle.permissions == [perm_approve]
 
-    def test_add_select_all_permissions(self):
-        for i in range(3):
-            ents.Permission.testing_create()
-
-        resp = self.client.get('/bundles/add')
-
-        resp.form['name'] = 'test adding a bundle with select all permissions'
-        resp.form['select_deselect_all'] = ['select_all']
-
-        resp = resp.form.submit()
-        assert resp.status_code == 302
-        assert resp.location.endswith('/bundles')
-        assert resp.flashes == [('success', 'Successfully created Bundle')]
-
-        bundle = ents.Bundle.get_by(name='test adding a bundle with select all permissions')
-        assert bundle.permissions == ents.Permission.query.all()
-
-    def test_add_deselect_all_permissions(self):
-        p1 = ents.Permission.testing_create()
-        p2 = ents.Permission.testing_create()
-
-        resp = self.client.get('/bundles/add')
-
-        resp.form['name'] = 'test adding a bundle with deselect all permissions'
-        resp.form['select_deselect_all'] = ['deselect_all']
-        resp.form['permission_ids'] = [p1.id, p2.id]
-
-        resp = resp.form.submit()
-        assert resp.status_code == 302
-        assert resp.location.endswith('/bundles')
-        assert resp.flashes == [('success', 'Successfully created Bundle')]
-
-        bundle = ents.Bundle.get_by(name='test adding a bundle with deselect all permissions')
-        assert bundle.permissions == []
-
-    def test_select_and_deselect_throws_error(self):
-        resp = self.client.get('/bundles/add')
-
-        resp.form['name'] = 'test adding a bundle with select and deselect all permissions'
-        resp.form['select_deselect_all'] = ['select_all', 'deselect_all']
-
-        resp = resp.form.submit()
-        assert resp.flashes == [('error', 'Form errors detected.  Please see below for details.')]
-        assert resp.pyquery('#select_deselect_all').siblings('.help-block').text() ==\
-            'You may not select all and deselect all. Please choose one.'
-
     def test_edit(self):
         bundle_edit = ents.Bundle.testing_create(permissions=[ents.Permission.testing_create()])
 
@@ -1190,13 +1050,12 @@ class TestBundleCrud(ViewTestBase):
         assert resp.form['name'].value == bundle_edit.name
         all_permissions = [p.description or p.token for p in ents.Permission.query.all()]
         user_permissions = [p.description or p.token for p in bundle_edit.permissions]
-        listed_permissions = resp.pyquery('#permission_ids')('option')
+        listed_permissions = resp.pyquery('#permission_ids')('.custom-checkbox')
         assert len(listed_permissions) == len(all_permissions)
         for permission_list_item in listed_permissions:
-            assert permission_list_item.text in all_permissions
-            if permission_list_item.text in user_permissions:
-                assert 'selected' in permission_list_item.attrib
-        assert resp.pyquery('#select_deselect_all')
+            assert permission_list_item.find('label').text in all_permissions
+            if permission_list_item.find('label').text in user_permissions:
+                assert 'checked' in permission_list_item.find('input').attrib
         resp.form['name'] = 'test editing a bundle'
         resp = resp.form.submit()
 
@@ -1380,3 +1239,107 @@ class TestFormSelect2(ViewTestBase):
         resp = self.client.get('/users/add')
         assert self.script not in resp
         assert self.style not in resp
+
+
+@pytest.fixture
+def auth_user():
+    user = ents.User.testing_create()
+    yield user
+
+
+@pytest.fixture
+def oidc_client():
+    client = AuthTestApp(flask.current_app)
+
+    with mock.patch.dict(
+        flask.current_app.config,
+        {
+            'OIDC_CLIENT_SECRETS': 'notreallyneeded',
+            'OIDC_COOKIE_SECURE': False,
+            'OIDC_CALLBACK_ROUTE': '/oidc/callback',
+            'OIDC_SCOPES': ('openid', 'email', 'profile'),
+            'OIDC_REDIRECT_BASE': 'http://localhost:5000',
+            'OIDC_LOGOUT': '/oauth2/default/v1/logout',
+            'OIDC_PROVIDER_URL': 'https://the.provider',
+            'OIDC_CLIENT_ID': 'theproviderclientid',
+            'OIDC_CLIENT_SECRET': 'supersecretrandomgeneratedstring',
+        }
+    ):
+        from keg_auth.libs.authenticators import OidcAuthenticator
+
+        # clean up app so OIDC can set up again
+        flask.current_app._got_first_request = False
+        flask.current_app.view_functions.pop('_oidc_callback', None)
+
+        # set up OIDC handler and attach it to the app
+        authenticator = OidcAuthenticator(flask.current_app)
+
+        with mock.patch.object(
+            flask.current_app.auth_manager,
+            'login_authenticator',
+            authenticator
+        ):
+            yield client
+
+
+@pytest.fixture
+def oidc_auth_client(oidc_client, auth_user):
+    username = auth_user.username
+
+    def _token_setter():
+        flask.g.oidc_id_token = 'foobar'
+
+    def _field_getter(fieldname):
+        return username
+
+    with mock.patch.dict(
+        flask.current_app.auth_manager.oidc.__dict__,
+        {
+            'authenticate_or_redirect': _token_setter,
+            'user_getfield': _field_getter,
+        },
+    ):
+        yield oidc_client
+
+
+class TestOidcLogin:
+    def test_authenticated(self, oidc_auth_client):
+        resp = oidc_auth_client.get('/login', status=302)
+        assert resp.location == 'http://keg.example.com/'
+
+    def test_inactive(self, oidc_auth_client, auth_user):
+        ents.User.edit(auth_user.id, is_enabled=False)
+        resp = oidc_auth_client.get('/login', status=200)
+        assert 'has been disabled' in resp
+
+    def test_not_exists(self, oidc_auth_client):
+        ents.User.delete_cascaded()
+        resp = oidc_auth_client.get('/login', status=200)
+        assert 'No user account matches' in resp
+
+    def test_unauthenticated(self, oidc_client):
+        resp = oidc_client.get('/login', status=302)
+        assert 'oauth2/default/v1/authorize?' in resp.location
+
+
+class TestOidcLogout:
+    def test_unauthenticated(self, oidc_client):
+        resp = oidc_client.get('/logout', status=302)
+        assert resp.location == 'http://keg.example.com/login'
+
+    def test_bad_token(self, oidc_auth_client):
+        resp = oidc_auth_client.get('/logout', status=302)
+        assert resp.location == 'http://keg.example.com/login?next=%2Flogout'
+
+    def test_success(self, oidc_auth_client, auth_user):
+        with mock.patch.object(
+            flask.current_app.auth_manager.oidc,
+            'credentials_store',
+            {auth_user.username: 'bar'},
+        ), mock.patch(
+            'oauth2client.client.OAuth2Credentials.from_json',
+            lambda _: BlankObject(token_response={'id_token': 'foo'})
+        ):
+            resp = oidc_auth_client.get('/logout', status=302)
+            assert '/oauth2/default/v1/logout?id_token_hint=foo&post_logout_redirect_uri' \
+                in resp.location

@@ -1,3 +1,4 @@
+{% import 'keg_elements/forms/horizontal.html' as horizontal %}
 {% extends config.get('BASE_TEMPLATE') or config['KEGAUTH_BASE_TEMPLATE'] %}
 
 {% block title %}{{ page_title }} | {{ super() }}{% endblock %}
@@ -7,6 +8,7 @@
 {% if (use_select2 == true) %}
     {% include 'keg_auth/select2-scripts.html' %}
 {% endif %}
+{{ horizontal.custom_js() }}
 {% endblock %}
 
 {% block styles %}
@@ -14,6 +16,7 @@
 {% if (use_select2 == true) %}
     {% include 'keg_auth/select2-styles.html' %}
 {% endif %}
+{{ horizontal.custom_css() }}
 {% endblock %}
 
 {% block page_content %}
