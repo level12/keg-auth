@@ -9,15 +9,299 @@ import arrow
 import flask
 import flask_webtest
 import passlib
+import pytest
 import wrapt
-from blazeutils import tolist
+from blazeutils import randchars, tolist
 from blazeutils.containers import LazyDict
-
 from keg import current_app
-from keg_auth.model.entity_registry import EntityRegistry
 
 
-class AuthTests(object):
+@pytest.mark.skipif(not flask.current_app.auth_manager.entity_registry.is_registered('attempt'),
+                    reason='no attempt model registered in entity registry')
+class AuthAttemptTests(object):
+    login_invalid_flashes = [('error', 'Invalid password.')]
+    login_lockout_flashes = [('error', 'Too many failed login attempts.')]
+    login_success_flashes = [('success', 'Login successful.')]
+
+    reset_lockout_flashes = [('error', 'Too many password reset attempts.')]
+    reset_success_flashes = [
+        ('success', 'Password changed.  Please use the new password to login below.')
+    ]
+
+    def setup(self):
+        self.attempt_ent.delete_cascaded()
+
+    @classmethod
+    def setup_class(cls):
+        cls.attempt_ent = flask.current_app.auth_manager.entity_registry.attempt_cls
+        cls.client = flask_webtest.TestApp(flask.current_app)
+
+    def do_login(self, client, email, password, submit_status=200):
+        login_url = flask.url_for(flask.current_app.auth_manager.endpoint('login'))
+        resp = client.get(login_url)
+        resp.form['login_id'] = email
+        resp.form['password'] = password
+        return resp.form.submit(status=submit_status)
+
+    def do_login_test(self, user, login_time, flashes, password='badpass',
+                      submit_status=200):
+        with mock.patch(
+            'keg_auth.libs.authenticators.arrow.utcnow',
+            return_value=login_time,
+        ):
+            resp = self.do_login(self.client, user.email, password, submit_status)
+            assert resp.flashes == flashes
+
+    @pytest.mark.parametrize('limit, timespan, lockout', [
+        (3, 3600, 7200),
+        (3, 7200, 300),
+        (5, 300, 300),
+    ])
+    def test_login_attempts_blocked(self, limit, timespan, lockout):
+        '''
+        Test that login attempts get blocked after reaching the failed login attempt
+        limit. Login attempts after the lockout period has passed (since the failed attempt
+        that caused the lockout) should not be blocked.
+        '''
+        with mock.patch.dict('flask.current_app.config', {
+            'KEGAUTH_LOGIN_ATTEMPT_LIMIT': limit,
+            'KEGAUTH_LOGIN_ATTEMPT_TIMESPAN': timespan,
+            'KEGAUTH_LOGIN_ATTEMPT_LOCKOUT': lockout,
+        }):
+            user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
+            assert self.attempt_ent.query.count() == 0
+
+            last_attempt_time = arrow.utcnow()
+            first_attempt_time = last_attempt_time + timedelta(seconds=-(timespan - 1))
+            before_lockout_end = last_attempt_time + timedelta(seconds=lockout)
+            after_lockout_end = last_attempt_time + timedelta(seconds=lockout + 1)
+
+            def assert_attempt_count(attempt_count, failed_count, is_during_lockout=False):
+                assert self.attempt_ent.query.filter_by(
+                    user_id=user.id,
+                    attempt_type='login',
+                    is_during_lockout=is_during_lockout,
+                ).count() == attempt_count
+                assert self.attempt_ent.query.filter_by(
+                    user_id=user.id,
+                    attempt_type='login',
+                    success=False,
+                    is_during_lockout=is_during_lockout,
+                ).count() == failed_count
+
+            def do_test(login_time, flashes, password='badpass', submit_status=200):
+                self.do_login_test(user, login_time, flashes, password, submit_status)
+
+            do_test(first_attempt_time, self.login_invalid_flashes)
+            assert_attempt_count(1, 1)
+            assert_attempt_count(0, 0, is_during_lockout=True)
+            for i in range(0, limit - 2):
+                attempt_time = first_attempt_time + timedelta(seconds=i+1)
+                do_test(attempt_time, self.login_invalid_flashes)
+                assert_attempt_count(i + 2, i + 2)
+                assert_attempt_count(0, 0, is_during_lockout=True)
+
+            do_test(last_attempt_time, self.login_invalid_flashes)
+            assert_attempt_count(limit, limit)
+            assert_attempt_count(0, 0, is_during_lockout=True)
+
+            # Test attempts blocked at start of lockout.
+            do_test(last_attempt_time + timedelta(seconds=1), self.login_lockout_flashes, 'pass')
+            assert_attempt_count(limit, limit)
+            assert_attempt_count(1, 0, is_during_lockout=True)
+
+            # Test attempts blocked just before end of lockout.
+            for i in range(0, limit):
+                attempt_time = before_lockout_end - timedelta(seconds=i + 1)
+                do_test(attempt_time, self.login_lockout_flashes)
+                assert_attempt_count(limit, limit)
+                assert_attempt_count(2 + i, i + 1, is_during_lockout=True)
+
+            # Test attempts not blocked after lockout. Note that even though in the
+            # previous loop we attempted (limit) times unsuccessfully, those attempts
+            # do not count against the limit counter because they were done during
+            # lockout.
+            do_test(after_lockout_end, self.login_success_flashes, 'pass', 302)
+            assert_attempt_count(limit + 1, limit)
+            assert_attempt_count(limit + 1, limit, is_during_lockout=True)
+
+    @mock.patch.dict('flask.current_app.config', {
+        'KEGAUTH_LOGIN_ATTEMPT_LIMIT': 3,
+        'KEGAUTH_LOGIN_ATTEMPT_TIMESPAN': 3600,
+        'KEGAUTH_LOGIN_ATTEMPT_LOCKOUT': 7200,
+    })
+    @mock.patch.object(current_app.auth_manager.entity_registry, '_attempt_cls',
+                       new_callable=mock.PropertyMock(return_value=None))
+    def test_login_attempts_not_blocked(self, _):
+        '''
+        Test that we do not block any attempts with missing attempt entity.
+        '''
+        user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
+        assert self.attempt_ent.query.count() == 0
+
+        def do_test(attempt_count, flashes, password='badpass', submit_status=200):
+            resp = self.do_login(self.client, user.email, password, submit_status)
+            assert self.attempt_ent.query.filter_by(
+                user_id=user.id, attempt_type='login').count() == attempt_count
+            assert resp.flashes == flashes
+
+        do_test(0, self.login_invalid_flashes)
+        do_test(0, self.login_invalid_flashes)
+        do_test(0, self.login_invalid_flashes)
+        do_test(0, self.login_invalid_flashes)
+        do_test(0, self.login_success_flashes, 'pass', 302)
+
+    @pytest.mark.parametrize('limit, timespan, lockout', [
+        (3, 3600, 7200),
+        (3, 7200, 300),
+        (5, 300, 300),
+    ])
+    def test_successful_login_resets_attempt_counter(self, limit, timespan, lockout):
+        '''
+        Test that several failed logins before a successful login do not count
+        towards the attempt lockout counter.
+        '''
+        with mock.patch.dict('flask.current_app.config', {
+            'KEGAUTH_LOGIN_ATTEMPT_LIMIT': limit,
+            'KEGAUTH_LOGIN_ATTEMPT_TIMESPAN': timespan,
+            'KEGAUTH_LOGIN_ATTEMPT_LOCKOUT': lockout,
+        }):
+            user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
+            assert self.attempt_ent.query.count() == 0
+
+            # Login and assert matching flashes and status.
+            def do_test(login_time, flashes, password='badpass', submit_status=200):
+                self.do_login_test(user, login_time, flashes, password, submit_status)
+
+            login_time = arrow.utcnow()
+            # Create (limit - 1) failed login attempts. The next failed login
+            # would cause a lockout.
+            for i in range(0, limit - 1):
+                attempt_time = login_time + timedelta(seconds=-(i + 1))
+                do_test(attempt_time, self.login_invalid_flashes)
+
+            # Create a successful login to reset the attempt counter.
+            do_test(login_time, self.login_success_flashes, 'pass', 302)
+
+            # We can attempt (limit) more times after a successful login before
+            # getting locked out.
+            for i in range(0, limit):
+                failed_login_time = login_time + timedelta(seconds=i + 1)
+                do_test(failed_login_time, self.login_invalid_flashes)
+
+            # We should be locked out now because we did (limit) failed attempts
+            # after the successful attempt.
+            do_test(login_time + timedelta(seconds=limit + 1), self.login_lockout_flashes)
+
+    def do_reset_test(self, user, reset_time, flashes, submit_status=200):
+        with mock.patch(
+            'keg_auth.libs.authenticators.arrow.utcnow',
+            return_value=reset_time,
+        ):
+            token = user.token_generate()
+            url = flask.url_for(flask.current_app.auth_manager.endpoint('reset-password'),
+                                user_id=user.id, token=token)
+            resp = self.client.get(url, status=200)
+            new_pass = randchars(5)
+            resp.form['password'] = new_pass
+            resp.form['confirm'] = new_pass
+            resp = resp.form.submit(status=submit_status)
+            assert resp.flashes == flashes
+
+    @pytest.mark.parametrize('limit, timespan, lockout', [
+        (3, 3600, 7200),
+        (3, 7200, 300),
+        (5, 300, 300),
+    ])
+    def test_reset_pw_attempts_blocked(self, limit, timespan, lockout):
+        '''
+        Test that login attempts get blocked after reaching the failed login attempt
+        limit. Login attempts after the lockout period has passed (since the failed attempt
+        that caused the lockout) should not be blocked.
+        '''
+        with mock.patch.dict('flask.current_app.config', {
+            'KEGAUTH_RESET_ATTEMPT_LIMIT': limit,
+            'KEGAUTH_RESET_ATTEMPT_TIMESPAN': timespan,
+            'KEGAUTH_RESET_ATTEMPT_LOCKOUT': lockout,
+        }):
+            user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
+            assert self.attempt_ent.query.count() == 0
+
+            last_attempt_time = arrow.utcnow()
+            first_attempt_time = last_attempt_time + timedelta(seconds=-(timespan - 1))
+            before_lockout_end = last_attempt_time + timedelta(seconds=lockout)
+            after_lockout_end = last_attempt_time + timedelta(seconds=lockout + 1)
+
+            def assert_attempt_count(attempt_count, failed_count, is_during_lockout=False):
+                assert self.attempt_ent.query.filter_by(
+                    user_id=user.id,
+                    attempt_type='reset',
+                    is_during_lockout=is_during_lockout,
+                ).count() == attempt_count
+                assert self.attempt_ent.query.filter_by(
+                    user_id=user.id,
+                    attempt_type='reset',
+                    success=False,
+                    is_during_lockout=is_during_lockout,
+                ).count() == failed_count
+
+            def do_test(reset_time, flashes, submit_status=200):
+                self.do_reset_test(user, reset_time, flashes, submit_status)
+
+            do_test(first_attempt_time, self.reset_success_flashes, 302)
+            assert_attempt_count(1, 0)
+            assert_attempt_count(0, 0, is_during_lockout=True)
+            for i in range(0, limit - 2):
+                attempt_time = first_attempt_time + timedelta(seconds=i + 1)
+                do_test(attempt_time, self.reset_success_flashes, 302)
+                assert_attempt_count(i + 2, 0)
+                assert_attempt_count(0, 0, is_during_lockout=True)
+
+            do_test(last_attempt_time, self.reset_success_flashes, 302)
+            assert_attempt_count(limit, 0)
+            assert_attempt_count(0, 0, is_during_lockout=True)
+
+            # Test attempts blocked at start of lockout.
+            do_test(last_attempt_time + timedelta(seconds=1), self.reset_lockout_flashes)
+            assert_attempt_count(limit, 0)
+            assert_attempt_count(1, 1, is_during_lockout=True)
+
+            # Test attempts blocked just before end of lockout.
+            for i in range(0, limit):
+                attempt_time = before_lockout_end - timedelta(seconds=i + 1)
+                do_test(attempt_time, self.reset_lockout_flashes)
+                assert_attempt_count(limit, 0)
+                assert_attempt_count(2 + i, 2 + i, is_during_lockout=True)
+
+            # Test attempts not blocked after lockout. Note that even though in the
+            # previous loop we attempted (limit) times unsuccessfully, those attempts
+            # do not count against the limit counter because they were done during
+            # lockout.
+            do_test(after_lockout_end, self.reset_success_flashes, 302)
+            assert_attempt_count(limit + 1, 0)
+            assert_attempt_count(limit + 1, limit + 1, is_during_lockout=True)
+
+    @mock.patch.dict('flask.current_app.config', {
+        'KEGAUTH_RESET_ATTEMPT_LIMIT': 2,
+        'KEGAUTH_RESET_ATTEMPT_TIMESPAN': 3600,
+        'KEGAUTH_RESET_ATTEMPT_LOCKOUT': 7200,
+    })
+    @mock.patch.object(current_app.auth_manager.entity_registry, '_attempt_cls',
+                       new_callable=mock.PropertyMock(return_value=None))
+    def test_reset_pw_attempts_not_blocked(self, _):
+        user = self.user_ent.testing_create()
+        assert self.attempt_ent.query.count() == 0
+
+        def do_test(reset_time, flashes, submit_status=200):
+            self.do_reset_test(user, reset_time, flashes, submit_status)
+
+        do_test(arrow.utcnow(), self.reset_success_flashes, 302)
+        do_test(arrow.utcnow(), self.reset_success_flashes, 302)
+        do_test(arrow.utcnow(), self.reset_success_flashes, 302)
+        do_test(arrow.utcnow(), self.reset_success_flashes, 302)
+
+
+class AuthTests(AuthAttemptTests):
     """
         These tests are designed so they can can be imported into an application's tests
         and ran to ensure customization of KegAuth hasn't broken basic functionality.
@@ -26,8 +310,8 @@ class AuthTests(object):
     protected_url_permissions = None
 
     def setup(self):
+        super().setup()
         self.user_ent.delete_cascaded()
-        self.attempt_ent.delete_cascaded()
 
     def test_login_get(self):
         app = flask.current_app
@@ -56,7 +340,7 @@ class AuthTests(object):
         assert resp.flashes == [(category, message)]
 
     def test_login_field_success(self):
-        self.user_ent.testing_create(email='foo@bar.com', password='pass')
+        user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(flask.url_for(flask.current_app.auth_manager.endpoint('login')))
@@ -73,7 +357,13 @@ class AuthTests(object):
         category = flash_success[1]
         message = flash_success[0]
         assert resp.flashes == [(category, message)]
-        assert self.attempt_ent.query.count() == 0
+        assert self.attempt_ent.query.count() == 1
+        assert self.attempt_ent.query.filter_by(
+            attempt_type='login',
+            success=True,
+            user_id=user.id,
+            is_during_lockout=False,
+        )
 
     def test_login_field_success_next_parameter(self):
         self.user_ent.testing_create(email='foo@bar.com', password='pass')
@@ -182,99 +472,12 @@ class AuthTests(object):
         message = flash_invalid_password[0]
         assert resp.flashes == [(category, message)]
         assert self.attempt_ent.query.count() == 1
-        assert self.attempt_ent.get_by(attempt_type='login', user_id=user.id)
-
-    def do_login(self, client, email, password, submit_status=200):
-        resp = client.get(self.login_url)
-        resp.form['login_id'] = email
-        resp.form['password'] = password
-        return resp.form.submit(status=submit_status)
-
-    @mock.patch.dict('flask.current_app.config', {
-        'KEGAUTH_LOGIN_ATTEMPT_LIMIT': 3,
-        'KEGAUTH_LOGIN_ATTEMPT_TIMESPAN': 1,
-        'KEGAUTH_LOGIN_ATTEMPT_LOCKOUT': 2,
-    })
-    def test_login_attempts_blocked(self):
-        user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
-        client = flask_webtest.TestApp(flask.current_app)
-        assert self.attempt_ent.query.count() == 0
-
-        def do_test(attempt_count, flashes, password='badpass'):
-            resp = self.do_login(client, user.email, password)
-            assert self.attempt_ent.query.filter_by(
-                user_id=user.id, attempt_type='login').count() == attempt_count
-            assert resp.flashes == flashes
-
-        do_test(1, [('error', 'Invalid password.')])
-        do_test(2, [('error', 'Invalid password.')])
-        do_test(3, [('error', 'Invalid password.')])
-        do_test(3, [('error', 'Too many failed login attempts.')])
-        do_test(3, [('error', 'Too many failed login attempts.')], 'pass')
-
-    @mock.patch.dict('flask.current_app.config', {
-        'KEGAUTH_LOGIN_ATTEMPT_LIMIT': 3,
-        'KEGAUTH_LOGIN_ATTEMPT_TIMESPAN': 1,
-        'KEGAUTH_LOGIN_ATTEMPT_LOCKOUT': 2,
-    })
-    @mock.patch.object(current_app.auth_manager.entity_registry, '_attempt_cls',
-                       new_callable=mock.PropertyMock(return_value=None))
-    def test_login_attempts_not_blocked(self, m_ent_registry):
-        user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
-        client = flask_webtest.TestApp(flask.current_app)
-        assert self.attempt_ent.query.count() == 0
-
-        def do_test(attempt_count, flashes, password='badpass', submit_status=200):
-            resp = self.do_login(client, user.email, password, submit_status)
-            assert self.attempt_ent.query.filter_by(
-                user_id=user.id, attempt_type='login').count() == attempt_count
-            assert resp.flashes == flashes
-
-        do_test(0, [('error', 'Invalid password.')])
-        do_test(0, [('error', 'Invalid password.')])
-        do_test(0, [('error', 'Invalid password.')])
-        do_test(0, [('error', 'Invalid password.')])
-        do_test(0, [('success', 'Login successful.')], 'pass', 302)
-
-    @mock.patch.dict('flask.current_app.config', {
-        'KEGAUTH_LOGIN_ATTEMPT_LIMIT': 3,
-        'KEGAUTH_LOGIN_ATTEMPT_TIMESPAN': 1,
-        'KEGAUTH_LOGIN_ATTEMPT_LOCKOUT': 2,
-    })
-    def test_login_attempt_after_lockout(self):
-        user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
-        client = flask_webtest.TestApp(flask.current_app)
-        assert self.attempt_ent.query.count() == 0
-
-        def do_test(attempt_count, flashes):
-            resp = self.do_login(client, user.email, 'badpass')
-            assert self.attempt_ent.query.filter_by(
-                user_id=user.id, attempt_type='login').count() == attempt_count
-            assert resp.flashes == flashes
-
-        def create_attempt(delta):
-            return self.attempt_ent.testing_create(
-                user_id=user.id,
-                datetime_utc=arrow.utcnow() + delta,
-                attempt_type='login',
-            )
-
-        create_attempt(timedelta(hours=-2))
-        create_attempt(timedelta(hours=-2))
-        create_attempt(timedelta(hours=-2))
-
-        # Not locked out because the lockout period has passed since last attempt.
-        do_test(4, [('error', 'Invalid password.')])
-
-        self.attempt_ent.delete_cascaded()
-        create_attempt(timedelta(hours=-1))
-        create_attempt(timedelta(hours=0))
-        create_attempt(timedelta(hours=0))
-
-        # Not locked out because one attempt occurred outside timespan.
-        do_test(4, [('error', 'Invalid password.')])
-        # Locked out because 3 attempts occured inside timespan.
-        do_test(4, [('error', 'Too many failed login attempts.')])
+        assert self.attempt_ent.get_by(
+            attempt_type='login',
+            success=False,
+            user_id=user.id,
+            is_during_lockout=False,
+        )
 
     def test_login_user_missing(self):
         client = flask_webtest.TestApp(flask.current_app)
@@ -473,75 +676,6 @@ class AuthTests(object):
             urlparse(flask.url_for(flask.current_app.auth_manager.endpoint('forgot-password'))).path
         )
         assert resp.headers['Location'] == full_forgot_password_url
-
-    @mock.patch.dict('flask.current_app.config', {
-        'KEGAUTH_RESET_ATTEMPT_LIMIT': 1,
-        'KEGAUTH_RESET_ATTEMPT_TIMESPAN': 24,
-        'KEGAUTH_RESET_ATTEMPT_LOCKOUT': 24,
-    })
-    def test_reset_pw_attempts_blocked(self):
-        user = self.user_ent.testing_create()
-        assert self.attempt_ent.query.count() == 0
-
-        client = flask_webtest.TestApp(flask.current_app)
-
-        def do_test(attempt_count, submit_status, msg, flash_level):
-            token = user.token_generate()
-            url = '/{}/{}/{}'.format(self.reset_password_url, user.id, token)
-            resp = client.get(url, status=200)
-            resp.form['password'] = 'foo'
-            resp.form['confirm'] = 'foo'
-            resp = resp.form.submit(status=submit_status)
-            assert resp.flashes == [(flash_level, msg)]
-            assert self.attempt_ent.query.count() == attempt_count
-            assert self.attempt_ent.query.filter_by(
-                user_id=user.id, attempt_type='reset'
-            ).count() == attempt_count
-
-        msg = 'Password changed.  Please use the new password to login below.'
-        do_test(1, 302, msg, 'success')
-        do_test(1, 200, 'Too many password reset attempts.', 'error')
-
-    @mock.patch.dict('flask.current_app.config', {
-        'KEGAUTH_RESET_ATTEMPT_LIMIT': 1,
-        'KEGAUTH_RESET_ATTEMPT_TIMESPAN': 24,
-        'KEGAUTH_RESET_ATTEMPT_LOCKOUT': 24,
-    })
-    def test_reset_pw_attempt_after_lockout(self):
-        user = self.user_ent.testing_create()
-        assert self.attempt_ent.query.count() == 0
-
-        client = flask_webtest.TestApp(flask.current_app)
-
-        def do_test(attempt_count, submit_status, msg, flash_level):
-            token = user.token_generate()
-            url = '/{}/{}/{}'.format(self.reset_password_url, user.id, token)
-            resp = client.get(url)
-            resp.form['password'] = 'foo'
-            resp.form['confirm'] = 'foo'
-            resp = resp.form.submit(status=submit_status)
-            assert resp.flashes == [(flash_level, msg)]
-            assert self.attempt_ent.query.count() == attempt_count
-            assert self.attempt_ent.query.filter_by(
-                user_id=user.id, attempt_type='reset'
-            ).count() == attempt_count
-
-        def create_attempt(delta):
-            return self.attempt_ent.testing_create(
-                user_id=user.id,
-                datetime_utc=arrow.utcnow() + delta,
-                attempt_type='reset',
-            )
-
-        create_attempt(timedelta(hours=-24))
-
-        # Not locked out because the lockout period has passed since last attempt.
-        msg = 'Password changed.  Please use the new password to login below.'
-        do_test(2, 302, msg, 'success')
-
-        self.attempt_ent.delete_cascaded()
-        create_attempt(timedelta(hours=-12))
-        do_test(1, 200, 'Too many password reset attempts.', 'error')
 
     def test_verify_account_success(self):
         user = self.user_ent.testing_create(is_verified=False)

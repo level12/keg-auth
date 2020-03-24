@@ -4,6 +4,7 @@ from urllib.parse import urljoin, urlparse
 import arrow
 import flask
 import flask_login
+import sqlalchemy as sa
 from keg.db import db
 
 from keg_auth import forms
@@ -231,28 +232,44 @@ class AttemptLimitMixin(object):
         except RegistryError:
             return False
 
+    def get_last_limiting_attempt(self, user):
+        '''
+        Get the last attempt that counts toward the limit count. Attempts that count
+        toward the limit before this attempt will be counted to determine if this
+        attempt caused a lockout.
+
+        For login, this will be the last failed attempt.
+        For password reset, this will be the last attempt.
+        '''
+        raise NotImplementedError()  # pragma: no cover
+
     def is_attempt_blocked(self, user):
-        lockout_time = arrow.utcnow().shift(hours=-self.get_attempt_lockout_period())
-        last_attempt = self.attempt_ent.query.filter(
-            self.attempt_ent.datetime_utc > lockout_time,
-            self.attempt_ent.user_id == user.id,
-        ).order_by(
-            self.attempt_ent.datetime_utc.desc()
-        ).first()
+        last_limiting_attempt = self.get_last_limiting_attempt(user)
 
-        if not last_attempt:
-            return False
+        if last_limiting_attempt:
+            limiting_attempt_count = self.get_limiting_attempt_count(
+                last_limiting_attempt.datetime_utc,
+                user
+            )
+            # A failed attempt has caused a lockout so we should check if the lockout
+            # period has passed.
+            if limiting_attempt_count >= self.get_attempt_limit():
+                lockout_delta = timedelta(seconds=self.get_attempt_lockout_period())
+                return arrow.utcnow() - last_limiting_attempt.datetime_utc <= lockout_delta
 
-        timespan_delta = timedelta(hours=-self.get_attempt_timespan())
-        beginning_of_timespan = last_attempt.datetime_utc + timespan_delta
-        attempts_within_timespan = self.attempt_ent.query.filter(
-            self.attempt_ent.datetime_utc > beginning_of_timespan,
-            self.attempt_ent.user_id == user.id
+        # We are not in a lockout period so block attempts if there are too many
+        # limiting attempts in the timespan until now.
+        limiting_in_timespan_count = self.get_limiting_attempt_count(arrow.utcnow(), user)
+        return limiting_in_timespan_count >= self.get_attempt_limit()
+
+    def log_attempt(self, user, *, success=True, is_during_lockout=False):
+        attempt = self.attempt_ent(
+            attempt_type=self.get_attempt_type(),
+            user_id=user.id,
+            success=success,
+            is_during_lockout=is_during_lockout,
+            datetime_utc=arrow.utcnow(),
         )
-        return attempts_within_timespan.count() >= self.get_attempt_limit()
-
-    def log_attempt(self, user):
-        attempt = self.attempt_ent(attempt_type=self.get_attempt_type(), user_id=user.id)
         db.session.add(attempt)
         db.session.commit()
 
@@ -272,6 +289,9 @@ class AttemptLimitMixin(object):
         raise NotImplementedError  # pragma: no cover
 
     def get_attempt_lockout_period(self):
+        raise NotImplementedError  # pragma: no cover
+
+    def get_limiting_attempt_count(self, user):
         raise NotImplementedError  # pragma: no cover
 
 
@@ -337,10 +357,11 @@ class ResetPasswordViewResponder(AttemptLimitMixin, PasswordSetterResponderBase)
     def on_form_valid(self, form):
         if self.should_limit_attempts():
             if self.is_attempt_blocked(self.user):
+                self.log_attempt(self.user, success=False, is_during_lockout=True)
                 self.on_attempt_blocked()
                 return
-            else:
-                self.log_attempt(self.user)
+
+            self.log_attempt(self.user, success=True)
 
         new_password = form.password.data
         self.user.change_password(self.token, new_password)
@@ -360,6 +381,25 @@ class ResetPasswordViewResponder(AttemptLimitMixin, PasswordSetterResponderBase)
 
     def get_attempt_type(self):
         return 'reset'
+
+    def get_last_limiting_attempt(self, user):
+        return self.attempt_ent.query.filter_by(
+            user_id=user.id,
+            is_during_lockout=False,
+            attempt_type=self.get_attempt_type(),
+        ).order_by(
+            self.attempt_ent.datetime_utc.desc(),
+        ).first()
+
+    def get_limiting_attempt_count(self, before_time, user):
+        timespan_start = before_time + timedelta(seconds=-self.get_attempt_timespan())
+        return self.attempt_ent.query.filter(
+            self.attempt_ent.user_id == user.id,
+            self.attempt_ent.is_during_lockout == sa.false(),
+            self.attempt_ent.datetime_utc > timespan_start,
+            self.attempt_ent.datetime_utc <= before_time,
+            self.attempt_ent.attempt_type == self.get_attempt_type(),
+        ).count()
 
 
 class VerifyAccountViewResponder(PasswordSetterResponderBase):
@@ -387,9 +427,13 @@ class PasswordFormViewResponder(AttemptLimitMixin, LoginResponderMixin,
         try:
             user = self.parent.verify_user(login_id=form.login_id.data, password=form.password.data)
 
-            if self.should_limit_attempts() and self.is_attempt_blocked(user):
-                self.on_attempt_blocked()
-                return
+            if self.should_limit_attempts():
+                if self.is_attempt_blocked(user):
+                    self.log_attempt(user, success=True, is_during_lockout=True)
+                    self.on_attempt_blocked()
+                    return
+
+                self.log_attempt(user, success=True)
 
             # User is active and password is verified
             return self.on_success(user)
@@ -403,10 +447,11 @@ class PasswordFormViewResponder(AttemptLimitMixin, LoginResponderMixin,
     def on_invalid_password(self, user):
         if self.should_limit_attempts():
             if self.is_attempt_blocked(user):
+                self.log_attempt(user, success=False, is_during_lockout=True)
                 self.on_attempt_blocked()
                 return
-            else:
-                self.log_attempt(user)
+
+            self.log_attempt(user, success=False)
 
         if self.flash_invalid_password:
             flash(*self.flash_invalid_password)
@@ -425,6 +470,44 @@ class PasswordFormViewResponder(AttemptLimitMixin, LoginResponderMixin,
 
     def get_attempt_type(self):
         return 'login'
+
+    def get_last_limiting_attempt(self, user):
+        return self.attempt_ent.query.filter_by(
+            user_id=user.id,
+            success=False,
+            is_during_lockout=False,
+            attempt_type=self.get_attempt_type(),
+        ).order_by(
+            self.attempt_ent.datetime_utc.desc(),
+        ).first()
+
+    def get_limiting_attempt_count(self, before_time, user):
+        last_successful_attempt = self.attempt_ent.query.filter_by(
+            user_id=user.id,
+            success=True,
+            is_during_lockout=False,
+            attempt_type=self.get_attempt_type()
+        ).order_by(
+            self.attempt_ent.datetime_utc.desc(),
+        ).first()
+
+        def is_within_timespan(attempt):
+            timespan_start = before_time + timedelta(seconds=-self.get_attempt_timespan())
+            return attempt.datetime_utc > timespan_start
+
+        if last_successful_attempt and is_within_timespan(last_successful_attempt):
+            timespan_start = last_successful_attempt.datetime_utc
+        else:
+            timespan_start = before_time + timedelta(seconds=-self.get_attempt_timespan())
+
+        return self.attempt_ent.query.filter(
+            self.attempt_ent.user_id == user.id,
+            self.attempt_ent.success == sa.false(),
+            self.attempt_ent.is_during_lockout == sa.false(),
+            self.attempt_ent.datetime_utc > timespan_start,
+            self.attempt_ent.datetime_utc <= before_time,
+            self.attempt_ent.attempt_type == self.get_attempt_type(),
+        ).count()
 
 
 class ForgotPasswordViewResponder(UserResponderMixin, FormResponderMixin, ViewResponder):

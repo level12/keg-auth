@@ -23,7 +23,6 @@ from keg_auth import get_current_user
 
 class TestAuthIntegration(AuthTests):
     user_ent = ents.User
-    attempt_ent = ents.Attempt
 
 
 class TestViews(object):

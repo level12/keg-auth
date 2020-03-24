@@ -505,6 +505,8 @@ class AttemptMixin(object):
     datetime_utc = sa.Column(ArrowType, nullable=False, default=arrow.utcnow,
                              server_default=dbutils.utcnow())
     attempt_type = sa.Column(sa.Enum('login', 'reset', name='ka_attempt_types'))
+    is_during_lockout = sa.Column(sa.Boolean, nullable=False, default=False)
+    success = sa.Column(sa.Boolean, nullable=False, default=True)
 
 
 def get_username_key(user_cls):
