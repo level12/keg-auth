@@ -496,7 +496,8 @@ class OidcLogoutViewResponder(LogoutViewResponder):
 
     def get(self):
         oidc = flask.current_app.auth_manager.oidc
-        url_after_login = flask.url_for(flask.current_app.auth_manager.endpoints['after-login'])
+        url_login = flask.url_for(flask.current_app.auth_manager.endpoint('login'))
+        url_after_login = flask.url_for(flask.current_app.auth_manager.endpoint('after-login'))
         bad_token_redirect_resp = flask.current_app.login_manager.unauthorized()
 
         """ Logout won't work if user isn't authenticated to begin with, i.e. there won't be a
@@ -506,7 +507,7 @@ class OidcLogoutViewResponder(LogoutViewResponder):
         except Exception as exc:
             if 'User was not authenticated' not in str(exc):
                 raise
-            return flask.abort(flask.redirect(url_after_login))
+            return flask.abort(flask.redirect(url_login))
 
         """ In some cases e.g. app restart, credentials store may not have valid information in the
             flask server-side info. In that case, clear the client token and refresh info from
@@ -565,7 +566,7 @@ class OidcAuthenticator(LoginAuthenticator):
         super().__init__(app)
 
     def verify_user(self, login_id=None):
-        user = self.user_ent.query().filter_by(username=login_id).one_or_none()
+        user = self.user_ent.query.filter_by(username=login_id).one_or_none()
 
         if not user:
             raise UserNotFound
