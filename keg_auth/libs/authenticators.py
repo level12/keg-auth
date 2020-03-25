@@ -243,6 +243,12 @@ class AttemptLimitMixin(object):
         '''
         raise NotImplementedError()  # pragma: no cover
 
+    def get_limiting_attempt_count(self, before_time, user):
+        '''
+        Return the number of attempts that count toward the limit up to before_time.
+        '''
+        raise NotImplementedError  # pragma: no cover
+
     def is_attempt_blocked(self, user):
         last_limiting_attempt = self.get_last_limiting_attempt(user)
 
@@ -270,8 +276,15 @@ class AttemptLimitMixin(object):
             is_during_lockout=is_during_lockout,
             datetime_utc=arrow.utcnow(),
         )
+        if flask.has_request_context():
+            attempt.source_ip = self.get_request_remote_addr()
+
         db.session.add(attempt)
         db.session.commit()
+
+    @staticmethod
+    def get_request_remote_addr():
+        return flask.request.remote_addr
 
     def on_attempt_blocked(self):
         flash(*self.get_flash_attempts_limit_reached())
@@ -289,9 +302,6 @@ class AttemptLimitMixin(object):
         raise NotImplementedError  # pragma: no cover
 
     def get_attempt_lockout_period(self):
-        raise NotImplementedError  # pragma: no cover
-
-    def get_limiting_attempt_count(self, user):
         raise NotImplementedError  # pragma: no cover
 
 

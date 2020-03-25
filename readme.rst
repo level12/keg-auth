@@ -151,6 +151,8 @@ Usage
 -  CLI create-user command, by default, has one required argument (email). If you wish to have
    additional arguments, put the list of arg names in `KEGAUTH_CLI_USER_ARGS` config
 
+- CLI set-password command allows you to set the password for a given username.
+
 -  Model
 
    -  create entities using the existing mixins, and register them with
@@ -312,6 +314,28 @@ Usage
       - ``from keg_auth import CrudView``
       - because the standard action routes are predefined, you can assign specific permission(s) to
         them in the view's `permissions` dictionary, keyed by action (e.g. `permissions['add'] = 'foo'`)
+
+-  Limiting login and password reset attempts
+
+   -  Login and password reset attempts can be limited by registering an Attempt entity.
+      The Attempt entity must be a subclass of `AttemptMixin`.
+   -  Login attempts are limited by counting failed attempts. A successful login attempt will
+      reset the limit counter.
+   -  Reset attempts are limited by counting all password reset attempts.
+   -  Attempt limiting can be configured with the following options:
+
+      -  `KEGAUTH_LOGIN_ATTEMPT_LIMIT`
+      -  `KEGAUTH_LOGIN_ATTEMPT_TIMESPAN`
+      -  `KEGAUTH_LOGIN_ATTEMPT_LOCKOUT`
+      -  `KEGAUTH_RESET_ATTEMPT_LIMIT`
+      -  `KEGAUTH_RESET_ATTEMPT_TIMESPAN`
+      -  `KEGAUTH_RESET_ATTEMPT_LOCKOUT`
+
+      | Limit: maximum number of attempts within the timespan.
+      | Timespan: timespan in seconds in which the limit can be reached.
+      | Lockout: timespan in seconds until a successful attempt can be made after the limit is reached.
+   -  CLI `purge-attempts` will delete attempts for a given username. Optionally accepts `--attempt-type`
+      argument to only delete attempts of a certain type.
 
 User Login During Testing
 -------------------------

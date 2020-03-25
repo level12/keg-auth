@@ -15,6 +15,8 @@ from blazeutils import randchars, tolist
 from blazeutils.containers import LazyDict
 from keg import current_app
 
+from keg_auth.libs.authenticators import AttemptLimitMixin
+
 
 @pytest.mark.skipif(not flask.current_app.auth_manager.entity_registry.is_registered('attempt'),
                     reason='no attempt model registered in entity registry')
@@ -299,6 +301,18 @@ class AuthAttemptTests(object):
         do_test(arrow.utcnow(), self.reset_success_flashes, 302)
         do_test(arrow.utcnow(), self.reset_success_flashes, 302)
         do_test(arrow.utcnow(), self.reset_success_flashes, 302)
+
+    @mock.patch('keg_auth.libs.authenticators.AttemptLimitMixin.get_request_remote_addr',
+                return_value='12.12.12.12')
+    def test_logs_attempt_source_ip(self, m_get_remote_addr):
+        user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
+        self.do_login(self.client, user.email, 'pass', 302)
+
+        assert self.attempt_ent.query.one().source_ip == m_get_remote_addr.return_value
+
+    def test_get_request_remote_addr(self):
+        with current_app.test_request_context(environ_base={'REMOTE_ADDR': '12.12.12.12'}):
+            assert AttemptLimitMixin.get_request_remote_addr() == '12.12.12.12'
 
 
 class AuthTests(AuthAttemptTests):

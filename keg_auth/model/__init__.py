@@ -507,6 +507,15 @@ class AttemptMixin(object):
     attempt_type = sa.Column(sa.Enum('login', 'reset', name='ka_attempt_types'))
     is_during_lockout = sa.Column(sa.Boolean, nullable=False, default=False)
     success = sa.Column(sa.Boolean, nullable=False, default=True)
+    source_ip = sa.Column(sa.Unicode(50), nullable=True)
+
+    @classmethod
+    def get_attempts_for_user_query(cls, user, attempt_type=None):
+        query = cls.query.filter_by(user_id=user.id)
+        if attempt_type:
+            query = query.filter_by(attempt_type=attempt_type)
+
+        return query
 
 
 def get_username_key(user_cls):

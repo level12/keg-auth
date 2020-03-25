@@ -1,8 +1,8 @@
 import click
 import keg
 from keg.db import db
-from sqlalchemy.exc import InvalidRequestError
 
+from keg_auth.model import get_username_key
 from keg_auth.extensions import gettext as _
 from keg_auth.model.entity_registry import RegistryError
 
@@ -17,7 +17,7 @@ def add_cli_to_app(app, cli_group_name, user_args=['email']):
     @click.argument('username')
     def set_user_password(username):
         user_ent = app.auth_manager.entity_registry.user_cls
-        user = user_ent.get_by(username=username)
+        user = user_ent.get_by(**{get_username_key(user_ent): username})
         if user is None:
             click.echo('Unknown user', err=True)
             return
@@ -64,17 +64,11 @@ def add_cli_to_app(app, cli_group_name, user_args=['email']):
             return
 
         user_ent = auth_manager.entity_registry.user_cls
-        try:
-            user = user_ent.get_by(username=username) or user_ent.get_by(email=username)
-        except InvalidRequestError:
-            user = None
+        user = user_ent.get_by(**{get_username_key(user_ent): username})
 
         assert user is not None, 'No user found with username "{}"'.format(username)
 
-        attempt_query = attempt_ent.query.filter_by(user_id=user.id)
-        if attempt_type:
-            attempt_query = attempt_query.filter_by(attempt_type=attempt_type)
-
+        attempt_query = attempt_ent.get_attempts_for_user_query(user, attempt_type=attempt_type)
         attempt_query.delete()
         db.session.commit()
 
