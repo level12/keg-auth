@@ -31,7 +31,7 @@ class User(UserBase):
         form_cls = self.form_cls(flask.current_app.config,
                                  allow_superuser=flask_login.current_user.is_superuser,
                                  endpoint=self.endpoint_for_action('edit'),
-                                 fields=['disable_date', 'is_enabled'])
+                                 fields=['disabled_utc', 'is_enabled'])
         return form_cls(obj=obj)
 
 

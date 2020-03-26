@@ -152,15 +152,15 @@ def user_form(config=None, allow_superuser=False, endpoint='', fields=['is_enabl
             flask.url_for(endpoint, objid=obj.id)
         )
 
-    def filter_disable_date(date):
+    def filter_disabled_utc(date):
         if isinstance(date, dt.date):
             date = arrow.get(date)
 
         return date
 
     class User(PermissionsMixin, BundlesMixin, GroupsMixin, ModelForm):
-        disable_date = DateField('Disable Date', [validators.Optional()],
-                                 filters=[filter_disable_date], render_kw={'type': 'date'})
+        disabled_utc = DateField('Disable Date', [validators.Optional()],
+                                 filters=[filter_disabled_utc], render_kw={'type': 'date'})
 
         class Meta:
             model = user_cls

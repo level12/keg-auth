@@ -112,34 +112,34 @@ class TestUser(object):
         assert not user.is_verified
         assert user.password == 'bar'
 
-    @pytest.mark.parametrize('is_enabled, is_verified, disable_date, is_active', [
+    @pytest.mark.parametrize('is_enabled, is_verified, disabled_utc, is_active', [
         (True, True, None, True),
         (True, True, arrow.utcnow().shift(minutes=+5), True),
         (True, False, None, False),
         (False, True, None, False),
         (True, True, arrow.utcnow().shift(minutes=-5), False),
     ])
-    def test_is_active_python_attribute(self, is_enabled, is_verified, disable_date, is_active):
+    def test_is_active_python_attribute(self, is_enabled, is_verified, disabled_utc, is_active):
         user = ents.User.testing_create(
             is_verified=is_verified,
             is_enabled=is_enabled,
-            disable_date=disable_date,
+            disabled_utc=disabled_utc,
         )
         assert user.is_active == is_active
 
-    @pytest.mark.parametrize('is_enabled, is_verified, disable_date, is_active', [
+    @pytest.mark.parametrize('is_enabled, is_verified, disabled_utc, is_active', [
         (True, True, None, True),
         (True, True, arrow.utcnow().shift(minutes=+5), True),
         (True, False, None, False),
         (False, True, None, False),
         (True, True, arrow.utcnow().shift(minutes=-5), False),
     ])
-    def test_is_active_sql_expression(self, is_enabled, is_verified, disable_date, is_active):
+    def test_is_active_sql_expression(self, is_enabled, is_verified, disabled_utc, is_active):
         ents.User.testing_create(
             email='email',
             is_verified=is_verified,
             is_enabled=is_enabled,
-            disable_date=disable_date,
+            disabled_utc=disabled_utc,
         )
         assert ents.User.query.filter_by(email='email', is_active=is_active).one()
 
@@ -366,30 +366,30 @@ class TestUserNoEmail(object):
     def setup(self):
         ents.UserNoEmail.delete_cascaded()
 
-    @pytest.mark.parametrize('is_enabled, disable_date, is_active', [
+    @pytest.mark.parametrize('is_enabled, disabled_utc, is_active', [
         (True, None, True),
         (True, arrow.utcnow().shift(minutes=+5), True),
         (False, None, False),
         (True, arrow.utcnow().shift(minutes=-5), False),
     ])
-    def test_is_active_python_attribute(self, is_enabled, disable_date, is_active):
+    def test_is_active_python_attribute(self, is_enabled, disabled_utc, is_active):
         user = ents.UserNoEmail.testing_create(
             is_enabled=is_enabled,
-            disable_date=disable_date,
+            disabled_utc=disabled_utc,
         )
         assert user.is_active == is_active
 
-    @pytest.mark.parametrize('is_enabled, disable_date, is_active', [
+    @pytest.mark.parametrize('is_enabled, disabled_utc, is_active', [
         (True, None, True),
         (True, arrow.utcnow().shift(minutes=+5), True),
         (False, None, False),
         (True, arrow.utcnow().shift(minutes=-5), False),
     ])
-    def test_is_active_sql_expression(self, is_enabled, disable_date, is_active):
+    def test_is_active_sql_expression(self, is_enabled, disabled_utc, is_active):
         ents.UserNoEmail.testing_create(
             username='name',
             is_enabled=is_enabled,
-            disable_date=disable_date,
+            disabled_utc=disabled_utc,
         )
 
         assert ents.UserNoEmail.query.filter_by(username='name', is_active=is_active).one()

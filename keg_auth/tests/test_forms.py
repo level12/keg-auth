@@ -130,7 +130,7 @@ class TestUser(FormBase):
         data = {
             'email': 'foo@example.com',
             'is_enabled': 'true',
-            'disable_date': '2019-01-01',
+            'disabled_utc': '2019-01-01',
             'permission_ids': [str(self.perms[0].id), str(self.perms[1].id)],
             'group_ids': [str(self.groups[0].id), str(self.groups[1].id)],
             'bundle_ids': [str(self.bundles[0].id), str(self.bundles[1].id)],

@@ -78,22 +78,29 @@ class UserMixin(object):
     #   get included in is_active logic.
     @hybrid_property
     def is_active(self):
-        is_disabled = self.disable_date is not None and self.disable_date < arrow.utcnow()
-        return not is_disabled and self.is_enabled
+        return not self.is_disabled_by_date and self.is_enabled
 
     @is_active.expression
     def is_active(cls):
-        not_disabled = sa_sql.or_(
-            cls.disable_date.is_(None),
-            cls.disable_date > arrow.utcnow(),
-        )
-        expr = sa_sql.and_(not_disabled, cls.is_enabled == sa.true())
+        expr = sa_sql.and_(~cls.is_disabled_by_date, cls.is_enabled == sa.true())
         # need to wrap the expression in a case to work with MSSQL
-        return sa.sql.case([(expr, sa.true())], else_=sa.false())
+        return sa_sql.case([(expr, sa.true())], else_=sa.false())
+
+    @hybrid_property
+    def is_disabled_by_date(self):
+        return self.disabled_utc is not None and self.disabled_utc <= arrow.utcnow()
+
+    @is_disabled_by_date.expression
+    def is_disabled_by_date(cls):
+        is_disabled_expr = sa.sql.and_(
+            cls.disabled_utc.isnot(None),
+            cls.disabled_utc <= arrow.utcnow(),
+        )
+        return sa_sql.case([(is_disabled_expr, sa.true())], else_=sa.false())
 
     # The datetime when a user will be disabled. User will be inactive if this is set
     # to a datetime in the past.
-    disable_date = sa.Column(ArrowType, nullable=True, default=None, server_default=None)
+    disabled_utc = sa.Column(ArrowType, nullable=True, default=None, server_default=sa.null())
 
     def get_id(self):
         # Flask-Login requires that this return a string value for the session
@@ -110,7 +117,6 @@ class UserMixin(object):
     @classmethod
     def testing_create(cls, **kwargs):
         kwargs['password'] = kwargs.get('password') or randchars()
-        kwargs.setdefault('disable_date', None)
 
         if 'permissions' in kwargs:
             perm_cls = registry().permission_cls
@@ -376,18 +382,17 @@ class UserEmailMixin(object):
 
     @hybrid_property
     def is_active(self):
-        is_disabled = self.disable_date is not None and self.disable_date < arrow.utcnow()
-        return not is_disabled and self.is_verified and self.is_enabled
+        return not self.is_disabled_by_date and self.is_verified and self.is_enabled
 
     @is_active.expression
     def is_active(cls):
-        not_disabled = sa_sql.or_(
-            cls.disable_date.is_(None),
-            cls.disable_date > arrow.utcnow(),
+        expr = sa_sql.and_(
+            ~cls.is_disabled_by_date,
+            cls.is_verified == sa.true(),
+            cls.is_enabled == sa.true(),
         )
-        expr = sa_sql.and_(not_disabled, cls.is_verified == sa.true(), cls.is_enabled == sa.true())
         # need to wrap the expression in a case to work with MSSQL
-        return sa.sql.case([(expr, sa.true())], else_=sa.false())
+        return sa_sql.case([(expr, sa.true())], else_=sa.false())
 
     @classmethod
     def testing_create(cls, **kwargs):
