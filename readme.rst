@@ -92,7 +92,9 @@ Usage
       -  additional config:
 
          -  KEGAUTH_LDAP_TEST_MODE: when True, bypasses LDAP calls. Defaults to False
-         -  KEGAUTH_LDAP_SERVER_URL: target LDAP server to use for queries
+         -  KEGAUTH_LDAP_SERVER_URL: target LDAP server or list of servers to use for queries.
+            If a list is given, authentication is attempted on each server in the given order
+            until a successful query is made.
          -  KEGAUTH_LDAP_DN_FORMAT: format-able string to set up for the query
             -  ex. ``uid={},dc=example,dc=org``
 

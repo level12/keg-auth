@@ -448,18 +448,30 @@ class LdapAuthenticator(KegAuthenticator):
         if not ldap_dn_format:
             raise Exception(_('No KEGAUTH_LDAP_DN_FORMAT configured!'))
 
-        session = ldap.initialize(ldap_url)
+        def ldap_bind(server_url):
+            session = ldap.initialize(server_url)
 
-        try:
-            dn = ldap_dn_format.format(user.username)
-            result = session.simple_bind_s(dn, password)
-            return bool(
-                result
-                and len(result)
-                and result[0] == ldap.RES_BIND
-            )
-        except (ldap.INVALID_CREDENTIALS, ldap.INVALID_DN_SYNTAX):
-            return False
+            try:
+                dn = ldap_dn_format.format(user.username)
+                result = session.simple_bind_s(dn, password)
+                del session
+                return bool(
+                    result
+                    and len(result)
+                    and result[0] == ldap.RES_BIND
+                )
+            except (ldap.INVALID_CREDENTIALS, ldap.INVALID_DN_SYNTAX):
+                return False
+
+        if isinstance(ldap_url, str):
+            return ldap_bind(ldap_url)
+
+        # We have a list of servers.
+        for server_url in ldap_url:
+            if ldap_bind(server_url):
+                return True
+
+        return False
 
 
 class OidcLoginViewResponder(LoginResponderMixin, ViewResponder):
