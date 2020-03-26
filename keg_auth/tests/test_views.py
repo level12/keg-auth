@@ -57,7 +57,7 @@ class TestViews(object):
 
         user = ents.User.testing_create()
         with client.session_transaction() as sess:
-            sess['user_id'] = user.session_key
+            sess['_user_id'] = user.session_key
 
         resp = client.get('/')
         assert '/login' not in resp
