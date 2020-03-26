@@ -30,6 +30,7 @@ cfg = configparser.SafeConfigParser()
 cfg.read('../../setup.cfg')
 
 tag = cfg.get('egg_info', 'tag_build')
+master_doc = "index"
 
 html_context = {
     'prerelease': bool(tag),  # True if tag is not the empty string
