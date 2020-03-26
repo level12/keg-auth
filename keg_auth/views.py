@@ -2,7 +2,6 @@ import flask
 import flask_login
 import inflect
 import keg.web
-import six
 import sqlalchemy as sa
 from blazeutils.strings import case_cw2dash
 from keg.db import db
@@ -76,7 +75,7 @@ class CrudView(keg.web.BaseView):
         return self._inflect.plural(
             self.object_name
             if not is_lazy_string(self.object_name)
-            else six.text_type(self.object_name)
+            else str(self.object_name)
         )
 
     def page_title(self, action):

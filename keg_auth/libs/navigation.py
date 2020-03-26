@@ -4,7 +4,6 @@ import sys
 from blazeutils.strings import simplify_string
 import flask
 import flask_login
-import six
 
 from keg_auth.extensions import lazy_gettext as _
 from keg_auth.model.utils import has_permissions
@@ -132,7 +131,7 @@ class NavItem(object):
 
     def __init__(self, *args, nav_group=None, icon_class=None):
         self.label = None
-        if len(args) and (isinstance(args[0], six.string_types) or is_lazy_string(args[0])):
+        if len(args) and (isinstance(args[0], str) or is_lazy_string(args[0])):
             self.label = args[0]
             args = args[1:]
         self.route = None

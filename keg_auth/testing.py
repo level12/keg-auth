@@ -1,19 +1,15 @@
 # Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
 from __future__ import unicode_literals
 
-try:
-    from unittest import mock
-except ImportError:
-    import mock
-from urllib.parse import urlparse
+from unittest import mock
+from urllib.parse import quote, urlparse
 
-from blazeutils import tolist
-from blazeutils.containers import LazyDict
-from six.moves import urllib
 import flask
 import flask_webtest
 import passlib
 import wrapt
+from blazeutils import tolist
+from blazeutils.containers import LazyDict
 
 
 class AuthTests(object):
@@ -134,9 +130,10 @@ class AuthTests(object):
 
         # quoted next parameter
         client = flask_webtest.TestApp(flask.current_app)
-        resp = client.get('{}?next={}'.format(
-            flask.url_for(flask.current_app.auth_manager.endpoint('login')),
-            urllib.parse.quote(next)
+        resp = client.get(
+            '{}?next={}'.format(
+                flask.url_for(flask.current_app.auth_manager.endpoint('login')),
+                quote(next)
             )
         )
 

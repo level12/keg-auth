@@ -1,5 +1,4 @@
 import flask
-import six
 
 MORPHI_PACKAGE_NAME = 'keg_auth'
 
@@ -43,4 +42,4 @@ else:
 
 
 def flash(message, category):
-    flask.flash(six.text_type(message), category)
+    flask.flash(str(message), category)
