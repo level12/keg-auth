@@ -33,6 +33,13 @@ class AuthTests(object):
         resp = client.get(flask.url_for(flask.current_app.auth_manager.endpoint('login')))
         assert resp.status_code == 200
 
+    def test_login_head(self):
+        client = flask_webtest.TestApp(flask.current_app)
+        client.head(
+            flask.url_for(flask.current_app.auth_manager.endpoint('login')),
+            status=405,
+        )
+
     def test_login_form_error(self):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(flask.url_for(flask.current_app.auth_manager.endpoint('login')))

@@ -108,6 +108,9 @@ class ViewResponder(object):
 
         return resp or self.render()
 
+    def head(self):
+        return flask.abort(405)
+
 
 class UserResponderMixin(object):
     flash_invalid_user = _('No user account matches: {}'), 'error'

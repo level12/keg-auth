@@ -296,6 +296,9 @@ class AuthRespondedView(keg.web.BaseView):
         # needed in keg to set up a POST route
         pass
 
+    def head(self):
+        pass
+
 
 class Login(AuthRespondedView):
     responder_key = 'login'
