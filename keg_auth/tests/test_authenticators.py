@@ -1,12 +1,12 @@
+from unittest import mock
+
 import flask
 import flask_jwt_extended
 import jwt
 import ldap
-import mock
 import pytest
 
 from keg_auth.libs import authenticators as auth
-
 from keg_auth_ta.model.entities import User
 
 
@@ -122,6 +122,26 @@ class TestLdapAuthenticator:
         success = authenticator.verify_password(user, 'foo')
 
         assert mocked_ldap.call_count
+        assert success is True
+
+    @mock.patch('ldap.initialize', autospec=True, spec_set=True)
+    def test_successful_authentication_multiple_server_urls(self, mocked_ldap):
+        flask.current_app.config['KEGAUTH_LDAP_SERVER_URL'] = ['abc123', 'def456', 'ghi789']
+        mocked_ldap.return_value.simple_bind_s.side_effect = (
+            (0,),
+            (0,),
+            (ldap.RES_BIND,)
+        )
+
+        user = User.testing_create()
+        authenticator = auth.LdapAuthenticator(app=flask.current_app)
+        success = authenticator.verify_password(user, 'foo')
+
+        assert mocked_ldap.call_args_list == [
+            mock.call('abc123'),
+            mock.call('def456'),
+            mock.call('ghi789'),
+        ]
         assert success is True
 
     @mock.patch('ldap.initialize', autospec=True, spec_set=True)
