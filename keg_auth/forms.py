@@ -131,7 +131,8 @@ class _ValidatePasswordRequired(object):
         return True
 
 
-def user_form(config=None, allow_superuser=False, endpoint='', fields=['is_enabled']):
+def user_form(config=None, allow_superuser=False, endpoint='',
+              fields=['is_enabled', 'disabled_utc']):
     config = config or {}
     user_cls = flask.current_app.auth_manager.entity_registry.user_cls
 
