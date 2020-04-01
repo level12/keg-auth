@@ -36,6 +36,18 @@ class TestKegAuthenticator:
         found_user = authenticator.verify_user(login_id=user.email, password=user._plaintext_pass)
         assert user is found_user
 
+    def test_unverified_user(self):
+        user = User.testing_create()
+        user.is_verified = False
+        authenticator = auth.KegAuthenticator(app=flask.current_app)
+        with pytest.raises(auth.UserInactive) as e_info:
+            authenticator.verify_user(login_id=user.email, password=user._plaintext_pass)
+        assert e_info.value.user is user
+
+        found_user = authenticator.verify_user(login_id=user.email, password=user._plaintext_pass,
+                                               allow_unverified=True)
+        assert user is found_user
+
 
 class TestLdapAuthenticator:
     def setup(self):
