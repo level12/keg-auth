@@ -1,17 +1,15 @@
-from blazeutils import tolist
+import arrow
 import flask
 import flask_login
-from keg.db import db
-from keg.signals import db_init_post
 import jinja2
 import sqlalchemy as sa
-import six
-import arrow
+from blazeutils import tolist
+from keg.db import db
+from keg.signals import db_init_post
 
 import keg_auth.cli
-from keg_auth.libs.authenticators import KegAuthenticator
 from keg_auth import model
-
+from keg_auth.libs.authenticators import KegAuthenticator
 
 DEFAULT_CRYPTO_SCHEMES = ('bcrypt', 'pbkdf2_sha256',)
 
@@ -223,7 +221,7 @@ class AuthManager(object):
 
     def user_loader(self, session_key):
         user_class = self.entity_registry.user_cls
-        return user_class.get_by(session_key=six.text_type(session_key))
+        return user_class.get_by(session_key=str(session_key))
 
     def user_by_id(self, user_id):
         user_class = self.entity_registry.user_cls

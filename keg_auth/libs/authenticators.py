@@ -1,13 +1,10 @@
+from urllib.parse import urljoin, urlparse
+
 import flask
 import flask_login
-import six
-from six.moves import urllib
 
 from keg_auth import forms
-from keg_auth.extensions import (
-    flash,
-    lazy_gettext as _
-)
+from keg_auth.extensions import flash, lazy_gettext as _
 from keg_auth.model import get_username_key
 
 try:
@@ -70,7 +67,7 @@ class LoginAuthenticator(object):
         self.init_responders()
 
     def init_responders(self):
-        for key, cls in six.iteritems(self.responder_cls):
+        for key, cls in self.responder_cls.items():
             self.responders[key] = cls(self)
 
     def get_responder(self, key):
@@ -153,8 +150,8 @@ class LoginResponderMixin(UserResponderMixin):
     def is_safe_url(target):
         """Returns `True` if the target is a valid URL for redirect"""
         # from http://flask.pocoo.org/snippets/62/
-        ref_url = urllib.parse.urlparse(flask.request.host_url)
-        test_url = urllib.parse.urlparse(urllib.parse.urljoin(flask.request.host_url, target))
+        ref_url = urlparse(flask.request.host_url)
+        test_url = urlparse(urljoin(flask.request.host_url, target))
         return (
             test_url.scheme in ('http', 'https')
             and ref_url.netloc == test_url.netloc

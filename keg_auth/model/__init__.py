@@ -8,7 +8,6 @@ import itsdangerous
 import passlib.hash
 import passlib.pwd
 import shortuuid
-import six
 import sqlalchemy as sa
 import sqlalchemy.orm as sa_orm
 import sqlalchemy.sql as sa_sql
@@ -36,7 +35,7 @@ def _create_cryptcontext_kwargs(**column_kwargs):
 
 
 def _generate_session_key():
-    return six.text_type(shortuuid.uuid())
+    return str(shortuuid.uuid())
 
 
 class InvalidToken(Exception):
@@ -246,7 +245,7 @@ class UserMixin(object):
         """
         if not token:
             return False
-        if isinstance(token, six.text_type):
+        if isinstance(token, str):
             token = token.encode()
 
         serializer = self.get_token_serializer(None)
@@ -297,7 +296,7 @@ class UserTokenMixin(object):
         if api_token is None:
             return
 
-        if isinstance(api_token, six.binary_type):
+        if isinstance(api_token, bytes):
             api_token = api_token.decode()
 
         if len(api_token.split('.')) != 2:
