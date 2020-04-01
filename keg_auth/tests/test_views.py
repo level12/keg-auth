@@ -251,6 +251,14 @@ class TestViews(object):
         assert doc('button').text() == 'Log In'
         assert not doc('div#page-content a')
 
+    def test_login_head(self):
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.head(
+            flask.url_for(flask.current_app.auth_manager.endpoint('login')),
+            status=405,
+        )
+        assert resp.headers['Allow'] == 'GET, POST'
+
     def test_forgot_pw_template(self):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get('/forgot-password')

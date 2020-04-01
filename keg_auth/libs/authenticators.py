@@ -106,7 +106,11 @@ class ViewResponder(object):
         return resp or self.render()
 
     def head(self):
-        return flask.abort(405)
+        valid_methods = []
+        for method in ('get', 'post'):
+            if hasattr(self, method):
+                valid_methods.append(method.upper())
+        return flask.abort(405, valid_methods=valid_methods)
 
 
 class UserResponderMixin(object):
@@ -499,8 +503,11 @@ class OidcLoginViewResponder(LoginResponderMixin, ViewResponder):
         except UserInactive as exc:
             self.on_inactive_user(exc.user)
 
+    def head(self, *args, **kwargs):
+        return flask.abort(405, valid_methods=['GET'])
+
     def post(self, *args, **kwargs):
-        return flask.abort(405)
+        return flask.abort(405, valid_methods=['GET'])
 
 
 class OidcLogoutViewResponder(LogoutViewResponder):
