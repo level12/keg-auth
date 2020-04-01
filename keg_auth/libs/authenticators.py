@@ -330,7 +330,7 @@ class ForgotPasswordViewResponder(UserResponderMixin, FormResponderMixin, ViewRe
 
     def on_form_valid(self, form):
         try:
-            user = self.parent.verify_user(login_id=form.email.data)
+            user = self.parent.verify_user(login_id=form.email.data, allow_unverified=True)
 
             # User is active, take action to initiate password reset
             return self.on_success(user)
@@ -396,12 +396,14 @@ class KegAuthenticator(PasswordAuthenticatorMixin, LoginAuthenticator):
         'logout': LogoutViewResponder,
     }
 
-    def verify_user(self, login_id=None, password=None):
+    def verify_user(self, login_id=None, password=None, allow_unverified=False):
         user = self.user_ent.query.filter_by(username=login_id).one_or_none()
 
         if not user:
             raise UserNotFound
-        if not user.is_active:
+        if not allow_unverified and not user.is_active:
+            raise UserInactive(user)
+        if allow_unverified and not user.is_enabled:
             raise UserInactive(user)
         if password and not self.verify_password(user, password):
             raise UserInvalidAuth(user)
