@@ -1,6 +1,30 @@
 Changelog
 =========
 
+0.2.21 released 2020-04-02
+--------------------------
+
+- Resolve fuzzy/missing translations (a78de96_)
+- Add inactivation date for users (requires migration to add a field) (0020fbd_)
+- Support latest Flask-Login (ba59925_)
+- Allow unverified users to reset their passwords (8888386_)
+- Pin keg-elements requirement to support CRUD checkboxes (e59fcc1_)
+- Include an Allow header for 405 responses (a2a3091_)
+- Support multiple LDAP targets (b895aad_)
+- Handle HEAD requests (b16a7e4_)
+- Remove six dependency (477a415_)
+
+.. _a78de96: https://github.com/level12/keg-auth/commit/a78de96
+.. _0020fbd: https://github.com/level12/keg-auth/commit/0020fbd
+.. _ba59925: https://github.com/level12/keg-auth/commit/ba59925
+.. _8888386: https://github.com/level12/keg-auth/commit/8888386
+.. _e59fcc1: https://github.com/level12/keg-auth/commit/e59fcc1
+.. _a2a3091: https://github.com/level12/keg-auth/commit/a2a3091
+.. _b895aad: https://github.com/level12/keg-auth/commit/b895aad
+.. _b16a7e4: https://github.com/level12/keg-auth/commit/b16a7e4
+.. _477a415: https://github.com/level12/keg-auth/commit/477a415
+
+
 0.2.20 released 2020-03-24
 --------------------------
 
