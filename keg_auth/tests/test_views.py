@@ -551,6 +551,7 @@ class TestUserCrud(ViewTestBase):
         resp.form['permission_ids'] = [perm_approve.id]
         resp.form['group_ids'] = [group_approve.id]
         resp.form['bundle_ids'] = [bundle_approve.id]
+        resp.form['disabled_utc'] = '2019-01-01'
         with mail_ext.record_messages() as outbox:
             resp = resp.form.submit()
         assert resp.status_code == 302
@@ -559,6 +560,7 @@ class TestUserCrud(ViewTestBase):
         assert len(outbox) == 1
         assert outbox[0].subject == '[KA Demo] User Welcome & Verification'
         user = self.user_ent.get_by(email='abc@example.com')
+        assert user.disabled_utc == arrow.get('2019-01-01')
         assert user.is_enabled is True
         assert user.is_superuser is False
         assert user.permissions == [perm_approve]

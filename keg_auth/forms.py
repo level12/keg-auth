@@ -1,3 +1,6 @@
+import datetime as dt
+
+import arrow
 import flask
 from keg_elements.forms import Form, ModelForm, FieldMeta, MultiCheckboxField
 from keg_elements.forms.validators import ValidateUnique
@@ -5,6 +8,7 @@ from sqlalchemy.sql.functions import coalesce
 from sqlalchemy_utils import EmailType
 from webhelpers2.html.tags import link_to
 from wtforms.fields import (
+    DateField,
     HiddenField,
     PasswordField,
     StringField,
@@ -127,7 +131,8 @@ class _ValidatePasswordRequired(object):
         return True
 
 
-def user_form(config=None, allow_superuser=False, endpoint='', fields=['is_enabled']):
+def user_form(config=None, allow_superuser=False, endpoint='',
+              fields=['is_enabled', 'disabled_utc']):
     config = config or {}
     user_cls = flask.current_app.auth_manager.entity_registry.user_cls
 
@@ -148,7 +153,16 @@ def user_form(config=None, allow_superuser=False, endpoint='', fields=['is_enabl
             flask.url_for(endpoint, objid=obj.id)
         )
 
+    def filter_disabled_utc(date):
+        if isinstance(date, dt.date):
+            date = arrow.get(date)
+
+        return date
+
     class User(PermissionsMixin, BundlesMixin, GroupsMixin, ModelForm):
+        disabled_utc = DateField('Disable Date', [validators.Optional()],
+                                 filters=[filter_disabled_utc], render_kw={'type': 'date'})
+
         class Meta:
             model = user_cls
             only = _fields

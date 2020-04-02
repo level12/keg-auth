@@ -3,6 +3,7 @@ import base64
 import hashlib
 import json
 
+import arrow
 import flask
 import itsdangerous
 import passlib.hash
@@ -74,7 +75,31 @@ class UserMixin(object):
     # is_active defines the complexities of how to determine what users are active. For instance,
     #   if email is in scope, we need to have an additional flag to verify users, and that would
     #   get included in is_active logic.
-    is_active = is_enabled
+    @hybrid_property
+    def is_active(self):
+        return not self.is_disabled_by_date and self.is_enabled
+
+    @is_active.expression
+    def is_active(cls):
+        expr = sa_sql.and_(~cls.is_disabled_by_date, cls.is_enabled == sa.true())
+        # need to wrap the expression in a case to work with MSSQL
+        return sa_sql.case([(expr, sa.true())], else_=sa.false())
+
+    @hybrid_property
+    def is_disabled_by_date(self):
+        return self.disabled_utc is not None and self.disabled_utc <= arrow.utcnow()
+
+    @is_disabled_by_date.expression
+    def is_disabled_by_date(cls):
+        is_disabled_expr = sa.sql.and_(
+            cls.disabled_utc.isnot(None),
+            cls.disabled_utc <= arrow.utcnow(),
+        )
+        return sa_sql.case([(is_disabled_expr, sa.true())], else_=sa.false())
+
+    # The datetime when a user will be disabled. User will be inactive if this is set
+    # to a datetime in the past.
+    disabled_utc = sa.Column(ArrowType, nullable=True, default=None, server_default=sa.null())
 
     def get_id(self):
         # Flask-Login requires that this return a string value for the session
@@ -356,13 +381,17 @@ class UserEmailMixin(object):
 
     @hybrid_property
     def is_active(self):
-        return self.is_verified and self.is_enabled
+        return not self.is_disabled_by_date and self.is_verified and self.is_enabled
 
     @is_active.expression
     def is_active(cls):
+        expr = sa_sql.and_(
+            ~cls.is_disabled_by_date,
+            cls.is_verified == sa.true(),
+            cls.is_enabled == sa.true(),
+        )
         # need to wrap the expression in a case to work with MSSQL
-        expr = sa_sql.and_(cls.is_verified == sa.true(), cls.is_enabled == sa.true())
-        return sa.sql.case([(expr, sa.true())], else_=sa.false())
+        return sa_sql.case([(expr, sa.true())], else_=sa.false())
 
     @classmethod
     def testing_create(cls, **kwargs):

@@ -1,9 +1,12 @@
 import logging
 
 import flask
+import flask_login
 import keg.web
 
 from keg_auth import make_blueprint, requires_permissions, requires_user, has_any, has_all
+from keg_auth.forms import user_form
+from keg_auth.views import User as UserBase
 from keg_auth_ta.extensions import csrf, auth_manager
 
 log = logging.getLogger(__name__)
@@ -20,11 +23,22 @@ class ProtectedBlueprint2(flask.Blueprint):
     pass
 
 
+class User(UserBase):
+    # need to make this a static method so it isn't bound on the view instance
+    form_cls = staticmethod(user_form)
+
+    def create_form(self, obj):
+        form_cls = self.form_cls(flask.current_app.config,
+                                 allow_superuser=flask_login.current_user.is_superuser,
+                                 endpoint=self.endpoint_for_action('edit'))
+        return form_cls(obj=obj)
+
+
 public_bp = flask.Blueprint('public', __name__)
 private_bp = flask.Blueprint('private', __name__)
 protected_bp = ProtectedBlueprint('protected', __name__)
 protected_bp2 = ProtectedBlueprint2('protected2', __name__)
-auth_bp = make_blueprint(__name__, auth_manager)
+auth_bp = make_blueprint(__name__, auth_manager, user_crud_cls=User)
 
 blueprints = public_bp, private_bp, protected_bp, protected_bp2, auth_bp
 

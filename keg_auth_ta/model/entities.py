@@ -13,8 +13,12 @@ class EntityMixin(DefaultColsMixin, MethodsMixin):
     pass
 
 
+class UserEmailMixin(keg_auth.UserEmailMixin, keg_auth.UserMixin):
+    pass
+
+
 @auth_entity_registry.register_user
-class User(keg_auth.UserEmailMixin, keg_auth.UserMixin, EntityMixin, db.Model):
+class User(UserEmailMixin, EntityMixin, db.Model):
     __tablename__ = 'users'
 
 
@@ -27,7 +31,7 @@ class UserNoEmail(keg_auth.UserMixin, EntityMixin, db.Model):
     groups = []
 
 
-class UserWithToken(keg_auth.UserEmailMixin, keg_auth.UserTokenMixin,  EntityMixin, db.Model):
+class UserWithToken(keg_auth.UserTokenMixin, UserEmailMixin, EntityMixin, db.Model):
     __tablename__ = 'users_with_token'
 
 
