@@ -441,7 +441,7 @@ class AuthTests(object):
         user = self.user_ent.testing_create(permissions=self.protected_url_permissions)
         client = flask_webtest.TestApp(flask.current_app)
         with client.session_transaction() as sess:
-            sess['user_id'] = user.session_key
+            sess['_user_id'] = user.session_key
 
         # Make sure our client is actually logged in
         client.get(self.protected_url, status=200)
