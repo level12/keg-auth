@@ -1,14 +1,14 @@
 # Translations template for Keg Auth.
-# Copyright (C) 2018 ORGANIZATION
+# Copyright (C) 2020 ORGANIZATION
 # This file is distributed under the same license as the Keg Auth project.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: Keg Auth 0.2.4\n"
+"Project-Id-Version: Keg Auth 0.2.20\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2018-11-14 12:23-0500\n"
+"POT-Creation-Date: 2020-04-02 09:17-0400\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,252 +17,252 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.6.0\n"
 
-#: keg_auth/cli.py:27
+#: keg_auth/cli.py:39
 msgid "User created."
 msgstr ""
 
-#: keg_auth/cli.py:30
+#: keg_auth/cli.py:42
 msgid "Email sent with verification URL."
 msgstr ""
 
-#: keg_auth/cli.py:32
+#: keg_auth/cli.py:44
 msgid "Verification URL: {url}"
 msgstr ""
 
-#: keg_auth/forms.py:19 keg_auth/grids.py:155
+#: keg_auth/forms.py:24 keg_auth/grids.py:184
 msgid "User ID"
 msgstr ""
 
-#: keg_auth/forms.py:23 keg_auth/forms.py:38
+#: keg_auth/forms.py:28 keg_auth/forms.py:43
 msgid "Email"
 msgstr ""
 
-#: keg_auth/forms.py:30
+#: keg_auth/forms.py:35
 msgid "Password"
 msgstr ""
 
-#: keg_auth/forms.py:45 keg_auth/forms.py:139
+#: keg_auth/forms.py:50 keg_auth/forms.py:188
 msgid "New Password"
 msgstr ""
 
-#: keg_auth/forms.py:47 keg_auth/forms.py:141
+#: keg_auth/forms.py:52 keg_auth/forms.py:190
 msgid "Passwords must match"
 msgstr ""
 
-#: keg_auth/forms.py:49 keg_auth/forms.py:143
+#: keg_auth/forms.py:54 keg_auth/forms.py:192
 msgid "Confirm Password"
 msgstr ""
 
-#: keg_auth/forms.py:92
+#: keg_auth/forms.py:130
 msgid "This field is required."
 msgstr ""
 
-#: keg_auth/forms.py:146 keg_auth/views.py:372
-msgid "Groups"
-msgstr ""
-
-#: keg_auth/grids.py:75 keg_auth/grids.py:77 keg_auth/views.py:75
-#: keg_auth/views.py:120
+#: keg_auth/grids.py:103 keg_auth/grids.py:105 keg_auth/views.py:85
+#: keg_auth/views.py:134
 msgid "Edit"
 msgstr ""
 
-#: keg_auth/grids.py:85 keg_auth/grids.py:87
+#: keg_auth/grids.py:113 keg_auth/grids.py:115
 msgid "Delete"
 msgstr ""
 
-#: keg_auth/grids.py:95 keg_auth/grids.py:97
+#: keg_auth/grids.py:123 keg_auth/grids.py:125
 msgid "View"
 msgstr ""
 
-#: keg_auth/grids.py:157
+#: keg_auth/grids.py:186
 msgid "Verified"
 msgstr ""
 
-#: keg_auth/grids.py:158
+#: keg_auth/grids.py:187
 msgid "Superuser"
 msgstr ""
 
-#: keg_auth/grids.py:165
+#: keg_auth/grids.py:194
 msgid "Resend Verification"
 msgstr ""
 
-#: keg_auth/grids.py:188 keg_auth/grids.py:211 keg_auth/grids.py:225
+#: keg_auth/grids.py:218 keg_auth/grids.py:242 keg_auth/grids.py:256
 msgid "Name"
 msgstr ""
 
-#: keg_auth/grids.py:226
+#: keg_auth/grids.py:257
 msgid "Description"
 msgstr ""
 
-#: keg_auth/views.py:72 keg_auth/views.py:120
+#: keg_auth/views.py:82 keg_auth/views.py:134
 msgid "Create"
 msgstr ""
 
-#: keg_auth/views.py:73 keg_auth/views.py:124
+#: keg_auth/views.py:83 keg_auth/views.py:138
 msgid "Create {name}"
 msgstr ""
 
-#: keg_auth/views.py:76
+#: keg_auth/views.py:86
 msgid "Edit {name}"
 msgstr ""
 
-#: keg_auth/views.py:86 keg_auth/views.py:122
+#: keg_auth/views.py:99 keg_auth/views.py:136
 msgid "Save Changes"
 msgstr ""
 
-#: keg_auth/views.py:169
+#: keg_auth/views.py:191
 msgid "Successfully {verb} {object}"
 msgstr ""
 
-#: keg_auth/views.py:174
+#: keg_auth/views.py:196
 msgid "removed"
 msgstr ""
 
-#: keg_auth/views.py:179
+#: keg_auth/views.py:201
 msgid "Unable to delete {name}. It may be referenced by other items."
 msgstr ""
 
-#: keg_auth/views.py:188
+#: keg_auth/views.py:210
 msgid "modified"
 msgstr ""
 
-#: keg_auth/views.py:190
+#: keg_auth/views.py:212
 msgid "created"
 msgstr ""
 
-#: keg_auth/views.py:195
+#: keg_auth/views.py:217
 msgid "Form errors detected.  Please see below for details."
 msgstr ""
 
-#: keg_auth/views.py:217
+#: keg_auth/views.py:230 keg_auth/views.py:243
 msgid "list"
 msgstr ""
 
-#: keg_auth/views.py:286
-msgid "You have been logged out."
-msgstr ""
-
-#: keg_auth/views.py:298
+#: keg_auth/views.py:325
 msgid "User"
 msgstr ""
 
-#: keg_auth/views.py:299
+#: keg_auth/views.py:326
 msgid "Users"
 msgstr ""
 
-#: keg_auth/views.py:313
+#: keg_auth/views.py:340
 msgid "Verification email has been sent"
 msgstr ""
 
-#: keg_auth/views.py:371
+#: keg_auth/views.py:398
 msgid "Group"
 msgstr ""
 
-#: keg_auth/views.py:403
+#: keg_auth/views.py:399
+msgid "Groups"
+msgstr ""
+
+#: keg_auth/views.py:430
 msgid "Bundle"
 msgstr ""
 
-#: keg_auth/views.py:404
+#: keg_auth/views.py:431
 msgid "Bundles"
 msgstr ""
 
-#: keg_auth/views.py:449
+#: keg_auth/views.py:476 keg_auth/views.py:477
 msgid "Permissions"
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:112
+#: keg_auth/libs/authenticators.py:117
 msgid "No user account matches: {}"
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:113
+#: keg_auth/libs/authenticators.py:118
 msgid ""
 "The user account \"{}\" has an unverified email address.  Please check "
 "your email for a verification link from this website.  Or, use the "
 "\"forgot password\" link to verify the account."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:118
+#: keg_auth/libs/authenticators.py:123
 msgid ""
 "The user account \"{}\" has been disabled.  Please contact this site's "
 "administrators for more information."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:146
+#: keg_auth/libs/authenticators.py:154
 msgid "Login successful."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:177
+#: keg_auth/libs/authenticators.py:186
 msgid "The form has errors, please see below."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:213
+#: keg_auth/libs/authenticators.py:223
 msgid ""
 "Authentication token was invalid or expired.  Please fill out the form "
 "below to get a new token."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:262
+#: keg_auth/libs/authenticators.py:273
 msgid "Complete Password Reset"
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:263
+#: keg_auth/libs/authenticators.py:274
 msgid "Change Password"
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:264
+#: keg_auth/libs/authenticators.py:275
 msgid "Password changed.  Please use the new password to login below."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:271
+#: keg_auth/libs/authenticators.py:282
 msgid "Verify Account & Set Password"
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:272
+#: keg_auth/libs/authenticators.py:283
 msgid "Verify & Set Password"
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:273
+#: keg_auth/libs/authenticators.py:284
 msgid ""
 "Account verified & password set.  Please use the new password to login "
 "below."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:281
+#: keg_auth/libs/authenticators.py:292
 msgid "Log In"
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:282
+#: keg_auth/libs/authenticators.py:293
 msgid "Invalid password."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:309
+#: keg_auth/libs/authenticators.py:321
 msgid "Initiate Password Reset"
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:311
+#: keg_auth/libs/authenticators.py:323
 msgid "Please check your email for the link to change your password."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:412
+#: keg_auth/libs/authenticators.py:356
+msgid "You have been logged out."
+msgstr ""
+
+#: keg_auth/libs/authenticators.py:451
 msgid "No KEGAUTH_LDAP_SERVER_URL configured!"
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:416
+#: keg_auth/libs/authenticators.py:455
 msgid "No KEGAUTH_LDAP_DN_FORMAT configured!"
 msgstr ""
 
-#: keg_auth/libs/decorators.py:72
+#: keg_auth/libs/decorators.py:75
 #, python-format
 msgid ""
-"Argument mismatch occured: method=%s, missing=%s, extra_keys=%s, "
+"Argument mismatch occurred: method=%s, missing=%s, extra_keys=%s, "
 "extra_pos=%s.  Arguments available: %s"
 msgstr ""
 
-#: keg_auth/libs/navigation.py:56
+#: keg_auth/libs/navigation.py:61
 msgid "Endpoint {} in navigation is not registered"
 msgstr ""
 
-#: keg_auth/libs/navigation.py:140
+#: keg_auth/libs/navigation.py:147
 msgid "must provide a NavURL or a list of NavItems"
 msgstr ""
 
