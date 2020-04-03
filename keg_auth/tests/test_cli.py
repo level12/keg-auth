@@ -97,21 +97,17 @@ class TestCLI(CLIBase):
 
     def test_purge_attempts(self):
         user = ents.User.testing_create(email='foo@bar.com')
-        user_id = user.id
-        ents.Attempt.testing_create(user_id=user_id, attempt_type='login')
-        ents.Attempt.testing_create(user_id=user_id, attempt_type='reset')
+        username = user.email
+        ents.Attempt.testing_create(user_input=username, attempt_type='login')
+        ents.Attempt.testing_create(user_input=username, attempt_type='reset')
 
         self.invoke('auth', 'purge-attempts', 'foo@bar.com')
-        assert ents.Attempt.query.filter_by(user_id=user_id).count() == 0
+        assert ents.Attempt.query.filter_by(user_input=username).count() == 0
 
-        ents.Attempt.testing_create(user_id=user_id, attempt_type='login')
-        ents.Attempt.testing_create(user_id=user_id, attempt_type='reset')
+        ents.Attempt.testing_create(user_input=username, attempt_type='login')
+        ents.Attempt.testing_create(user_input=username, attempt_type='reset')
         self.invoke('auth', 'purge-attempts', 'foo@bar.com', '--type', 'login')
-        assert ents.Attempt.query.filter_by(user_id=user_id).count() == 1
-
-    def test_purge_attempts_user_dne(self):
-        with pytest.raises(AssertionError, match='No user found with username "foo@bar.com"'):
-            self.invoke('auth', 'purge-attempts', 'foo@bar.com')
+        assert ents.Attempt.query.filter_by(user_input=username).count() == 1
 
     @mock.patch('keg.cli.click.echo', autospec=True, spec_set=True)
     @mock.patch('keg.current_app.auth_manager.entity_registry.get_entity_cls',

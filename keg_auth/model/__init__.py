@@ -494,13 +494,8 @@ class GroupMixin(object):
 
 
 class AttemptMixin(object):
-    users_tablename = 'users'
-
-    @declared_attr
-    def user_id(cls):
-        fk = sa.ForeignKey('{}.id'.format(cls.users_tablename),
-                           ondelete='CASCADE', onupdate='CASCADE')
-        return sa.Column(sa.Integer, fk, nullable=False)
+    # Form input data, e.g. username
+    user_input = sa.Column(sa.Unicode(512), nullable=False)
 
     datetime_utc = sa.Column(ArrowType, nullable=False, default=arrow.utcnow,
                              server_default=dbutils.utcnow())
@@ -510,12 +505,23 @@ class AttemptMixin(object):
     source_ip = sa.Column(sa.Unicode(50), nullable=True)
 
     @classmethod
-    def get_attempts_for_user_query(cls, user, attempt_type=None):
-        query = cls.query.filter_by(user_id=user.id)
+    def purge_attempts_for_username(cls, username, attempt_type=None):
+        query = cls.get_attempts_for_username_query(username, attempt_type)
+        query.delete()
+        db.session.commit()
+
+    @classmethod
+    def get_attempts_for_username_query(cls, username, attempt_type=None):
+        query = cls.query.filter_by(user_input=username)
         if attempt_type:
             query = query.filter_by(attempt_type=attempt_type)
 
         return query
+
+
+def get_username(user):
+    user_cls = registry().get_entity_cls('user')
+    return getattr(user, get_username_key(user_cls))
 
 
 def get_username_key(user_cls):
@@ -654,20 +660,6 @@ def initialize_mappings(namespace='keg_auth', registry=None):
         table2 = registry.get_entity_cls(type2)
 
         tables[base_name] = table_func(table1, table2, table_name=_make_table_name(base_name))
-
-    try:
-        # Setup an attempts relationship on the user model.
-        user_cls = registry.get_entity_cls('user')
-        attempt_cls = registry.get_entity_cls('attempt')
-        relationship = sa.orm.relationship(
-            attempt_cls,
-            backref='user',
-            cascade='all, delete-orphan'
-        )
-        setattr(user_cls, 'attempts', relationship)
-    except RegistryError:
-        # The app has not registered an attempt class, so we'll ignore this.
-        pass
 
     return tables
 

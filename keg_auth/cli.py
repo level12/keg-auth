@@ -63,14 +63,7 @@ def add_cli_to_app(app, cli_group_name, user_args=['email']):
             click.echo('No attempt class has been registered.')
             return
 
-        user_ent = auth_manager.entity_registry.user_cls
-        user = user_ent.get_by(**{get_username_key(user_ent): username})
-
-        assert user is not None, 'No user found with username "{}"'.format(username)
-
-        attempt_query = attempt_ent.get_attempts_for_user_query(user, attempt_type=attempt_type)
-        attempt_query.delete()
-        db.session.commit()
+        attempt_ent.purge_attempts_for_username(username, attempt_type)
 
     auth.command('purge-attempts')(purge_attempts)
 

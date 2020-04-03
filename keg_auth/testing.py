@@ -45,13 +45,13 @@ class AuthAttemptTests(object):
         resp.form['password'] = password
         return resp.form.submit(status=submit_status)
 
-    def do_login_test(self, user, login_time, flashes, password='badpass',
+    def do_login_test(self, username, login_time, flashes, password='badpass',
                       submit_status=200):
         with mock.patch(
             'keg_auth.libs.authenticators.arrow.utcnow',
             return_value=login_time,
         ):
-            resp = self.do_login(self.client, user.email, password, submit_status)
+            resp = self.do_login(self.client, username, password, submit_status)
             assert resp.flashes == flashes
 
     @pytest.mark.parametrize('limit, timespan, lockout', [
@@ -59,7 +59,11 @@ class AuthAttemptTests(object):
         (3, 7200, 300),
         (5, 300, 300),
     ])
-    def test_login_attempts_blocked(self, limit, timespan, lockout):
+    @pytest.mark.parametrize('create_user', [
+        False,
+        True,
+    ])
+    def test_login_attempts_blocked(self, limit, timespan, lockout, create_user):
         '''
         Test that login attempts get blocked after reaching the failed login attempt
         limit. Login attempts after the lockout period has passed (since the failed attempt
@@ -70,7 +74,15 @@ class AuthAttemptTests(object):
             'KEGAUTH_LOGIN_ATTEMPT_TIMESPAN': timespan,
             'KEGAUTH_LOGIN_ATTEMPT_LOCKOUT': lockout,
         }):
-            user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
+            # We want to test blocking attempts for existing and non-existing users.
+            username = 'foo@bar.com'
+            invalid_flashes = [('error', 'No user account matches: foo@bar.com')]
+            success_flashes = [('error', 'No user account matches: foo@bar.com')]
+            if create_user:
+                invalid_flashes = self.login_invalid_flashes
+                success_flashes = self.login_success_flashes
+                self.user_ent.testing_create(email=username, password='pass')
+
             assert self.attempt_ent.query.count() == 0
 
             last_attempt_time = arrow.utcnow()
@@ -80,30 +92,32 @@ class AuthAttemptTests(object):
 
             def assert_attempt_count(attempt_count, failed_count, is_during_lockout=False):
                 assert self.attempt_ent.query.filter_by(
-                    user_id=user.id,
+                    user_input=username,
                     attempt_type='login',
                     is_during_lockout=is_during_lockout,
                 ).count() == attempt_count
+                # If we don't create a user, all attempts are unsuccessful.
+                _failed_count = (failed_count if create_user else attempt_count)
                 assert self.attempt_ent.query.filter_by(
-                    user_id=user.id,
+                    user_input=username,
                     attempt_type='login',
                     success=False,
                     is_during_lockout=is_during_lockout,
-                ).count() == failed_count
+                ).count() == _failed_count
 
             def do_test(login_time, flashes, password='badpass', submit_status=200):
-                self.do_login_test(user, login_time, flashes, password, submit_status)
+                self.do_login_test(username, login_time, flashes, password, submit_status)
 
-            do_test(first_attempt_time, self.login_invalid_flashes)
+            do_test(first_attempt_time, invalid_flashes)
             assert_attempt_count(1, 1)
             assert_attempt_count(0, 0, is_during_lockout=True)
             for i in range(0, limit - 2):
                 attempt_time = first_attempt_time + timedelta(seconds=i+1)
-                do_test(attempt_time, self.login_invalid_flashes)
+                do_test(attempt_time, invalid_flashes)
                 assert_attempt_count(i + 2, i + 2)
                 assert_attempt_count(0, 0, is_during_lockout=True)
 
-            do_test(last_attempt_time, self.login_invalid_flashes)
+            do_test(last_attempt_time, invalid_flashes)
             assert_attempt_count(limit, limit)
             assert_attempt_count(0, 0, is_during_lockout=True)
 
@@ -123,7 +137,8 @@ class AuthAttemptTests(object):
             # previous loop we attempted (limit) times unsuccessfully, those attempts
             # do not count against the limit counter because they were done during
             # lockout.
-            do_test(after_lockout_end, self.login_success_flashes, 'pass', 302)
+            status = 302 if create_user else 200
+            do_test(after_lockout_end, success_flashes, 'pass', status)
             assert_attempt_count(limit + 1, limit)
             assert_attempt_count(limit + 1, limit, is_during_lockout=True)
 
@@ -144,7 +159,7 @@ class AuthAttemptTests(object):
         def do_test(attempt_count, flashes, password='badpass', submit_status=200):
             resp = self.do_login(self.client, user.email, password, submit_status)
             assert self.attempt_ent.query.filter_by(
-                user_id=user.id, attempt_type='login').count() == attempt_count
+                user_input=user.email, attempt_type='login').count() == attempt_count
             assert resp.flashes == flashes
 
         do_test(0, self.login_invalid_flashes)
@@ -173,7 +188,7 @@ class AuthAttemptTests(object):
 
             # Login and assert matching flashes and status.
             def do_test(login_time, flashes, password='badpass', submit_status=200):
-                self.do_login_test(user, login_time, flashes, password, submit_status)
+                self.do_login_test(user.email, login_time, flashes, password, submit_status)
 
             login_time = arrow.utcnow()
             # Create (limit - 1) failed login attempts. The next failed login
@@ -236,12 +251,12 @@ class AuthAttemptTests(object):
 
             def assert_attempt_count(attempt_count, failed_count, is_during_lockout=False):
                 assert self.attempt_ent.query.filter_by(
-                    user_id=user.id,
+                    user_input=user.email,
                     attempt_type='reset',
                     is_during_lockout=is_during_lockout,
                 ).count() == attempt_count
                 assert self.attempt_ent.query.filter_by(
-                    user_id=user.id,
+                    user_input=user.email,
                     attempt_type='reset',
                     success=False,
                     is_during_lockout=is_during_lockout,
@@ -375,7 +390,7 @@ class AuthTests(AuthAttemptTests):
         assert self.attempt_ent.query.filter_by(
             attempt_type='login',
             success=True,
-            user_id=user.id,
+            user_input=user.email,
             is_during_lockout=False,
         )
 
@@ -489,7 +504,7 @@ class AuthTests(AuthAttemptTests):
         assert self.attempt_ent.get_by(
             attempt_type='login',
             success=False,
-            user_id=user.id,
+            user_input=user.email,
             is_during_lockout=False,
         )
 
@@ -647,7 +662,7 @@ class AuthTests(AuthAttemptTests):
         )
         assert resp.headers['Location'] == full_login_url
         assert self.attempt_ent.query.count() == 1
-        assert self.attempt_ent.get_by(attempt_type='reset', user_id=user.id)
+        assert self.attempt_ent.get_by(attempt_type='reset', user_input=user.email)
 
     def test_reset_pw_form_error(self):
         user = self.user_ent.testing_create()
