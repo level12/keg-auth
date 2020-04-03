@@ -1,5 +1,5 @@
-import binascii
 import base64
+import binascii
 import hashlib
 import json
 
@@ -18,11 +18,15 @@ from blazeutils.strings import randchars
 from keg.db import db
 from keg_elements.db.mixins import might_commit, might_flush
 from sqlalchemy.dialects import mssql
-from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy_utils import EmailType, PasswordType, force_auto_coercion, ArrowType
+from sqlalchemy_utils import (
+    ArrowType,
+    EmailType,
+    PasswordType,
+    force_auto_coercion,
+)
 
-from keg_auth.model.entity_registry import RegistryError
+from keg_auth.model.types import AttemptType
 
 force_auto_coercion()
 
@@ -499,24 +503,27 @@ class AttemptMixin(object):
 
     datetime_utc = sa.Column(ArrowType, nullable=False, default=arrow.utcnow,
                              server_default=dbutils.utcnow())
-    attempt_type = sa.Column(sa.Enum('login', 'reset', name='ka_attempt_types'))
+    attempt_type = sa.Column(AttemptType.db_type())
     is_during_lockout = sa.Column(sa.Boolean, nullable=False, default=False)
     success = sa.Column(sa.Boolean, nullable=False, default=True)
     source_ip = sa.Column(sa.Unicode(50), nullable=True)
 
     @classmethod
-    def purge_attempts_for_username(cls, username, attempt_type=None):
-        query = cls.get_attempts_for_username_query(username, attempt_type)
-        query.delete()
-        db.session.commit()
+    def purge_attempts(cls, username=None, older_than=None, attempt_type=None):
+        """Delete attempt records optionally filtered by username, age, or type."""
+        query = cls.query
+        if username:
+            query = query.filter_by(user_input=username)
 
-    @classmethod
-    def get_attempts_for_username_query(cls, username, attempt_type=None):
-        query = cls.query.filter_by(user_input=username)
+        if older_than:
+            query = query.filter(cls.datetime_utc < arrow.utcnow().shift(days=-older_than))
+
         if attempt_type:
             query = query.filter_by(attempt_type=attempt_type)
 
-        return query
+        count = query.delete()
+        db.session.commit()
+        return count
 
 
 def get_username(user):

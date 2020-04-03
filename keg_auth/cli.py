@@ -1,6 +1,5 @@
 import click
 import keg
-from keg.db import db
 
 from keg_auth.model import get_username_key
 from keg_auth.extensions import gettext as _
@@ -53,9 +52,11 @@ def add_cli_to_app(app, cli_group_name, user_args=['email']):
         create_user = click.argument(arg)(create_user)
     auth.command('create-user')(create_user)
 
-    @click.argument('username')
-    @click.option('--attempt-type', '--type')
-    def purge_attempts(username, attempt_type):
+    @click.option('--username', '--user', help='username to filter by')
+    @click.option('--older-than', type=int, help='number of days')
+    @click.option('--attempt-type', '--type', help='[login, reset]')
+    def purge_attempts(username, older_than, attempt_type):
+        """Purge authentication attempts optionally filtered by username, type, or age."""
         auth_manager = keg.current_app.auth_manager
         try:
             attempt_ent = auth_manager.entity_registry.attempt_cls
@@ -63,7 +64,12 @@ def add_cli_to_app(app, cli_group_name, user_args=['email']):
             click.echo('No attempt class has been registered.')
             return
 
-        attempt_ent.purge_attempts_for_username(username, attempt_type)
+        count = attempt_ent.purge_attempts(
+            username=username,
+            older_than=older_than,
+            attempt_type=attempt_type
+        )
+        click.echo(f'Deleted {count} attempts.')
 
     auth.command('purge-attempts')(purge_attempts)
 

@@ -1,7 +1,7 @@
+import arrow
+import mock
 from blazeutils.containers import LazyDict
 from keg.testing import CLIBase
-import mock
-import pytest
 
 from keg_auth.model.entity_registry import RegistryError
 from keg_auth_ta.model import entities as ents
@@ -95,23 +95,45 @@ class TestCLI(CLIBase):
 
         assert 'verified' in result.output
 
-    def test_purge_attempts(self):
-        user = ents.User.testing_create(email='foo@bar.com')
-        username = user.email
-        ents.Attempt.testing_create(user_input=username, attempt_type='login')
-        ents.Attempt.testing_create(user_input=username, attempt_type='reset')
+    @mock.patch('keg.cli.click.echo', autospec=True, spec_set=True)
+    def test_purge_attempts(self, m_echo):
+        username = 'foo@bar.com'
+        for i in range(0, 3):
+            for attempt_type in ['login', 'reset']:
+                for username in ['foo@test.com', 'bar@test.com']:
+                    ents.Attempt.testing_create(
+                        user_input=username,
+                        attempt_type=attempt_type,
+                        datetime_utc=arrow.utcnow().shift(days=-i)
+                    )
 
-        self.invoke('auth', 'purge-attempts', 'foo@bar.com')
-        assert ents.Attempt.query.filter_by(user_input=username).count() == 0
+        # Delete all attempts older than 2 days.
+        assert ents.Attempt.query.count() == 12
+        self.invoke('auth', 'purge-attempts', '--older-than=2')
+        m_echo.assert_called_once_with('Deleted 4 attempts.')
+        assert ents.Attempt.query.count() == 8
 
-        ents.Attempt.testing_create(user_input=username, attempt_type='login')
-        ents.Attempt.testing_create(user_input=username, attempt_type='reset')
-        self.invoke('auth', 'purge-attempts', 'foo@bar.com', '--type', 'login')
-        assert ents.Attempt.query.filter_by(user_input=username).count() == 1
+        # Delete all attempts for username.
+        m_echo.reset_mock()
+        self.invoke('auth', 'purge-attempts', '--username=foo@test.com')
+        m_echo.assert_called_once_with('Deleted 4 attempts.')
+        assert ents.Attempt.query.count() == 4
+
+        # Delete all login attempts.
+        m_echo.reset_mock()
+        self.invoke('auth', 'purge-attempts', '--type=login')
+        m_echo.assert_called_once_with('Deleted 2 attempts.')
+        assert ents.Attempt.query.count() == 2
+
+        # Delete all attempts.
+        m_echo.reset_mock()
+        self.invoke('auth', 'purge-attempts')
+        m_echo.assert_called_once_with('Deleted 2 attempts.')
+        assert ents.Attempt.query.count() == 0
 
     @mock.patch('keg.cli.click.echo', autospec=True, spec_set=True)
     @mock.patch('keg.current_app.auth_manager.entity_registry.get_entity_cls',
                 autospec=True, spec_set=True, side_effect=RegistryError)
     def test_purge_attempts_no_attempt_registered(self, m_ent_registry, m_echo):
-        self.invoke('auth', 'purge-attempts', 'foo@bar.com')
+        self.invoke('auth', 'purge-attempts', '--username=foo@bar.com')
         m_echo.assert_called_once_with('No attempt class has been registered.')
