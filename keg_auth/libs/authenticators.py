@@ -291,7 +291,9 @@ class AttemptLimitMixin(object):
         return flask.request.remote_addr
 
     def on_attempt_blocked(self):
-        flash(*self.get_flash_attempts_limit_reached())
+        flash_message = self.get_flash_attempts_limit_reached()
+        if flash_message:
+            flash(*flash_message)
 
     def get_flash_attempts_limit_reached(self):
         raise NotImplementedError  # pragma: no cover
@@ -439,14 +441,16 @@ class PasswordFormViewResponder(AttemptLimitMixin, LoginResponderMixin,
 
     def on_form_valid(self, form):
         username = form.login_id.data
-        should_block_attempt = False
         attempt = None
         if self.should_limit_attempts():
             if self.is_attempt_blocked(username):
-                # We don't want to abort yet so we can mark the attempt as successful
-                # later if the user is verified.
-                should_block_attempt = True
+                # If we are rate-limiting this attempt, we don't want to proceed with validation.
+                # Validating may still allow brute forcing by measuring response time. Skipping it
+                # may help mitigate DoS attacks on the login page as password hashing is typically
+                # an expensive operation
                 attempt = self.log_attempt(username, success=False, is_during_lockout=True)
+                self.on_attempt_blocked()
+                return
             else:
                 attempt = self.log_attempt(username, success=False)
 
@@ -454,22 +458,10 @@ class PasswordFormViewResponder(AttemptLimitMixin, LoginResponderMixin,
             # We want to know if the login attempt was successful so we'll try
             # to verify the user. If the user is verified but the attempt is blocked,
             # mark the attempt as successful and abort.
-            try:
-                user = self.parent.verify_user(
-                    login_id=form.login_id.data,
-                    password=form.password.data
-                )
-            except:  # noqa: E722
-                if should_block_attempt:
-                    self.on_attempt_blocked()
-                    return
-
-                raise
-
-            if should_block_attempt:
-                self.update_attempt(attempt, success=True)
-                self.on_attempt_blocked()
-                return
+            user = self.parent.verify_user(
+                login_id=form.login_id.data,
+                password=form.password.data
+            )
 
             if attempt:
                 self.update_attempt(attempt, success=True)
@@ -541,7 +533,8 @@ class PasswordFormViewResponder(AttemptLimitMixin, LoginResponderMixin,
         ).count()
 
 
-class ForgotPasswordViewResponder(UserResponderMixin, FormResponderMixin, ViewResponder):
+class ForgotPasswordViewResponder(AttemptLimitMixin, UserResponderMixin, FormResponderMixin,
+                                  ViewResponder):
     """ Master responder for keg-integrated logins, using an email form"""
     url = '/forgot-password'
     form_cls = forms.ForgotPassword
@@ -556,8 +549,22 @@ class ForgotPasswordViewResponder(UserResponderMixin, FormResponderMixin, ViewRe
         return super(ForgotPasswordViewResponder, self).__call__(*args, **kwargs)
 
     def on_form_valid(self, form):
+        attempt = None
+        if self.should_limit_attempts():
+            if self.is_attempt_blocked(form.email.data):
+                # If we are rate-limiting this attempt, we don't want to proceed with validation.
+                # Validating may still allow brute forcing by measuring response time.
+                attempt = self.log_attempt(form.email.data, success=False, is_during_lockout=True)
+                self.on_attempt_blocked()
+                return
+            else:
+                attempt = self.log_attempt(form.email.data, success=False)
+
         try:
             user = self.parent.verify_user(login_id=form.email.data, allow_unverified=True)
+
+            if attempt:
+                self.update_attempt(attempt, success=True)
 
             # User is active, take action to initiate password reset
             return self.on_success(user)
@@ -576,6 +583,59 @@ class ForgotPasswordViewResponder(UserResponderMixin, FormResponderMixin, ViewRe
     def send_email(self, user):
         user.token_generate()
         flask.current_app.auth_manager.mail_manager.send_reset_password(user)
+
+    def get_flash_attempts_limit_reached(self):
+        return _('Too many failed attempts.'), 'error'
+
+    def get_attempt_limit(self):
+        return flask.current_app.config.get('KEGAUTH_FORGOT_ATTEMPT_LIMIT')
+
+    def get_attempt_timespan(self):
+        return flask.current_app.config.get('KEGAUTH_FORGOT_ATTEMPT_TIMESPAN')
+
+    def get_attempt_lockout_period(self):
+        return flask.current_app.config.get('KEGAUTH_FORGOT_ATTEMPT_LOCKOUT')
+
+    def get_attempt_type(self):
+        return 'forgot'
+
+    def get_last_limiting_attempt(self, username):
+        return self.attempt_ent.query.filter_by(
+            user_input=username,
+            success=False,
+            is_during_lockout=False,
+            attempt_type=self.get_attempt_type(),
+        ).order_by(
+            self.attempt_ent.datetime_utc.desc(),
+        ).first()
+
+    def get_limiting_attempt_count(self, before_time, username):
+        last_successful_attempt = self.attempt_ent.query.filter_by(
+            user_input=username,
+            success=True,
+            is_during_lockout=False,
+            attempt_type=self.get_attempt_type()
+        ).order_by(
+            self.attempt_ent.datetime_utc.desc(),
+        ).first()
+
+        def is_within_timespan(attempt):
+            timespan_start = before_time + timedelta(seconds=-self.get_attempt_timespan())
+            return attempt.datetime_utc > timespan_start
+
+        if last_successful_attempt and is_within_timespan(last_successful_attempt):
+            timespan_start = last_successful_attempt.datetime_utc
+        else:
+            timespan_start = before_time + timedelta(seconds=-self.get_attempt_timespan())
+
+        return self.attempt_ent.query.filter(
+            self.attempt_ent.user_input == username,
+            self.attempt_ent.success == sa.false(),
+            self.attempt_ent.is_during_lockout == sa.false(),
+            self.attempt_ent.datetime_utc > timespan_start,
+            self.attempt_ent.datetime_utc <= before_time,
+            self.attempt_ent.attempt_type == self.get_attempt_type(),
+        ).count()
 
 
 class LogoutViewResponder(ViewResponder):

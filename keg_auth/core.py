@@ -114,6 +114,9 @@ class AuthManager(object):
         app.config.setdefault('KEGAUTH_LOGIN_ATTEMPT_LIMIT', 3)
         app.config.setdefault('KEGAUTH_LOGIN_ATTEMPT_TIMESPAN', 3600)  # 1 hour
         app.config.setdefault('KEGAUTH_LOGIN_ATTEMPT_LOCKOUT', 3600)  # 1 hour
+        app.config.setdefault('KEGAUTH_FORGOT_ATTEMPT_LIMIT', 5)
+        app.config.setdefault('KEGAUTH_FORGOT_ATTEMPT_TIMESPAN', 3600)  # 1 hour
+        app.config.setdefault('KEGAUTH_FORGOT_ATTEMPT_LOCKOUT', 3600)  # 1 hour
         app.config.setdefault('KEGAUTH_RESET_ATTEMPT_LIMIT', 1)
         app.config.setdefault('KEGAUTH_RESET_ATTEMPT_TIMESPAN', 86400)  # 24 hours
         app.config.setdefault('KEGAUTH_RESET_ATTEMPT_LOCKOUT', 86400)  # 24 hours

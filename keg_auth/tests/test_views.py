@@ -1,5 +1,3 @@
-#s Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
-from __future__ import unicode_literals
 from blazeutils.datastructures import BlankObject
 import flask
 import freezegun

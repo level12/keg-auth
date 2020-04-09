@@ -54,7 +54,7 @@ def add_cli_to_app(app, cli_group_name, user_args=['email']):
 
     @click.option('--username', '--user', help='username to filter by')
     @click.option('--older-than', type=int, help='number of days')
-    @click.option('--attempt-type', '--type', help='[login, reset]')
+    @click.option('--attempt-type', '--type', help='[login, reset, forgot]')
     def purge_attempts(username, older_than, attempt_type):
         """Purge authentication attempts optionally filtered by username, type, or age."""
         auth_manager = keg.current_app.auth_manager

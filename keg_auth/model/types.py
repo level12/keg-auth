@@ -2,6 +2,7 @@ from keg_elements.db.columns import DBEnum
 
 
 class AttemptType(DBEnum):
+    forgot = "Forgot Password"
     login = "Login"
     reset = "Password Reset"
 
