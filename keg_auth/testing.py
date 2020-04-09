@@ -55,12 +55,12 @@ class AuthAttemptTests(object):
         return resp.form.submit(status=submit_status)
 
     def do_login_test(self, username, login_time, flashes, password='badpass',
-                      submit_status=200):
+                      submit_status=200, client=None):
         with mock.patch(
             'keg_auth.libs.authenticators.arrow.utcnow',
             return_value=login_time,
         ):
-            resp = self.do_login(self.client, username, password, submit_status)
+            resp = self.do_login(client or self.client, username, password, submit_status)
             assert resp.flashes == flashes
 
     @pytest.mark.skipif(not has_attempt_model, reason=has_attempt_skip_reason)
@@ -220,6 +220,63 @@ class AuthAttemptTests(object):
             # We should be locked out now because we did (limit) failed attempts
             # after the successful attempt.
             do_test(login_time + timedelta(seconds=limit + 1), self.login_lockout_flashes)
+
+    @pytest.mark.skipif(not has_attempt_model, reason=has_attempt_skip_reason)
+    @pytest.mark.parametrize('limit, timespan, lockout', [
+        (3, 3600, 7200),
+    ])
+    def test_login_attempts_blocked_by_ip(self, limit, timespan, lockout):
+        '''
+        Test that login attempts get blocked for an IP address
+        '''
+        client = flask_webtest.TestApp(flask.current_app,
+                                       extra_environ={'REMOTE_ADDR': '192.168.0.111'})
+
+        with mock.patch.dict('flask.current_app.config', {
+            'KEGAUTH_LOGIN_ATTEMPT_LIMIT': limit,
+            'KEGAUTH_LOGIN_ATTEMPT_TIMESPAN': timespan,
+            'KEGAUTH_LOGIN_ATTEMPT_LOCKOUT': lockout,
+            'KEGAUTH_ATTEMPT_IP_LIMIT': True,
+        }):
+            # We want to test blocking attempts for existing and non-existing users.
+            username = 'foo@bar.com'
+            invalid_flashes = lambda email: [('error', f'No user account matches: {email}')]
+
+            last_attempt_time = arrow.utcnow()
+            first_attempt_time = last_attempt_time + timedelta(seconds=-(timespan - 1))
+
+            def assert_attempt_count(attempt_count, failed_count, is_during_lockout=False):
+                assert self.attempt_ent.query.filter_by(
+                    attempt_type='login',
+                    is_during_lockout=is_during_lockout,
+                ).count() == attempt_count
+                assert self.attempt_ent.query.filter_by(
+                    attempt_type='login',
+                    success=False,
+                    is_during_lockout=is_during_lockout,
+                ).count() == failed_count
+
+            def do_test(username, login_time, flashes, submit_status=200, client=client):
+                self.do_login_test(username, login_time, flashes, 'pass',
+                                   submit_status, client=client)
+
+            for i in range(0, limit):
+                email = randchars() + '@foo.com'
+                attempt_time = first_attempt_time + timedelta(seconds=i+1)
+                do_test(email, attempt_time, invalid_flashes(email))
+
+            assert_attempt_count(limit, limit)
+            assert_attempt_count(0, 0, is_during_lockout=True)
+
+            # Test attempts blocked at start of lockout.
+            email = randchars() + '@foo.com'
+            do_test(email, last_attempt_time + timedelta(seconds=1), self.login_lockout_flashes)
+            assert_attempt_count(limit, limit)
+            assert_attempt_count(1, 1, is_during_lockout=True)
+
+            # Attempt from another IP is not locked
+            do_test(email, last_attempt_time + timedelta(seconds=1), invalid_flashes(email),
+                    client=self.client)
 
     def do_forgot(self, client, email, submit_status=200):
         forgot_url = flask.url_for(flask.current_app.auth_manager.endpoint('forgot-password'))

@@ -232,6 +232,19 @@ class AttemptLimitMixin(object):
         except RegistryError:
             return False
 
+    @property
+    def should_filter_ip(self):
+        return flask.current_app.config.get('KEGAUTH_ATTEMPT_IP_LIMIT', False)
+
+    def get_input_filters(self, username):
+        input_filters = self.attempt_ent.user_input == username
+        if self.should_filter_ip and self.get_request_remote_addr():
+            input_filters = sa.sql.or_(
+                input_filters,
+                self.attempt_ent.source_ip == self.get_request_remote_addr()
+            )
+        return input_filters
+
     def get_last_limiting_attempt(self, username):
         '''
         Get the last attempt that counts toward the limit count. Attempts that count
@@ -400,9 +413,10 @@ class ResetPasswordViewResponder(AttemptLimitMixin, PasswordSetterResponderBase)
 
     def get_last_limiting_attempt(self, username):
         return self.attempt_ent.query.filter_by(
-            user_input=username,
             is_during_lockout=False,
             attempt_type=self.get_attempt_type(),
+        ).filter(
+            self.get_input_filters(username)
         ).order_by(
             self.attempt_ent.datetime_utc.desc(),
         ).first()
@@ -410,7 +424,7 @@ class ResetPasswordViewResponder(AttemptLimitMixin, PasswordSetterResponderBase)
     def get_limiting_attempt_count(self, before_time, username):
         timespan_start = before_time + timedelta(seconds=-self.get_attempt_timespan())
         return self.attempt_ent.query.filter(
-            self.attempt_ent.user_input == username,
+            self.get_input_filters(username),
             self.attempt_ent.is_during_lockout == sa.false(),
             self.attempt_ent.datetime_utc > timespan_start,
             self.attempt_ent.datetime_utc <= before_time,
@@ -496,20 +510,22 @@ class PasswordFormViewResponder(AttemptLimitMixin, LoginResponderMixin,
 
     def get_last_limiting_attempt(self, username):
         return self.attempt_ent.query.filter_by(
-            user_input=username,
             success=False,
             is_during_lockout=False,
             attempt_type=self.get_attempt_type(),
+        ).filter(
+            self.get_input_filters(username)
         ).order_by(
             self.attempt_ent.datetime_utc.desc(),
         ).first()
 
     def get_limiting_attempt_count(self, before_time, username):
         last_successful_attempt = self.attempt_ent.query.filter_by(
-            user_input=username,
             success=True,
             is_during_lockout=False,
             attempt_type=self.get_attempt_type()
+        ).filter(
+            self.get_input_filters(username)
         ).order_by(
             self.attempt_ent.datetime_utc.desc(),
         ).first()
@@ -524,7 +540,7 @@ class PasswordFormViewResponder(AttemptLimitMixin, LoginResponderMixin,
             timespan_start = before_time + timedelta(seconds=-self.get_attempt_timespan())
 
         return self.attempt_ent.query.filter(
-            self.attempt_ent.user_input == username,
+            self.get_input_filters(username),
             self.attempt_ent.success == sa.false(),
             self.attempt_ent.is_during_lockout == sa.false(),
             self.attempt_ent.datetime_utc > timespan_start,
@@ -601,20 +617,22 @@ class ForgotPasswordViewResponder(AttemptLimitMixin, UserResponderMixin, FormRes
 
     def get_last_limiting_attempt(self, username):
         return self.attempt_ent.query.filter_by(
-            user_input=username,
             success=False,
             is_during_lockout=False,
             attempt_type=self.get_attempt_type(),
+        ).filter(
+            self.get_input_filters(username)
         ).order_by(
             self.attempt_ent.datetime_utc.desc(),
         ).first()
 
     def get_limiting_attempt_count(self, before_time, username):
         last_successful_attempt = self.attempt_ent.query.filter_by(
-            user_input=username,
             success=True,
             is_during_lockout=False,
             attempt_type=self.get_attempt_type()
+        ).filter(
+            self.get_input_filters(username)
         ).order_by(
             self.attempt_ent.datetime_utc.desc(),
         ).first()
@@ -629,7 +647,7 @@ class ForgotPasswordViewResponder(AttemptLimitMixin, UserResponderMixin, FormRes
             timespan_start = before_time + timedelta(seconds=-self.get_attempt_timespan())
 
         return self.attempt_ent.query.filter(
-            self.attempt_ent.user_input == username,
+            self.get_input_filters(username),
             self.attempt_ent.success == sa.false(),
             self.attempt_ent.is_during_lockout == sa.false(),
             self.attempt_ent.datetime_utc > timespan_start,

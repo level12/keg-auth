@@ -111,6 +111,7 @@ class AuthManager(object):
         # - Limit: maximum number of attempts within the timespan.
         # - Timespan: number of seconds in which the limit can be reached.
         # - Lockout: number of seconds until an attempt can be made after the limit is reached.
+        # - KEGAUTH_ATTEMPT_IP_LIMIT: base locking on IP address as well as input
         app.config.setdefault('KEGAUTH_LOGIN_ATTEMPT_LIMIT', 3)
         app.config.setdefault('KEGAUTH_LOGIN_ATTEMPT_TIMESPAN', 3600)  # 1 hour
         app.config.setdefault('KEGAUTH_LOGIN_ATTEMPT_LOCKOUT', 3600)  # 1 hour
@@ -120,6 +121,7 @@ class AuthManager(object):
         app.config.setdefault('KEGAUTH_RESET_ATTEMPT_LIMIT', 1)
         app.config.setdefault('KEGAUTH_RESET_ATTEMPT_TIMESPAN', 86400)  # 24 hours
         app.config.setdefault('KEGAUTH_RESET_ATTEMPT_LOCKOUT', 86400)  # 24 hours
+        app.config.setdefault('KEGAUTH_ATTEMPT_IP_LIMIT', False)
 
     def init_cli(self, app):
         keg_auth.cli.add_cli_to_app(app, self.cli_group_name,
