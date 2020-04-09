@@ -238,9 +238,8 @@ class AuthAttemptTests(object):
             'KEGAUTH_LOGIN_ATTEMPT_LOCKOUT': lockout,
             'KEGAUTH_ATTEMPT_IP_LIMIT': True,
         }):
-            # We want to test blocking attempts for existing and non-existing users.
-            username = 'foo@bar.com'
-            invalid_flashes = lambda email: [('error', f'No user account matches: {email}')]
+            def invalid_flashes(email):
+                return [('error', f'No user account matches: {email}')]
 
             last_attempt_time = arrow.utcnow()
             first_attempt_time = last_attempt_time + timedelta(seconds=-(timespan - 1))
