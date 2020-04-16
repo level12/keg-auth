@@ -1269,7 +1269,7 @@ def oidc_client():
             'OIDC_CALLBACK_ROUTE': '/oidc/callback',
             'OIDC_SCOPES': ('openid', 'email', 'profile'),
             'OIDC_REDIRECT_BASE': 'http://localhost:5000',
-            'OIDC_LOGOUT': '/oauth2/default/v1/logout',
+            'OIDC_LOGOUT': '/oauth2/v1/logout',
             'OIDC_PROVIDER_URL': 'https://the.provider',
             'OIDC_CLIENT_ID': 'theproviderclientid',
             'OIDC_CLIENT_SECRET': 'supersecretrandomgeneratedstring',
@@ -1329,7 +1329,7 @@ class TestOidcLogin:
 
     def test_unauthenticated(self, oidc_client):
         resp = oidc_client.get('/login', status=302)
-        assert 'oauth2/default/v1/authorize?' in resp.location
+        assert 'oauth2/v1/authorize?' in resp.location
 
 
 class TestOidcLogout:
@@ -1351,7 +1351,7 @@ class TestOidcLogout:
             lambda _: BlankObject(token_response={'id_token': 'foo'})
         ):
             resp = oidc_auth_client.get('/logout', status=302)
-            assert '/oauth2/default/v1/logout?id_token_hint=foo&post_logout_redirect_uri' \
+            assert '/oauth2/v1/logout?id_token_hint=foo&post_logout_redirect_uri' \
                 in resp.location
 
     def test_success_redirect(self, oidc_auth_client, auth_user):
