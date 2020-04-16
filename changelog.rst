@@ -1,6 +1,16 @@
 Changelog
 =========
 
+0.2.22 released 2020-04-16
+--------------------------
+
+- Allow rate-limiting of login and password resets (d243b75_)
+- Add more config flexibility for OIDC (39beae0_)
+
+.. _d243b75: https://github.com/level12/keg-auth/commit/d243b75
+.. _39beae0: https://github.com/level12/keg-auth/commit/39beae0
+
+
 0.2.21 released 2020-04-02
 --------------------------
 
