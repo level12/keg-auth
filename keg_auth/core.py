@@ -100,6 +100,13 @@ class AuthManager(object):
         # Use select2 for form selects in templates extending keg_auth/form-base.
         app.config.setdefault('KEGAUTH_USE_SELECT2', True)
 
+        # Set defaults for OIDC URI locations
+        app.config.setdefault('OIDC_AUTH_URI', '/oauth2/v1/authorize')
+        app.config.setdefault('OIDC_TOKEN_URI', '/oauth2/v1/token')
+        app.config.setdefault('OIDC_ISSUER', '/oauth2')
+        app.config.setdefault('OIDC_USERINFO_URI', '/oauth2/userinfo')
+        app.config.setdefault('KEGAUTH_OIDC_LOGOUT_REDIRECT', None)
+
     def init_cli(self, app):
         keg_auth.cli.add_cli_to_app(app, self.cli_group_name,
                                     user_args=app.config.get('KEGAUTH_CLI_USER_ARGS'))

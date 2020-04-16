@@ -1353,3 +1353,11 @@ class TestOidcLogout:
             resp = oidc_auth_client.get('/logout', status=302)
             assert '/oauth2/default/v1/logout?id_token_hint=foo&post_logout_redirect_uri' \
                 in resp.location
+
+    def test_success_redirect(self, oidc_auth_client, auth_user):
+        with mock.patch.dict(
+            flask.current_app.config,
+            {'KEGAUTH_OIDC_LOGOUT_REDIRECT': 'http://foo'}
+        ):
+            resp = oidc_auth_client.get('/logout', status=302)
+            assert '/foo' in resp.location

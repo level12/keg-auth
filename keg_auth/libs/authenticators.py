@@ -521,6 +521,11 @@ class OidcLogoutViewResponder(LogoutViewResponder):
         url_after_login = flask.url_for(flask.current_app.auth_manager.endpoint('after-login'))
         bad_token_redirect_resp = flask.current_app.login_manager.unauthorized()
 
+        url_only_redirect = flask.current_app.config.get('KEGAUTH_OIDC_LOGOUT_REDIRECT')
+        if url_only_redirect:
+            flask_login.logout_user()
+            return flask.abort(flask.redirect(url_only_redirect))
+
         """ Logout won't work if user isn't authenticated to begin with, i.e. there won't be a
             token to use. Just redirect to a sane place to force a login to continue."""
         try:
@@ -569,10 +574,11 @@ class OidcAuthenticator(LoginAuthenticator):
             'web': {
                 'client_id': app.config.get('OIDC_CLIENT_ID'),
                 'client_secret': app.config.get('OIDC_CLIENT_SECRET'),
-                'auth_uri': app.config.get('OIDC_PROVIDER_URL') + '/oauth2/default/v1/authorize',
-                'token_uri': app.config.get('OIDC_PROVIDER_URL') + '/oauth2/default/v1/token',
-                'issuer': app.config.get('OIDC_PROVIDER_URL') + '/oauth2/default',
-                'userinfo_uri': app.config.get('OIDC_PROVIDER_URL') + '/oauth2/default/userinfo',
+                'auth_uri': app.config.get('OIDC_PROVIDER_URL') + app.config.get('OIDC_AUTH_URI'),
+                'token_uri': app.config.get('OIDC_PROVIDER_URL') + app.config.get('OIDC_TOKEN_URI'),
+                'issuer': app.config.get('OIDC_PROVIDER_URL') + app.config.get('OIDC_ISSUER'),
+                'userinfo_uri': app.config.get('OIDC_PROVIDER_URL') +
+                app.config.get('OIDC_USERINFO_URI'),
                 'redirect_uris': [
                     app.config.get('OIDC_REDIRECT_BASE') + app.config.get('OIDC_CALLBACK_ROUTE')
                 ]
