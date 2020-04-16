@@ -577,8 +577,8 @@ class OidcAuthenticator(LoginAuthenticator):
                 'auth_uri': app.config.get('OIDC_PROVIDER_URL') + app.config.get('OIDC_AUTH_URI'),
                 'token_uri': app.config.get('OIDC_PROVIDER_URL') + app.config.get('OIDC_TOKEN_URI'),
                 'issuer': app.config.get('OIDC_PROVIDER_URL') + app.config.get('OIDC_ISSUER'),
-                'userinfo_uri': app.config.get('OIDC_PROVIDER_URL') +
-                app.config.get('OIDC_USERINFO_URI'),
+                'userinfo_uri': app.config.get('OIDC_PROVIDER_URL')
+                + app.config.get('OIDC_USERINFO_URI'),
                 'redirect_uris': [
                     app.config.get('OIDC_REDIRECT_BASE') + app.config.get('OIDC_CALLBACK_ROUTE')
                 ]
