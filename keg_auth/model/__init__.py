@@ -1,11 +1,12 @@
-import binascii
 import base64
+import binascii
 import hashlib
 import json
 
 import arrow
 import flask
 import itsdangerous
+import keg_elements.db.utils as dbutils
 import passlib.hash
 import passlib.pwd
 import shortuuid
@@ -18,7 +19,14 @@ from keg.db import db
 from keg_elements.db.mixins import might_commit, might_flush
 from sqlalchemy.dialects import mssql
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy_utils import EmailType, PasswordType, force_auto_coercion, ArrowType
+from sqlalchemy_utils import (
+    ArrowType,
+    EmailType,
+    PasswordType,
+    force_auto_coercion,
+)
+
+from keg_auth.model.types import AttemptType
 
 force_auto_coercion()
 
@@ -489,6 +497,40 @@ class GroupMixin(object):
         return sa.union(direct, via_bundle)
 
 
+class AttemptMixin(object):
+    # Form input data, e.g. username
+    user_input = sa.Column(sa.Unicode(512), nullable=False)
+
+    datetime_utc = sa.Column(ArrowType, nullable=False, default=arrow.utcnow,
+                             server_default=dbutils.utcnow())
+    attempt_type = sa.Column(AttemptType.db_type())
+    is_during_lockout = sa.Column(sa.Boolean, nullable=False, default=False)
+    success = sa.Column(sa.Boolean, nullable=False, default=True)
+    source_ip = sa.Column(sa.Unicode(50), nullable=True)
+
+    @classmethod
+    def purge_attempts(cls, username=None, older_than=None, attempt_type=None):
+        """Delete attempt records optionally filtered by username, age, or type."""
+        query = cls.query
+        if username:
+            query = query.filter_by(user_input=username)
+
+        if older_than:
+            query = query.filter(cls.datetime_utc < arrow.utcnow().shift(days=-older_than))
+
+        if attempt_type:
+            query = query.filter_by(attempt_type=attempt_type)
+
+        count = query.delete()
+        db.session.commit()
+        return count
+
+
+def get_username(user):
+    user_cls = registry().get_entity_cls('user')
+    return getattr(user, get_username_key(user_cls))
+
+
 def get_username_key(user_cls):
     obj = user_cls.username
     if not isinstance(obj, (sa.Column, sa_orm.attributes.InstrumentedAttribute)):
@@ -625,6 +667,7 @@ def initialize_mappings(namespace='keg_auth', registry=None):
         table2 = registry.get_entity_cls(type2)
 
         tables[base_name] = table_func(table1, table2, table_name=_make_table_name(base_name))
+
     return tables
 
 

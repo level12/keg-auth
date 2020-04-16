@@ -1,5 +1,3 @@
-#s Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
-from __future__ import unicode_literals
 from blazeutils.datastructures import BlankObject
 import flask
 import freezegun
@@ -1217,8 +1215,9 @@ class TestViewTestBase:
         with mock.patch(
             'flask.current_app.auth_manager.permissions', ['foo', 'baz']
         ):
-            with pytest.raises(Exception,
-                               match='permission bar not specified in the auth manager'):
+            with pytest.raises(
+                Exception, match='permission bar not specified in the auth manager'
+            ):
                 Foo.setup_class()
 
     def test_multiple_permissions_validated(self):

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Keg Auth 0.2.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2020-04-02 09:17-0400\n"
+"POT-Creation-Date: 2020-04-09 15:26-0400\n"
 "PO-Revision-Date: 2018-08-23 13:49-0400\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: es\n"
@@ -18,15 +18,15 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.6.0\n"
 
-#: keg_auth/cli.py:39
+#: keg_auth/cli.py:41
 msgid "User created."
 msgstr "Creado por el usuario."
 
-#: keg_auth/cli.py:42
+#: keg_auth/cli.py:44
 msgid "Email sent with verification URL."
 msgstr "Correo electrónico enviado con la URL de verificación."
 
-#: keg_auth/cli.py:44
+#: keg_auth/cli.py:46
 msgid "Verification URL: {url}"
 msgstr "URL de verificación: {url}"
 
@@ -167,11 +167,11 @@ msgstr "Manojos"
 msgid "Permissions"
 msgstr "Permisos"
 
-#: keg_auth/libs/authenticators.py:117
+#: keg_auth/libs/authenticators.py:122
 msgid "No user account matches: {}"
 msgstr "Ninguna cuenta de usuario coincide: {}"
 
-#: keg_auth/libs/authenticators.py:118
+#: keg_auth/libs/authenticators.py:123
 msgid ""
 "The user account \"{}\" has an unverified email address.  Please check "
 "your email for a verification link from this website.  Or, use the "
@@ -182,7 +182,7 @@ msgstr ""
 "verificación desde este sitio web. O bien, use el enlace \"olvidó la "
 "contraseña\" para verificar la cuenta."
 
-#: keg_auth/libs/authenticators.py:123
+#: keg_auth/libs/authenticators.py:128
 msgid ""
 "The user account \"{}\" has been disabled.  Please contact this site's "
 "administrators for more information."
@@ -190,15 +190,15 @@ msgstr ""
 "La cuenta de usuario \"{}\" ha sido desactivada. Por favor, póngase en "
 "contacto con los administradores de este sitio para más información."
 
-#: keg_auth/libs/authenticators.py:154
+#: keg_auth/libs/authenticators.py:159
 msgid "Login successful."
 msgstr "Inicio de sesión correcto."
 
-#: keg_auth/libs/authenticators.py:186
+#: keg_auth/libs/authenticators.py:191
 msgid "The form has errors, please see below."
 msgstr "El formulario tiene errores, ve a continuación."
 
-#: keg_auth/libs/authenticators.py:223
+#: keg_auth/libs/authenticators.py:331
 msgid ""
 "Authentication token was invalid or expired.  Please fill out the form "
 "below to get a new token."
@@ -206,29 +206,33 @@ msgstr ""
 "El token de autenticación no es válido o ha caducado. Complete el "
 "formulario a continuación para obtener un nuevo token."
 
-#: keg_auth/libs/authenticators.py:273
+#: keg_auth/libs/authenticators.py:381
 msgid "Complete Password Reset"
 msgstr "Restablecer Contraseña Completa"
 
-#: keg_auth/libs/authenticators.py:274
+#: keg_auth/libs/authenticators.py:382
 msgid "Change Password"
 msgstr "Cambia la Contraseña"
 
-#: keg_auth/libs/authenticators.py:275
+#: keg_auth/libs/authenticators.py:383
 msgid "Password changed.  Please use the new password to login below."
 msgstr ""
 "Contraseña cambiada. Utilice la nueva contraseña para iniciar sesión a "
 "continuación."
 
-#: keg_auth/libs/authenticators.py:282
+#: keg_auth/libs/authenticators.py:400
+msgid "Too many password reset attempts."
+msgstr "Demasiados intentos de restablecimiento de contraseña."
+
+#: keg_auth/libs/authenticators.py:438
 msgid "Verify Account & Set Password"
 msgstr "Verificar Cuenta y Establecer Contraseña"
 
-#: keg_auth/libs/authenticators.py:283
+#: keg_auth/libs/authenticators.py:439
 msgid "Verify & Set Password"
 msgstr "Verificar y Configurar la Contraseña"
 
-#: keg_auth/libs/authenticators.py:284
+#: keg_auth/libs/authenticators.py:440
 msgid ""
 "Account verified & password set.  Please use the new password to login "
 "below."
@@ -236,33 +240,41 @@ msgstr ""
 "Cuenta verificada y contraseña establecida. Utilice la nueva contraseña "
 "para iniciar sesión a continuación."
 
-#: keg_auth/libs/authenticators.py:292
+#: keg_auth/libs/authenticators.py:449
 msgid "Log In"
 msgstr "Iniciar Sesión"
 
-#: keg_auth/libs/authenticators.py:293
+#: keg_auth/libs/authenticators.py:450
 msgid "Invalid password."
 msgstr "Contraseña invalida."
 
-#: keg_auth/libs/authenticators.py:321
+#: keg_auth/libs/authenticators.py:497
+msgid "Too many failed login attempts."
+msgstr "Demasiados intentos fallidos de inicio de sesión."
+
+#: keg_auth/libs/authenticators.py:557
 msgid "Initiate Password Reset"
 msgstr "Iniciar Restablecimiento de Contraseña"
 
-#: keg_auth/libs/authenticators.py:323
+#: keg_auth/libs/authenticators.py:559
 msgid "Please check your email for the link to change your password."
 msgstr ""
 "Por favor revise su correo electrónico para ver el enlace para cambiar su"
 " contraseña."
 
-#: keg_auth/libs/authenticators.py:356
+#: keg_auth/libs/authenticators.py:604
+msgid "Too many failed attempts."
+msgstr "Demasiados intentos fallidos."
+
+#: keg_auth/libs/authenticators.py:661
 msgid "You have been logged out."
 msgstr "Has sido desconectado."
 
-#: keg_auth/libs/authenticators.py:451
+#: keg_auth/libs/authenticators.py:756
 msgid "No KEGAUTH_LDAP_SERVER_URL configured!"
 msgstr "¡No se configuró KEGAUTH_LDAP_SERVER_URL!"
 
-#: keg_auth/libs/authenticators.py:455
+#: keg_auth/libs/authenticators.py:760
 msgid "No KEGAUTH_LDAP_DN_FORMAT configured!"
 msgstr "¡No se configuró KEGAUTH_LDAP_DN_FORMAT!"
 
@@ -283,19 +295,19 @@ msgstr "El punto final {} en la navegación no está registrado"
 msgid "must provide a NavURL or a list of NavItems"
 msgstr "debe proporcionar un NavURL o una lista de NavItems"
 
-#: keg_auth/model/entity_registry.py:24
+#: keg_auth/model/entity_registry.py:25
 msgid "Entity class already registered for {}"
 msgstr "Clase de entidad ya registrada para {}"
 
-#: keg_auth/model/entity_registry.py:26 keg_auth/model/entity_registry.py:50
+#: keg_auth/model/entity_registry.py:27 keg_auth/model/entity_registry.py:54
 msgid "Attempting to register unknown type {}"
 msgstr "Intentando registrar el tipo desconocido {}"
 
-#: keg_auth/model/entity_registry.py:28
+#: keg_auth/model/entity_registry.py:29
 msgid "Entity must be a class"
 msgstr "La entidad debe ser una clase"
 
-#: keg_auth/model/entity_registry.py:53
+#: keg_auth/model/entity_registry.py:57
 msgid "No entity registered for {}"
 msgstr "Ninguna entidad registrada para {}"
 

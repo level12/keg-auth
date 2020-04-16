@@ -35,6 +35,11 @@ class UserWithToken(keg_auth.UserTokenMixin, UserEmailMixin, EntityMixin, db.Mod
     __tablename__ = 'users_with_token'
 
 
+@auth_entity_registry.register_attempt
+class Attempt(keg_auth.AttemptMixin, EntityMixin, db.Model):
+    __tablename__ = 'attempts'
+
+
 @auth_entity_registry.register_permission
 class Permission(keg_auth.PermissionMixin, EntityMixin, db.Model):
     __tablename__ = 'permissions'
