@@ -48,6 +48,7 @@ setup(
     # $ pip install -e .[dev,test]
     extras_require={
         'test': [
+            'email_validator',
             'flake8',
             'flask-bootstrap',
             'flask-jwt-extended',
