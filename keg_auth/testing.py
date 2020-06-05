@@ -448,7 +448,7 @@ class AuthAttemptTests(object):
             url = flask.url_for(flask.current_app.auth_manager.endpoint('reset-password'),
                                 user_id=user.id, token=token)
             resp = self.client.get(url, status=200)
-            new_pass = randchars(5)
+            new_pass = randchars(8)
             resp.form['password'] = new_pass
             resp.form['confirm'] = new_pass
             resp = resp.form.submit(status=submit_status)
@@ -884,8 +884,8 @@ class AuthTests(AuthAttemptTests):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(url, status=200)
 
-        resp.form['password'] = 'foo'
-        resp.form['confirm'] = 'foo'
+        resp.form['password'] = 'fooBar123'
+        resp.form['confirm'] = 'fooBar123'
         resp = resp.form.submit(status=302)
 
         flash_success = flask.current_app.auth_manager.login_authenticator_cls.\
@@ -954,8 +954,8 @@ class AuthTests(AuthAttemptTests):
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(url, status=200)
 
-        resp.form['password'] = 'foo'
-        resp.form['confirm'] = 'foo'
+        resp.form['password'] = 'fooBar123'
+        resp.form['confirm'] = 'fooBar123'
         resp = resp.form.submit(status=302)
 
         flash_success = flask.current_app.auth_manager.login_authenticator_cls.\

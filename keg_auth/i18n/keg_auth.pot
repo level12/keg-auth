@@ -6,54 +6,64 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: Keg Auth 0.2.21\n"
+"Project-Id-Version: Keg Auth 0.2.22\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2020-04-09 15:26-0400\n"
+"POT-Creation-Date: 2020-06-08 13:29-0400\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.6.0\n"
+"Generated-By: Babel 2.8.0\n"
 
-#: keg_auth/cli.py:41
+#: keg_auth/cli.py:19
+msgid "Password must be a string"
+msgstr ""
+
+#: keg_auth/cli.py:31
+msgid ""
+"Password does not meet the following restrictions:\n"
+"{errs}"
+msgstr ""
+
+#: keg_auth/cli.py:78
 msgid "User created."
 msgstr ""
 
-#: keg_auth/cli.py:44
+#: keg_auth/cli.py:81
 msgid "Email sent with verification URL."
 msgstr ""
 
-#: keg_auth/cli.py:46
+#: keg_auth/cli.py:83
 msgid "Verification URL: {url}"
 msgstr ""
 
-#: keg_auth/forms.py:24 keg_auth/grids.py:184
+#: keg_auth/forms.py:25 keg_auth/grids.py:184
 msgid "User ID"
 msgstr ""
 
-#: keg_auth/forms.py:28 keg_auth/forms.py:43
+#: keg_auth/forms.py:29 keg_auth/forms.py:44
 msgid "Email"
 msgstr ""
 
-#: keg_auth/forms.py:35
+#: keg_auth/forms.py:36
 msgid "Password"
 msgstr ""
 
-#: keg_auth/forms.py:50 keg_auth/forms.py:188
+#: keg_auth/forms.py:51 keg_auth/forms.py:197
 msgid "New Password"
 msgstr ""
 
-#: keg_auth/forms.py:52 keg_auth/forms.py:190
+#: keg_auth/forms.py:53 keg_auth/forms.py:199
 msgid "Passwords must match"
 msgstr ""
 
-#: keg_auth/forms.py:54 keg_auth/forms.py:192
+#: keg_auth/forms.py:55 keg_auth/forms.py:201
 msgid "Confirm Password"
 msgstr ""
 
-#: keg_auth/forms.py:130
+#: keg_auth/forms.py:139
 msgid "This field is required."
 msgstr ""
 
@@ -166,101 +176,133 @@ msgstr ""
 msgid "Permissions"
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:122
+#: keg_auth/libs/authenticators.py:125
 msgid "No user account matches: {}"
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:123
+#: keg_auth/libs/authenticators.py:126
 msgid ""
 "The user account \"{}\" has an unverified email address.  Please check "
 "your email for a verification link from this website.  Or, use the "
 "\"forgot password\" link to verify the account."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:128
+#: keg_auth/libs/authenticators.py:131
 msgid ""
 "The user account \"{}\" has been disabled.  Please contact this site's "
 "administrators for more information."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:159
+#: keg_auth/libs/authenticators.py:162
 msgid "Login successful."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:191
+#: keg_auth/libs/authenticators.py:194
 msgid "The form has errors, please see below."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:331
+#: keg_auth/libs/authenticators.py:337
 msgid ""
 "Authentication token was invalid or expired.  Please fill out the form "
 "below to get a new token."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:381
+#: keg_auth/libs/authenticators.py:390
 msgid "Complete Password Reset"
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:382
+#: keg_auth/libs/authenticators.py:391
 msgid "Change Password"
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:383
+#: keg_auth/libs/authenticators.py:392
 msgid "Password changed.  Please use the new password to login below."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:400
+#: keg_auth/libs/authenticators.py:409
 msgid "Too many password reset attempts."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:438
+#: keg_auth/libs/authenticators.py:447
 msgid "Verify Account & Set Password"
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:439
+#: keg_auth/libs/authenticators.py:448
 msgid "Verify & Set Password"
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:440
+#: keg_auth/libs/authenticators.py:449
 msgid ""
 "Account verified & password set.  Please use the new password to login "
 "below."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:449
+#: keg_auth/libs/authenticators.py:458
 msgid "Log In"
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:450
+#: keg_auth/libs/authenticators.py:459
 msgid "Invalid password."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:497
+#: keg_auth/libs/authenticators.py:506
 msgid "Too many failed login attempts."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:557
+#: keg_auth/libs/authenticators.py:566
 msgid "Initiate Password Reset"
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:559
+#: keg_auth/libs/authenticators.py:568
 msgid "Please check your email for the link to change your password."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:604
+#: keg_auth/libs/authenticators.py:613
 msgid "Too many failed attempts."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:661
+#: keg_auth/libs/authenticators.py:670
 msgid "You have been logged out."
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:756
+#: keg_auth/libs/authenticators.py:765
 msgid "No KEGAUTH_LDAP_SERVER_URL configured!"
 msgstr ""
 
-#: keg_auth/libs/authenticators.py:760
+#: keg_auth/libs/authenticators.py:769
 msgid "No KEGAUTH_LDAP_DN_FORMAT configured!"
+msgstr ""
+
+#: keg_auth/libs/authenticators.py:1017
+msgid "lowercase letter"
+msgstr ""
+
+#: keg_auth/libs/authenticators.py:1018
+msgid "uppercase letter"
+msgstr ""
+
+#: keg_auth/libs/authenticators.py:1019
+msgid "number"
+msgstr ""
+
+#: keg_auth/libs/authenticators.py:1020
+msgid "symbol"
+msgstr ""
+
+#: keg_auth/libs/authenticators.py:1038
+msgid "Password must be at least {min_length} characters long"
+msgstr ""
+
+#: keg_auth/libs/authenticators.py:1058
+msgid "Password must include a {type}"
+msgstr ""
+
+#: keg_auth/libs/authenticators.py:1061
+msgid "Password must include at least {required} of {first} and/or {last}"
+msgstr ""
+
+#: keg_auth/libs/authenticators.py:1082
+msgid "Password may not contain username"
 msgstr ""
 
 #: keg_auth/libs/decorators.py:75
@@ -298,16 +340,16 @@ msgstr ""
 msgid "At least one permission or condition is required"
 msgstr ""
 
-#: keg_auth/templates/keg_auth/crud-list.html:18
+#: keg_auth/templates/keg_auth/crud-list.html:15
 #, python-format
 msgid "Create %(name)s"
 msgstr ""
 
-#: keg_auth/templates/keg_auth/forgot-password.html:9
+#: keg_auth/templates/keg_auth/forgot-password.html:7
 msgid "Send Reset Email"
 msgstr ""
 
-#: keg_auth/templates/keg_auth/login.html:10
+#: keg_auth/templates/keg_auth/login.html:8
 msgid "I forgot my password"
 msgstr ""
 

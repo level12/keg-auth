@@ -1,3 +1,4 @@
+import string
 from unittest import mock
 
 import flask
@@ -7,7 +8,7 @@ import ldap
 import pytest
 
 from keg_auth.libs import authenticators as auth
-from keg_auth_ta.model.entities import User
+from keg_auth_ta.model.entities import User, UserNoEmail
 
 
 class TestKegAuthenticator:
@@ -258,3 +259,156 @@ class TestJwtRequestLoader:
         jwt_auth = auth.JwtRequestLoader(flask.current_app)
         token = jwt_auth.create_access_token(user)
         assert flask_jwt_extended.decode_token(token)['identity'] == user.session_key
+
+
+class TestPasswordPolicy:
+    def setup_method(self, _):
+        User.delete_cascaded()
+        UserNoEmail.delete_cascaded()
+
+    def test_check_length(self):
+        user = User.testing_create()
+        with pytest.raises(auth.PasswordPolicyError,
+                           match='Password must be at least 8 characters long'):
+            auth.PasswordPolicy().check_length('aBcDe1!', user)
+
+        class LongerPolicy(auth.PasswordPolicy):
+            min_length = 10
+
+        with pytest.raises(auth.PasswordPolicyError,
+                           match='Password must be at least 10 characters long'):
+            LongerPolicy().check_length('aBcDeFg1!', user)
+
+        auth.PasswordPolicy().check_length('aBcDeF1!', user)
+        LongerPolicy().check_length('aBcDeFgH1!', user)
+
+    @pytest.mark.parametrize('pw', [
+        'a' * 8,
+        'A' * 8,
+        '1' * 8,
+        'aA' * 4,
+        'a1' * 4,
+        '1!' * 4,
+    ])
+    def test_char_set_validator_failures(self, pw):
+        user = User.testing_create()
+
+        with pytest.raises(
+            auth.PasswordPolicyError,
+            match='Password must include at least 3 of lowercase letter, uppercase letter, number and/or symbol'  # noqa: E501
+        ):
+            auth.PasswordPolicy().check_character_set(pw, user)
+
+    @pytest.mark.parametrize('pw', [
+        'a' * 8,
+        'A' * 8,
+        '1' * 8,
+    ])
+    def test_override_min_char_types_requirement_failures(self, pw):
+        user = User.testing_create()
+
+        class FewerChars(auth.PasswordPolicy):
+            required_min_char_types = 2
+
+        with pytest.raises(
+            auth.PasswordPolicyError,
+            match='Password must include at least 2 of lowercase letter, uppercase letter, number and/or symbol'  # noqa: E501
+        ):
+            FewerChars().check_character_set(pw, user)
+
+    @pytest.mark.parametrize('pw', [
+        'aA' * 4,
+        'A1' * 4,
+        '1!' * 4,
+        'aA1' * 3,
+        'a1 ' * 3,
+        '\t1!' * 3,
+    ])
+    def test_override_required_char_types_failures(self, pw):
+        user = User.testing_create()
+
+        class RequireWhitespace(auth.PasswordPolicy):
+            required_min_char_types = 4
+            required_char_types = [
+                *auth.PasswordPolicy.required_char_types,
+                auth.PasswordCharset('whitespace', string.whitespace)
+            ]
+
+        with pytest.raises(
+            auth.PasswordPolicyError,
+            match='Password must include at least 4 of lowercase letter, uppercase letter, number, symbol and/or whitespace'  # noqa: E501
+        ):
+            RequireWhitespace().check_character_set(pw, user)
+
+    def test_required_char_types_one_type(self):
+        user = User.testing_create()
+
+        class RequireNumber(auth.PasswordPolicy):
+            required_min_char_types = 1
+            required_char_types = [auth.PasswordCharset('number', string.digits)]
+
+        with pytest.raises(auth.PasswordPolicyError, match='Password must include a number'):
+            RequireNumber().check_character_set('abcdefgh', user)
+
+        RequireNumber().check_character_set('abcdefg1', user)
+
+    @pytest.mark.parametrize('pw', [
+        'aA1 ' * 3,
+        'a1 !' * 3,
+        '\t1!a' * 3,
+    ])
+    def test_override_required_char_types_success(self, pw):
+        user = User.testing_create()
+
+        class RequireWhitespace(auth.PasswordPolicy):
+            required_min_char_types = 4
+            required_char_types = [
+                *auth.PasswordPolicy.required_char_types,
+                auth.PasswordCharset('whitespace', string.whitespace)
+            ]
+
+        RequireWhitespace().check_character_set(pw, user)
+
+    @pytest.mark.parametrize('pw', [
+        'aaaaaaaa1!',
+        'aaaaaaaaA!',
+        'aaaaaaaaA1',
+        'AAAAAAAA1!',
+    ])
+    def test_check_char_set_success(self, pw):
+        user = User.testing_create()
+        auth.PasswordPolicy().check_character_set(pw, user)
+
+    @pytest.mark.parametrize('pw,email', [
+        ('1!bob!1234', 'bob@example.com'),
+        ('BoB123456!', 'bOb@example.com'),
+    ])
+    def test_check_does_not_contain_username_email_failures(self, pw, email):
+        user = User.testing_create(email=email)
+        with pytest.raises(auth.PasswordPolicyError, match='Password may not contain username'):
+            auth.PasswordPolicy().check_does_not_contain_username(pw, user)
+
+    @pytest.mark.parametrize('pw,username', [
+        ('1!bob!1234', 'bob'),
+        ('BoB123456!', 'bOb'),
+    ])
+    def test_check_does_not_contain_username_no_email_failures(self, pw, username):
+        user = UserNoEmail.testing_create(username=username)
+        with pytest.raises(auth.PasswordPolicyError, match='Password may not contain username'):
+            auth.PasswordPolicy().check_does_not_contain_username(pw, user)
+
+    @pytest.mark.parametrize('pw,email', [
+        ('1!b0b!1234', 'bob@example.com'),
+        ('B0B123456!', 'bOb@example.com'),
+    ])
+    def test_check_does_not_contain_username_email_success(self, pw, email):
+        user = User.testing_create(email=email)
+        auth.PasswordPolicy().check_does_not_contain_username(pw, user)
+
+    @pytest.mark.parametrize('pw,username', [
+        ('1!b0b!1234', 'bob'),
+        ('B0B123456!', 'bOb'),
+    ])
+    def test_check_does_not_contain_username_no_email_success(self, pw, username):
+        user = UserNoEmail.testing_create(username=username)
+        auth.PasswordPolicy().check_does_not_contain_username(pw, user)

@@ -2,6 +2,7 @@ import datetime as dt
 
 import arrow
 import flask
+import keg
 from keg_elements.forms import Form, ModelForm, FieldMeta, MultiCheckboxField
 from keg_elements.forms.validators import ValidateUnique
 from sqlalchemy.sql.functions import coalesce
@@ -52,6 +53,14 @@ class SetPassword(Form):
         validators.EqualTo('confirm', message=_('Passwords must match'))
     ])
     confirm = PasswordField(_('Confirm Password'))
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user')
+        super().__init__(*args, **kwargs)
+
+        auth_manager = keg.current_app.auth_manager
+        password_policy = auth_manager.password_policy_cls()
+        self.password.validators = [*self.password.validators, *password_policy.form_validators()]
 
 
 def get_permission_options():

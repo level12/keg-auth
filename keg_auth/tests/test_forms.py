@@ -1,6 +1,7 @@
 # Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
 from __future__ import unicode_literals
 
+import pytest
 from flask import current_app
 from mock import mock
 from pyquery import PyQuery
@@ -8,6 +9,7 @@ from werkzeug.datastructures import MultiDict
 
 from keg_auth import forms
 import keg_auth_ta.model.entities as ents
+from keg_auth.libs.authenticators import PasswordPolicy
 
 
 class FormBase(object):
@@ -88,16 +90,23 @@ class TestForgotPassword(FormBase):
 
 
 @mock.patch.dict(current_app.config, WTF_CSRF_ENABLED=False)
+@mock.patch.object(current_app.auth_manager, 'password_policy_cls', new=PasswordPolicy)
 class TestSetPassword(FormBase):
-    form_cls = forms.SetPassword
+    def setup_method(self, _):
+        ents.User.delete_cascaded()
+        self.user = ents.User.testing_create()
 
     def ok_data(self, **kwargs):
         data = {
-            'password': 'password123',
-            'confirm': 'password123',
+            'password': 'password123!',
+            'confirm': 'password123!',
         }
         data.update(kwargs)
         return data
+
+    def form_cls(self, *args, **kwargs):
+        kwargs.setdefault('user', self.user)
+        return forms.SetPassword(*args, **kwargs)
 
     def test_required(self):
         form = self.assert_not_valid(password='')
@@ -106,6 +115,52 @@ class TestSetPassword(FormBase):
     def test_valid_confirm(self):
         form = self.assert_not_valid(confirm='password1234')
         assert form.password.errors == ['Passwords must match']
+
+    def test_length_validator(self):
+        form = self.assert_not_valid(password='aBcDe1!', confirm='aBcDe1!')
+        assert form.password.errors == ['Password must be at least 8 characters long']
+
+        self.assert_valid(password='aBcDeF1!', confirm='aBcDeF1!')
+
+    @pytest.mark.parametrize('pw', [
+        'a' * 10,
+        'A' * 10,
+        '1' * 10,
+        'aA' * 5,
+        'a1' * 5,
+        '1!' * 5,
+    ])
+    def test_char_set_validator_failures(self, pw):
+        form = self.assert_not_valid(password=pw, confirm=pw)
+        assert form.password.errors == [
+            'Password must include at least 3 of lowercase letter, uppercase letter, number and/or symbol'  # noqa: E501
+        ]
+
+    @pytest.mark.parametrize('pw', [
+        'aaaaaaaa1!',
+        'aaaaaaaaA!',
+        'aaaaaaaaA1',
+        'AAAAAAAA1!',
+    ])
+    def test_char_set_validator_pass(self, pw):
+        self.assert_valid(password=pw, confirm=pw)
+
+    @pytest.mark.parametrize('pw,email', [
+        ('1!bob!1234', 'bob@example.com'),
+        ('BoB123456!', 'bOb@example.com'),
+    ])
+    def test_username_validator_failures(self, pw, email):
+        self.user.email = email
+        form = self.assert_not_valid(password=pw, confirm=pw)
+        assert form.password.errors == ['Password may not contain username']
+
+    @pytest.mark.parametrize('pw,email', [
+        ('1!b0b!1234', 'bob@example.com'),
+        ('B0B123456!', 'bOb@example.com'),
+    ])
+    def test_username_validator_pass(self, pw, email):
+        self.user.email = email
+        self.assert_valid(password=pw, confirm=pw)
 
 
 @mock.patch.dict(current_app.config, WTF_CSRF_ENABLED=False)

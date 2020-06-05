@@ -6,6 +6,8 @@ from keg_auth.libs.authenticators import (
     KegAuthenticator,
     LdapAuthenticator,
     TokenRequestLoader,
+    PasswordPolicy,
+    PasswordPolicyError,
 )
 from keg_auth.libs.decorators import requires_permissions, requires_user
 from keg_auth.libs.navigation import NavItem, NavURL
