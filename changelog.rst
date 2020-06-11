@@ -1,6 +1,16 @@
 Changelog
 =========
 
+0.2.23 released 2020-06-11
+--------------------------
+
+- Allow applications to enforce custom password policies (7111c20_)
+- Check translations in CI (825d32e_)
+
+.. _7111c20: https://github.com/level12/keg-auth/commit/7111c20
+.. _825d32e: https://github.com/level12/keg-auth/commit/825d32e
+
+
 0.2.22 released 2020-04-16
 --------------------------
 
