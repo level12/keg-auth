@@ -78,11 +78,26 @@ class TestCLI(CLIBase):
         assert 'Verification URL: http://keg.example.com/verify-account' in result.output
         assert not m_send.call_count
 
-    @mock.patch('keg_auth.cli.click.prompt', return_value='Hello123!', autospec=True, spec_set=True)
-    def test_set_password(self, m_prompt):
+    def test_set_password(self):
         ents.User.testing_create(email='test@level12.com')
-        self.invoke('auth', 'set-password', 'test@level12.com')
-        m_prompt.assert_called_once_with('Password', hide_input=True, confirmation_prompt=True)
+        input_ = 'Hello123!\nHello123!'
+        result = self.invoke('auth', 'set-password', 'test@level12.com', input=input_)
+        assert result.stdout == 'Password: \nRepeat for confirmation: \n'
+
+        assert ents.User.get_by(email='test@level12.com').password == 'Hello123!'
+
+    def test_set_invalid_password(self):
+        ents.User.testing_create(email='test@level12.com')
+        input_ = 'Hello\nHello123!\nHello123!'
+        result = self.invoke('auth', 'set-password', 'test@level12.com', input=input_)
+        assert result.stdout == (
+            'Password: \n'
+            'Error: Password does not meet the following restrictions:\n'
+            '\t• Password must be at least 8 characters long\n'
+            'Password: \n'
+            'Repeat for confirmation: \n'
+        )
+
         assert ents.User.get_by(email='test@level12.com').password == 'Hello123!'
 
     @mock.patch('keg_auth.cli.click.echo', autospec=True, spec_set=True)

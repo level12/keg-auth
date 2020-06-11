@@ -41,6 +41,12 @@
     "No user account matches: {}": "Ninguna cuenta de usuario coincide: {}",
     "Password": "Contrase\u00f1a",
     "Password changed.  Please use the new password to login below.": "Contrase\u00f1a cambiada. Utilice la nueva contrase\u00f1a para iniciar sesi\u00f3n a continuaci\u00f3n.",
+    "Password does not meet the following restrictions:\n{errs}": "La contrase\u00f1a no cumple las siguientes restricciones:\n{errs}",
+    "Password may not contain username": "La contrase\u00f1a no puede contener el nombre de usuario",
+    "Password must be a string": "La contrase\u00f1a debe ser una cadena",
+    "Password must be at least {min_length} characters long": "La contrase\u00f1a debe tener al menos {min_length} caracteres de longitud",
+    "Password must include a {type}": "La contrase\u00f1a debe incluir un {type}",
+    "Password must include at least {required} of {first} and/or {last}": "La contrase\u00f1a debe incluir al menos {required} de {first} y / o {last}",
     "Passwords must match": "Las contrase\u00f1as deben coincidir",
     "Permissions": "Permisos",
     "Please check your email for the link to change your password.": "Por favor revise su correo electr\u00f3nico para ver el enlace para cambiar su contrase\u00f1a.",
@@ -70,7 +76,11 @@
     "You have been logged out.": "Has sido desconectado.",
     "created": "creado",
     "list": "lista",
+    "lowercase letter": "letra min\u00fascula",
     "modified": "modificado",
     "must provide a NavURL or a list of NavItems": "debe proporcionar un NavURL o una lista de NavItems",
-    "removed": "remoto"
+    "number": "n\u00famero",
+    "removed": "remoto",
+    "symbol": "s\u00edmbolo",
+    "uppercase letter": "letra may\u00fascula"
 }

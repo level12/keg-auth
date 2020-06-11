@@ -3,7 +3,36 @@ import keg
 
 from keg_auth.model import get_username_key
 from keg_auth.extensions import gettext as _
+from keg_auth.libs.authenticators import PasswordPolicyError
 from keg_auth.model.entity_registry import RegistryError
+
+
+class PasswordType(click.ParamType):
+    name = 'password'
+
+    def __init__(self, policy, user):
+        self.policy = policy
+        self.user = user
+
+    def convert(self, value, param, ctx):
+        if not isinstance(value, str):
+            self.fail(_('Password must be a string'), param, ctx)
+
+        errors = []
+        for check in self.policy.password_checks():
+            try:
+                check(value, self.user)
+            except PasswordPolicyError as e:
+                errors.append(str(e))
+
+        if errors:
+            error_list = '\n'.join('\t\N{BULLET} {}'.format(e) for e in errors)
+            self.fail(
+                _('Password does not meet the following restrictions:\n{errs}', errs=error_list),
+                param,
+                ctx,
+            )
+        return value
 
 
 def add_cli_to_app(app, cli_group_name, user_args=['email']):
@@ -15,13 +44,21 @@ def add_cli_to_app(app, cli_group_name, user_args=['email']):
     @auth.command('set-password', short_help='Set a user\'s password')
     @click.argument('username')
     def set_user_password(username):
-        user_ent = app.auth_manager.entity_registry.user_cls
+        auth_manager = keg.current_app.auth_manager
+        user_ent = auth_manager.entity_registry.user_cls
         user = user_ent.get_by(**{get_username_key(user_ent): username})
+
         if user is None:
             click.echo('Unknown user', err=True)
             return
 
-        password = click.prompt('Password', hide_input=True, confirmation_prompt=True)
+        password_policy = auth_manager.password_policy_cls()
+        password = click.prompt(
+            'Password',
+            type=PasswordType(password_policy, user),
+            hide_input=True,
+            confirmation_prompt=True
+        )
         user.change_password(user.token_generate(), password)
 
     # note: no group attached here. We will apply the arguments and group it below

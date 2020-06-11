@@ -305,12 +305,12 @@ class TestViews(object):
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get('/reset-password/{}/{}'.format(user.id, token))
-        resp.form['password'] = resp.form['confirm'] = 'foobar'
+        resp.form['password'] = resp.form['confirm'] = 'foobarbaz'
         resp = resp.form.submit(status=302)
 
         # Make sure db updates got committed
         db.session.expire(user)
-        assert user.password == 'foobar'
+        assert user.password == 'foobarbaz'
 
     @mock.patch('flask.current_app.auth_manager.mail_manager', None)
     def test_reset_pw_actions_mail_disabled(self):

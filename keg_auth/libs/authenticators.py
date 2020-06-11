@@ -5,7 +5,11 @@ import arrow
 import flask
 import flask_login
 import sqlalchemy as sa
+import string
+import typing
+import wtforms
 from keg.db import db
+from sqlalchemy_utils import EmailType
 
 from keg_auth import forms
 from keg_auth.extensions import flash, lazy_gettext as _
@@ -199,6 +203,9 @@ class FormResponderMixin(object):
     def on_form_valid(self, form):
         raise NotImplementedError  # pragma: no cover
 
+    def create_form(self):
+        return self.form_cls()
+
     def assign_template_vars(self, form):
         self.assign('form', form)
         self.assign('form_action_text', self.page_title)
@@ -206,11 +213,11 @@ class FormResponderMixin(object):
         self.assign('page_heading', self.page_title)
 
     def get(self, *args, **kwargs):
-        form = self.form_cls()
+        form = self.create_form()
         self.assign_template_vars(form)
 
     def post(self, *args, **kwargs):
-        form = self.form_cls()
+        form = self.create_form()
         if form.validate():
             resp = self.on_form_valid(form)
             if resp is not None:
@@ -354,6 +361,9 @@ class PasswordSetterResponderBase(FormResponderMixin, ViewResponder):
         self.user = user_ent.query.get(user_id)
         if not self.user:
             flask.abort(404)
+
+    def create_form(self):
+        return self.form_cls(user=self.user)
 
     def pre_method(self):
         if not self.user.token_verify(self.token):
@@ -966,3 +976,139 @@ class TokenRequestLoader(RequestLoader):
 
         flask_login.login_user(user)
         return user
+
+
+class PasswordCharset(typing.NamedTuple):
+    name: str
+    alphabet: str
+
+
+class PasswordPolicyError(Exception):
+    pass
+
+
+PasswordCheckFunction = typing.Callable[[str, typing.Any], None]
+
+
+class PasswordPolicy:
+    """
+    A base class that defines password requirements for the application.
+    This class defines some basic, common validations and can be extended or limited by subclassing.
+
+    To define additional password checks, create a method on your subclass that accepts a
+    password string and a user entity object and raises PasswordPolicyError if the password does
+    not meet the requirement you intend to check. Then override password_checks to add your method
+    to the returned list of methods.
+
+    To remove a password check that is enabled by default, override password_checks and return only
+    the methods you wish to use.
+
+    Default settings are based on NIST guidelines and some common restrictions.
+    """
+
+    """
+    Minimum password length for check_length validation
+    """
+    min_length: int = 8
+
+    """
+    Character sets used for checking minimum "complexity" in check_character_set validation
+    """
+    required_char_types: typing.List[PasswordCharset] = [
+        PasswordCharset(_('lowercase letter'), string.ascii_lowercase),
+        PasswordCharset(_('uppercase letter'), string.ascii_uppercase),
+        PasswordCharset(_('number'), string.digits),
+        PasswordCharset(_('symbol'), ''.join(sorted(
+            set(string.printable)
+            - set(string.whitespace + string.ascii_letters + string.digits))
+        )),
+    ]
+
+    """
+    Minimum character number of different character types required in check_character_set validation
+    """
+    required_min_char_types: int = 3
+
+    def check_length(self, pw: str, user):
+        """
+        Raises PasswordPolicyError if a password is not at least min_length characters long.
+        :param pw: password to check
+        :param user: user entity
+        """
+        if len(pw) < self.min_length:
+            raise PasswordPolicyError(_(
+                'Password must be at least {min_length} characters long',
+                min_length=self.min_length
+            ))
+
+    def check_character_set(self, pw: str, user):
+        """
+        Raises PasswordPolicyError if a password does not contain at least one character from
+        at least `required_at_least_char_types` of the alphabets in `required_char_sets`.
+        :param pw: password to check
+        :param user: user entity
+        """
+
+        missing = []
+        for name, alphabet in self.required_char_types:
+            if not set(pw) & set(alphabet):
+                missing.append(name)
+
+        if len(missing) > len(self.required_char_types) - self.required_min_char_types:
+            if len(self.required_char_types) == 1:
+                message = _('Password must include a {type}', type=self.required_char_types[0].name)
+            else:
+                first_part = ', '.join(str(t.name) for t in self.required_char_types[:-1])
+                message = _(
+                    'Password must include at least {required} of {first} and/or {last}',
+                    required=self.required_min_char_types,
+                    first=first_part,
+                    last=self.required_char_types[-1].name
+                )
+
+            raise PasswordPolicyError(message)
+
+    def check_does_not_contain_username(self, pw: str, user):
+        """
+        Raises PasswordPolicyError if the password contains the username. This is case insensitive.
+        :param pw: password to check
+        :param user: user entity
+        """
+        user_cls = user.__class__
+        username_key = get_username_key(user_cls)
+        username = getattr(user, username_key)
+        username_col = getattr(user_cls, username_key)
+        if isinstance(username_col.type, EmailType):
+            username = user.username.split('@')[0]
+
+        if username.casefold() in pw.casefold():
+            raise PasswordPolicyError(_('Password may not contain username'))
+
+    def password_checks(self) -> typing.List[PasswordCheckFunction]:
+        return [
+            self.check_length,
+            self.check_character_set,
+            self.check_does_not_contain_username,
+        ]
+
+    @classmethod
+    def generate_validator(cls, check: PasswordCheckFunction) -> typing.Callable:
+        def validator(form: wtforms.Form, field: wtforms.Field):
+            try:
+                check(field.data, form.user)
+            except PasswordPolicyError as e:
+                raise wtforms.ValidationError(str(e))
+        return validator
+
+    @classmethod
+    def form_validators(cls):
+        policy = cls()
+        return [cls.generate_validator(c) for c in policy.password_checks()]
+
+
+class DefaultPasswordPolicy(PasswordPolicy):
+    """
+    A bare-bones, very permissive policy to use as a default if none is set on initialization.
+    """
+    def password_checks(self):
+        return [self.check_length]

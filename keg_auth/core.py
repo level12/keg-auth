@@ -9,7 +9,10 @@ from keg.signals import db_init_post
 
 import keg_auth.cli
 from keg_auth import model
-from keg_auth.libs.authenticators import KegAuthenticator
+from keg_auth.libs.authenticators import (
+    DefaultPasswordPolicy,
+    KegAuthenticator,
+)
 
 DEFAULT_CRYPTO_SCHEMES = ('bcrypt', 'pbkdf2_sha256',)
 
@@ -32,7 +35,8 @@ class AuthManager(object):
 
     def __init__(self, mail_manager=None, blueprint='auth', endpoints=None,
                  cli_group_name=None, grid_cls=None, login_authenticator=KegAuthenticator,
-                 request_loaders=None, permissions=None, entity_registry=None):
+                 request_loaders=None, permissions=None, entity_registry=None,
+                 password_policy_cls=DefaultPasswordPolicy):
         """Set up an auth management extension
 
         Main manager for keg-auth authentication/authorization functions, and provides a central
@@ -51,10 +55,13 @@ class AuthManager(object):
         :param permissions: permission strings defined for the app, which will be synced to the
             database on app init. Can be a single string or an iterable
         :param entity_registry: EntityRegistry instance on which User, Group, etc. are registered
+        :param password_policy_cls: A PasswordPolicy class to check password requirements in
+            forms and CLI
         """
         self.mail_manager = mail_manager
         self.blueprint_name = blueprint
         self.entity_registry = entity_registry
+        self.password_policy_cls = password_policy_cls
         self.endpoints = self.endpoints.copy()
         if endpoints:
             self.endpoints.update(endpoints)
