@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.2.24 released 2020-07-09
+--------------------------
+
+- Fix inconsistent CLI argument ordering in tests (d9a62c0_)
+
+.. _d9a62c0: https://github.com/level12/keg-auth/commit/d9a62c0
+
+
 0.2.23 released 2020-06-11
 --------------------------
 
