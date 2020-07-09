@@ -35,7 +35,7 @@ class PasswordType(click.ParamType):
         return value
 
 
-def add_cli_to_app(app, cli_group_name, user_args=['email']):
+def add_cli_to_app(app, cli_group_name, user_args=('email',)):
 
     @app.cli.group(cli_group_name)
     def auth():
@@ -83,9 +83,8 @@ def add_cli_to_app(app, cli_group_name, user_args=['email']):
             click.echo(_('Verification URL: {url}').format(url=verification_url))
 
     # dress up _create_user as needed
-    user_args.reverse()
     create_user = _create_user
-    for arg in user_args:
+    for arg in reversed(user_args):
         create_user = click.argument(arg)(create_user)
     auth.command('create-user')(create_user)
 

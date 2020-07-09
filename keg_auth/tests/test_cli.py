@@ -61,6 +61,28 @@ class TestCLI(CLIBase):
         user = ents.User.query.get(user_id)
         assert user.token_verify(token)
 
+    @mock.patch('keg.current_app.auth_manager.mail_manager.send_new_user',
+                autospec=True, spec_set=True)
+    def test_create_user_user_args_integration(self, m_send):
+        result = self.invoke('--profile', 'TestProfileUserArgs', 'auth', 'create-user',
+                             'Bob Smith', 'bob@example.com')
+
+        output_parts = result.output.split('/')
+        user_id = output_parts[-2]
+
+        user = ents.User.query.get(user_id)
+        assert user.email == 'bob@example.com'
+        assert user.name == 'Bob Smith'
+
+        result = self.invoke('--profile', 'TestProfileUserArgs', 'auth', 'create-user',
+                             'Joe Smith', 'joe@example.com')
+        output_parts = result.output.split('/')
+        user_id = output_parts[-2]
+
+        user = ents.User.query.get(user_id)
+        assert user.email == 'joe@example.com'
+        assert user.name == 'Joe Smith'
+
     @mock.patch('keg.current_app.auth_manager.mail_manager', None)
     def test_create_user_no_mail_by_manager(self):
         result = self.invoke('auth', 'create-user', 'foo@bar.com')

@@ -3,6 +3,7 @@ import logging
 from keg.db import db
 from keg_elements.db.mixins import DefaultColsMixin, MethodsMixin
 import keg_auth
+import sqlalchemy as sa
 
 from keg_auth_ta.extensions import auth_entity_registry
 
@@ -20,6 +21,8 @@ class UserEmailMixin(keg_auth.UserEmailMixin, keg_auth.UserMixin):
 @auth_entity_registry.register_user
 class User(UserEmailMixin, EntityMixin, db.Model):
     __tablename__ = 'users'
+
+    name = sa.Column(sa.Unicode)
 
 
 class UserNoEmail(keg_auth.UserMixin, EntityMixin, db.Model):

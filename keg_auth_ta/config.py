@@ -1,4 +1,5 @@
 from blazeutils.strings import randchars
+from keg import config
 
 
 class DefaultProfile(object):
@@ -24,3 +25,7 @@ class TestProfile(object):
     # These settings reflect what is needed in CI.  For local development, use
     # keg_auth_ta-config.py to override.
     SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:password@localhost/postgres'
+
+
+class TestProfileUserArgs(config.TestProfile, TestProfile):
+    KEGAUTH_CLI_USER_ARGS = ['name', 'email']
