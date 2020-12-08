@@ -1,6 +1,16 @@
 Changelog
 =========
 
+0.2.25 released 2020-12-08
+--------------------------
+
+- CRUD view passes through args set with self.assign (efeb7b7_)
+- CRUD view edit/delete performs authorization prior to ID lookup (efeb7b7_)
+- CRUD view added webgrid render limit handling (efeb7b7_)
+
+.. _efeb7b7: https://github.com/level12/keg-auth/commit/efeb7b7
+
+
 0.2.24 released 2020-07-09
 --------------------------
 
