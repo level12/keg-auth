@@ -27,6 +27,9 @@ class User(UserBase):
     # need to make this a static method so it isn't bound on the view instance
     form_cls = staticmethod(user_form)
 
+    def pre_method(self):
+        self.assign('a_template_variable', 'value present')
+
     def create_form(self, obj):
         form_cls = self.form_cls(flask.current_app.config,
                                  allow_superuser=flask_login.current_user.is_superuser,

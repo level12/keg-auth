@@ -62,6 +62,7 @@
     "Too many failed attempts.": "Demasiados intentos fallidos.",
     "Too many failed login attempts.": "Demasiados intentos fallidos de inicio de sesi\u00f3n.",
     "Too many password reset attempts.": "Demasiados intentos de restablecimiento de contrase\u00f1a.",
+    "Too many records to export as {}": "Demasiados registros para exportar como {}",
     "Unable to delete {name}. It may be referenced by other items.": "No se puede eliminar {name}. Puede ser referenciado por otros art\u00edculos.",
     "User": "Usuario",
     "User ID": "Identidad de usuario",

@@ -1,10 +1,11 @@
+from unittest import mock
+
 from blazeutils.datastructures import BlankObject
 import flask
 import freezegun
 import arrow
 import flask_webtest
 from keg.db import db
-import mock
 import pytest
 import sqlalchemy as sa
 from werkzeug.datastructures import MultiDict
@@ -716,6 +717,12 @@ class TestUserCrud(ViewTestBase):
         assert resp.status_code == 302
         assert resp.location.endswith('/users?session_key=foo')
 
+    @mock.patch('flask.render_template', autospec=True, spec_set=True)
+    def test_add_template_args(self, m_render):
+        m_render.return_value = 'foo'
+        self.client.get('/users/add')
+        assert 'a_template_variable' in m_render.call_args[1]
+
     def test_edit(self):
         user_edit = ents.User.testing_create(
             groups=[ents.Group.testing_create()],
@@ -743,6 +750,11 @@ class TestUserCrud(ViewTestBase):
         assert resp.location.endswith('/users')
         assert resp.flashes == [('success', 'Successfully modified User')]
         assert self.user_ent.get_by(email='foo@bar.baz')
+
+    def test_edit_disallowed_by_permission(self):
+        user = ents.User.testing_create()
+        client = AuthTestApp(flask.current_app, user=user)
+        client.get('/users/99999/edit', status=403)
 
     def test_edit_with_session_key(self):
         user_edit = ents.User.testing_create()
@@ -841,6 +853,11 @@ class TestUserCrud(ViewTestBase):
 
         self.client.get('/users/{}/delete'.format(user_delete_id), status=302)
 
+    def test_delete_disallowed_by_permission(self):
+        user = ents.User.testing_create()
+        client = AuthTestApp(flask.current_app, user=user)
+        client.get('/users/99999/delete', status=403)
+
     def test_delete_with_session_key(self):
         user_delete = ents.User.testing_create()
 
@@ -878,6 +895,12 @@ class TestUserCrud(ViewTestBase):
         assert resp.pyquery('.datagrid table.records tbody td').eq(1).text() == self.current_user.email  # noqa
         assert resp.pyquery('#page-content')('h1').eq(0).text() == 'Users'
         assert resp.pyquery('.grid-header-add-link').eq(0).text() == 'Create User'
+
+    @mock.patch('flask.render_template', autospec=True, spec_set=True)
+    def test_list_template_args(self, m_render):
+        m_render.return_value = 'foo'
+        self.client.get('/users')
+        assert 'a_template_variable' in m_render.call_args[1]
 
     def test_list_alternate_ident_field(self):
         # with the mock here, authentication/authorization will also be happening on the alternate

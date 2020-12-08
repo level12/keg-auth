@@ -97,7 +97,8 @@ class CrudView(keg.web.BaseView):
         return arg_dict
 
     def render_form(self, obj, action, form, action_button_text=_('Save Changes')):
-        template_args = self.form_template_args({
+        # args added with self.assign should be passed through here
+        template_args = self.form_template_args(dict(self.template_args, **{
             'action': action,
             'action_button_text': action_button_text,
             'cancel_url': self.cancel_url(),
@@ -105,7 +106,7 @@ class CrudView(keg.web.BaseView):
             'obj_inst': obj,
             'page_title': self.page_title(action),
             'page_heading': self.form_page_heading(action),
-        })
+        }))
         return flask.render_template(self.form_template, **template_args)
 
     def add_orm_obj(self):
@@ -160,14 +161,16 @@ class CrudView(keg.web.BaseView):
         return requires_permissions(self.permissions['add'])(self.add_edit)(flask.request.method)
 
     def edit(self, objid):
-        obj = self.init_object(objid, 'edit')
-        return requires_permissions(self.permissions['edit'])(self.add_edit)(
-            flask.request.method, obj)
+        def action():
+            obj = self.init_object(objid, 'edit')
+            return self.add_edit(flask.request.method, obj)
+
+        return requires_permissions(self.permissions['edit'])(action)()
 
     def delete(self, objid):
-        self.init_object(objid, 'delete')
-
         def action():
+            self.init_object(objid, 'delete')
+
             try:
                 self.orm_cls.delete(objid)
             except sa.exc.IntegrityError:
@@ -229,22 +232,36 @@ class CrudView(keg.web.BaseView):
     def grid_page_heading(self):
         return self.page_title(_('list'))
 
+    def post_args_grid_setup(self, grid):
+        """ Apply changes to grid instance after QS args/session are loaded """
+        return grid
+
     def grid_template_args(self, arg_dict):
         return arg_dict
 
+    def on_render_limit_exceeded(self, grid):
+        flask.flash(_('Too many records to export as {}').format(grid.export_to), 'error')
+
     def render_grid(self):
         grid = self.make_grid()
+        grid = self.post_args_grid_setup(grid)
 
         if grid.export_to:
-            return grid.export_as_response()
+            import webgrid
 
-        template_args = self.grid_template_args({
+            try:
+                return grid.export_as_response()
+            except webgrid.renderers.RenderLimitExceeded:
+                self.on_render_limit_exceeded(grid)
+
+        # args added with self.assign should be passed through here
+        template_args = self.grid_template_args(dict(self.template_args, **{
             'add_url': self.add_url_with_session(grid.session_key),
             'page_title': self.page_title(_('list')),
             'page_heading': self.grid_page_heading,
             'object_name': self.object_name,
             'grid': grid,
-        })
+        }))
 
         return flask.render_template(self.grid_template, **template_args)
 
@@ -475,7 +492,8 @@ class Permission(keg.web.BaseView):
             self.grid_template,
             page_title=_('Permissions'),
             page_heading=_('Permissions'),
-            grid=grid
+            grid=grid,
+            **self.template_args,
         )
 
 
