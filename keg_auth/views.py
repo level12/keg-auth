@@ -121,6 +121,8 @@ class CrudView(keg.web.BaseView):
 
     def add_edit(self, meth, obj=None):
         form = self.create_form(obj)
+        if form is None:
+            raise Exception('create_form returned None instead of a form instance')
         if meth == 'POST':
             if form.validate():
                 result = self.update_obj(obj, form)
