@@ -80,6 +80,10 @@ class UserMixin(object):
     # when a user logs in.
     last_login_utc = sa.Column(ArrowType, nullable=True, default=None, server_default=None)
 
+    # The datetime when a user will be disabled. User will be inactive if this is set
+    # to a datetime in the past.
+    disabled_utc = sa.Column(ArrowType, nullable=True, default=None, server_default=sa.null())
+
     # is_active defines the complexities of how to determine what users are active. For instance,
     #   if email is in scope, we need to have an additional flag to verify users, and that would
     #   get included in is_active logic.
@@ -104,10 +108,6 @@ class UserMixin(object):
             cls.disabled_utc <= arrow.utcnow(),
         )
         return sa_sql.case([(is_disabled_expr, sa.true())], else_=sa.false())
-
-    # The datetime when a user will be disabled. User will be inactive if this is set
-    # to a datetime in the past.
-    disabled_utc = sa.Column(ArrowType, nullable=True, default=None, server_default=sa.null())
 
     def get_id(self):
         # Flask-Login requires that this return a string value for the session
