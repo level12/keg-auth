@@ -223,7 +223,16 @@ class AuthManager(object):
                     ):
                         db_permission.description = None
 
-                db.session.commit()
+                try:
+                    db.session.commit()
+                except sa.exc.IntegrityError as exc:
+                    # We have a possible race condition here, in that if another app process starts
+                    # while we are computing permission sync, we could get an integrity error.
+                    # Check that it is a unique exception, but note that we're not able to check
+                    # the constraint name here (too many assumptions to be made).
+                    from keg_elements.db.utils import validate_unique_exc
+                    if not validate_unique_exc(exc):
+                        raise
 
         # store the connected method somewhere, so we don't lose it with current function scope
         self._sync_permissions = db_init_post.connect(sync_permissions)
