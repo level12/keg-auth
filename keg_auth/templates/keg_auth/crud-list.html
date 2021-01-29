@@ -26,4 +26,18 @@
     </div>
     {{ grid.html() | safe}}
 </section>
+
+{% block confirm_delete_script %}
+<script type="text/javascript">
+    var els = document.getElementsByClassName('confirm-delete');
+
+    for (var idx = 0; idx < els.length; idx++) {
+        els[idx].addEventListener('click', function (event) {
+            if (!confirm('Are you sure you want to delete this item?')) {
+                event.preventDefault();
+            }
+        });
+    }
+</script>
+{% endblock %}
 {% endblock %}
