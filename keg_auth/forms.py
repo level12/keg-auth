@@ -23,6 +23,7 @@ from keg_auth.model import get_username_key
 
 
 def login_form():
+    """Returns a Login form class that handles username options."""
     login_id_label = _(u'User ID')
     login_id_validators = [validators.DataRequired()]
 
@@ -42,6 +43,7 @@ def login_form():
 
 
 class ForgotPassword(Form):
+    """Returns a form to capture email for password reset."""
     email = StringField(_(u'Email'), validators=[
         validators.DataRequired(),
         validators.Email(),
@@ -49,6 +51,7 @@ class ForgotPassword(Form):
 
 
 class SetPassword(Form):
+    """Returns a form to capture password/confirmation and apply password policy."""
     password = PasswordField(_('New Password'), validators=[
         validators.DataRequired(),
         validators.EqualTo('confirm', message=_('Passwords must match'))
@@ -143,6 +146,9 @@ class _ValidatePasswordRequired(object):
 
 def user_form(config=None, allow_superuser=False, endpoint='',
               fields=['is_enabled', 'disabled_utc']):
+    """Returns a form for User CRUD.
+
+    Form is customized depending on the fields and superuser setting passed in."""
     config = config or {}
     user_cls = flask.current_app.auth_manager.entity_registry.user_cls
 
@@ -228,6 +234,7 @@ def user_form(config=None, allow_superuser=False, endpoint='',
 
 
 def group_form(endpoint):
+    """Returns a form for Group CRUD."""
     group_cls = flask.current_app.auth_manager.entity_registry.group_cls
 
     def html_link(obj):
@@ -254,6 +261,7 @@ def group_form(endpoint):
 
 
 def bundle_form(endpoint):
+    """Returns a form for Bundle CRUD."""
     bundle_cls = flask.current_app.auth_manager.entity_registry.bundle_cls
 
     def html_link(obj):

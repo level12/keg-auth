@@ -13,7 +13,16 @@ from flask_wtf.csrf import generate_csrf
 class ActionColumn(webgrid.Column):
     """Places various action buttons in a Column.
 
-    Since actions can be protected by permissions, this column must reside in a ProtectedGrid.
+    :param edit_permission_for: is a function that takes a row and returns the permission
+                                required to open the edit endpoint for that row.
+    :param delete_permission_for: is like `edit_permission_for`, but for the delete endpoint.
+    :param view_permission_for: is like `edit_permission_for`, but for the view endpoint.
+    :param view_link_class_for: is a function that takes a row and returns the HTML class to
+                                place on the view link.
+    :param edit_link_class_for: is a function that takes a row and returns the HTML class to
+                                place on the edit link.
+    :param delete_link_class_for: is a function that takes a row and returns the HTML class to
+                                    place on the delete link.
     """
     default_view_link_class = 'view-link'
     default_edit_link_class = 'edit-link'
@@ -36,18 +45,6 @@ class ActionColumn(webgrid.Column):
                  edit_link_class_for=None,
                  delete_link_class_for=None,
                  **kwargs):
-        """
-        :param edit_permission_for: is a function that takes a row and returns the permission
-                                    required to open the edit endpoint for that row.
-        :param delete_permission_for: is like `edit_permission_for`, but for the delete endpoint.
-        :param view_permission_for: is like `edit_permission_for`, but for the view endpoint.
-        :param view_link_class_for: is a function that takes a row and returns the HTML class to
-                                    place on the view link.
-        :param edit_link_class_for: is a function that takes a row and returns the HTML class to
-                                    place on the edit link.
-        :param delete_link_class_for: is a function that takes a row and returns the HTML class to
-                                      place on the delete link.
-        """
         def link_class_for_fun(default_link_class):
             def link_class_for(row):
                 return default_link_class
@@ -130,6 +127,7 @@ class ActionColumn(webgrid.Column):
 
 def make_user_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permission,
                    grid_cls=None, resend_verification_endpoint=None):
+    """Factory method to create a User grid class for CRUD."""
     user_cls = flask.current_app.auth_manager.entity_registry.user_cls
     grid_cls = grid_cls or flask.current_app.auth_manager.grid_cls
     action_column_cls = getattr(grid_cls, 'action_column_cls', ActionColumn)
@@ -196,6 +194,7 @@ def make_user_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permi
 
 def make_group_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permission,
                     grid_cls=None):
+    """Factory method to create a Group grid class for CRUD."""
     group_cls = flask.current_app.auth_manager.entity_registry.group_cls
     grid_cls = grid_cls or flask.current_app.auth_manager.grid_cls
     action_column_cls = getattr(grid_cls, 'action_column_cls', ActionColumn)
@@ -220,6 +219,7 @@ def make_group_grid(edit_endpoint, edit_permission, delete_endpoint, delete_perm
 
 def make_bundle_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permission,
                      grid_cls=None):
+    """Factory method to create a Bundle grid class for CRUD."""
     bundle_cls = flask.current_app.auth_manager.entity_registry.bundle_cls
     grid_cls = grid_cls or flask.current_app.auth_manager.grid_cls
     action_column_cls = getattr(grid_cls, 'action_column_cls', ActionColumn)
@@ -243,6 +243,7 @@ def make_bundle_grid(edit_endpoint, edit_permission, delete_endpoint, delete_per
 
 
 def make_permission_grid(grid_cls=None):
+    """Factory method to create a Permission grid class."""
     permission_cls = flask.current_app.auth_manager.entity_registry.permission_cls
     grid_cls = grid_cls or flask.current_app.auth_manager.grid_cls
 

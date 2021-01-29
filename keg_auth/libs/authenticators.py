@@ -747,15 +747,10 @@ class LdapAuthenticator(KegAuthenticator):
 
     def verify_password(self, user, password):
         """
-        Check the given username/password combination at the
-        application's configured LDAP server. Returns `True` if
-        the user authentication is successful, `False` otherwise.
-        NOTE: By request, authentication can be bypassed by setting
-              the KEGAUTH_LDAP_TEST_MODE configuration setting to `True`.
-              When set, all authentication attempts will succeed!
-        :param user:
-        :param password:
-        :return:
+        Check the given username/password combination at the application's configured LDAP server.
+        Returns `True` if the user authentication is successful, `False` otherwise. NOTE: By
+        request, authentication can be bypassed by setting the KEGAUTH_LDAP_TEST_MODE configuration
+        setting to `True`. When set, all authentication attempts will succeed!
         """
 
         if flask.current_app.config.get('KEGAUTH_LDAP_TEST_MODE', False):

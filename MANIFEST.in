@@ -1,6 +1,12 @@
 global-exclude *.pyc
 include *.rst todo.txt tox.ini
 include keg_auth_ta-config-example.py
+recursive-include docs *.bat
+recursive-include docs *.py
+recursive-include docs *.rst
+recursive-include docs *.txt
+recursive-exclude docs/build *.txt
+recursive-include docs Makefile
 recursive-include keg_auth/i18n *
 recursive-include keg_auth *.j2
 recursive-include keg_auth *.html

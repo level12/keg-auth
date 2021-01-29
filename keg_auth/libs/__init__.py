@@ -3,6 +3,11 @@ import flask_login
 
 
 def get_current_user():
+    """Helper to grab the authenticated user from the session.
+
+    Trivial case is when the user is loaded in flask-login. If not, run the registered
+    request loaders until we find a user.
+    """
     # if flask_login has an authenticated user in session, that's who we want
     if flask_login.current_user and flask_login.current_user.is_authenticated:
         return flask_login.current_user

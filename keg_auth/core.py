@@ -19,6 +19,27 @@ DEFAULT_CRYPTO_SCHEMES = ('bcrypt', 'pbkdf2_sha256',)
 
 
 class AuthManager(object):
+    """Set up an auth management extension
+
+    Main manager for keg-auth authentication/authorization functions, and provides a central
+    location and handle on the flask app to access CLI setup, navigation, authenticators, etc.
+
+    :param mail_manager: AuthMailManager instance used for mail functions. Can be None.
+    :param blueprint: name to use for the blueprint containing auth views
+    :param endpoints: dict of overrides to auth view endpoints
+    :param cli_group_name: name of the CLI group under which auth commands appear
+    :param grid_cls: webgrid class to serve as a base class to auth CRUD grids
+    :param login_authenticator: login authenticator class used by login view
+        default: KegAuthenticator
+    :param request_loaders: registered loaders used for loading a user at request time from
+        information not contained in the session (e.g. with an authorization header token).
+        Can be scalar or an iterable
+    :param permissions: permission strings defined for the app, which will be synced to the
+        database on app init. Can be a single string or an iterable
+    :param entity_registry: EntityRegistry instance on which User, Group, etc. are registered
+    :param password_policy_cls: A PasswordPolicy class to check password requirements in
+        forms and CLI
+    """
     endpoints = {
         'forgot-password': '{blueprint}.forgot-password',
         'reset-password': '{blueprint}.reset-password',
@@ -38,27 +59,6 @@ class AuthManager(object):
                  cli_group_name=None, grid_cls=None, login_authenticator=KegAuthenticator,
                  request_loaders=None, permissions=None, entity_registry=None,
                  password_policy_cls=DefaultPasswordPolicy):
-        """Set up an auth management extension
-
-        Main manager for keg-auth authentication/authorization functions, and provides a central
-        location and handle on the flask app to access CLI setup, navigation, authenticators, etc.
-
-        :param mail_manager: AuthMailManager instance used for mail functions. Can be None.
-        :param blueprint: name to use for the blueprint containing auth views
-        :param endpoints: dict of overrides to auth view endpoints
-        :param cli_group_name: name of the CLI group under which auth commands appear
-        :param grid_cls: webgrid class to serve as a base class to auth CRUD grids
-        :param login_authenticator: login authenticator class used by login view
-            default: KegAuthenticator
-        :param request_loaders: registered loaders used for loading a user at request time from
-            information not contained in the session (e.g. with an authorization header token).
-            Can be scalar or an iterable
-        :param permissions: permission strings defined for the app, which will be synced to the
-            database on app init. Can be a single string or an iterable
-        :param entity_registry: EntityRegistry instance on which User, Group, etc. are registered
-        :param password_policy_cls: A PasswordPolicy class to check password requirements in
-            forms and CLI
-        """
         self.mail_manager = mail_manager
         self.blueprint_name = blueprint
         self.entity_registry = entity_registry
@@ -78,6 +78,7 @@ class AuthManager(object):
         self._loaders_initialized = False
 
     def init_app(self, app):
+        """Inits KegAuth as a flask extension on the given app."""
         self.init_model(app)
         self.init_config(app)
         self.init_managers(app)
@@ -87,6 +88,7 @@ class AuthManager(object):
         self.init_permissions(app)
 
     def init_config(self, app):
+        """Provide app config defaults for crypto, mail, logins, etc."""
         _cc_kwargs = dict(schemes=DEFAULT_CRYPTO_SCHEMES, deprecated='auto')
         app.config.setdefault('PASSLIB_CRYPTCONTEXT_KWARGS', _cc_kwargs)
 
@@ -132,10 +134,12 @@ class AuthManager(object):
         app.config.setdefault('KEGAUTH_ATTEMPT_IP_LIMIT', False)
 
     def init_cli(self, app):
+        """Add a CLI group for auth."""
         keg_auth.cli.add_cli_to_app(app, self.cli_group_name,
                                     user_args=app.config.get('KEGAUTH_CLI_USER_ARGS'))
 
     def init_jinja(self, app):
+        """Set up app jinja loader to use keg-auth templates, select2, etc."""
         loader = jinja2.ChoiceLoader([
             app.jinja_loader,
             jinja2.PackageLoader('keg_auth', 'templates'),
@@ -152,12 +156,14 @@ class AuthManager(object):
         )
 
     def init_model(self, app):
+        """Set up the entity registry for all auth objects."""
         if not self._model_initialized:
             model.initialize_mappings(registry=self.entity_registry)
             model.initialize_events(registry=self.entity_registry)
             self._model_initialized = True
 
     def init_managers(self, app):
+        """Place this extension on the app for reference, and onfigure flask-login."""
         app.auth_manager = self
 
         app.login_manager = login_manager = flask_login.LoginManager()
@@ -168,6 +174,7 @@ class AuthManager(object):
         login_manager.init_app(app)
 
     def init_loaders(self, app):
+        """Initialize user session loaders."""
         if self._loaders_initialized:
             return
 
@@ -179,7 +186,12 @@ class AuthManager(object):
         self._loaders_initialized = True
 
     def init_permissions(self, app):
-        # add permissions to the database
+        """Configure database with the defined set of permissions.
+
+        Synchronizes permission records in the database with those defined in the app. Ensures
+        the sync method is called in the proper place during test runs, when the database is not
+        fully available and set up at extension-loading time.
+        """
         from keg_auth.model.entity_registry import RegistryError
 
         if not self.entity_registry:
@@ -254,26 +266,32 @@ class AuthManager(object):
                 raise
 
     def add_navigation_menu(self, name, menu):
+        """Create a navigation menu that may be referenced with the given name."""
         self.menus[name] = menu
 
     def endpoint(self, ident):
+        """Return an auth endpoint on the configured blueprint."""
         return self.endpoints[ident].format(blueprint=self.blueprint_name)
 
     def url_for(self, ident, **kwargs):
+        """Generate the URL for the endpoint identified by `ident`."""
         return flask.url_for(self.endpoint(ident), **kwargs)
 
     def user_loader(self, session_key):
+        """Fetch a user record via session key."""
         user_class = self.entity_registry.user_cls
         return user_class.get_by(session_key=str(session_key))
 
     def user_by_id(self, user_id):
+        """Fetch a user record via ID."""
         user_class = self.entity_registry.user_cls
         return user_class.get_by(id=user_id)
 
     def test_request_loader(self, request):
         """ Load a user from a request when testing. This gives a nice API for test clients to
-            be logged in:
+            be logged in, rather than expecting all tests to set up an actual session.
 
+            See `keg_auth.testing.AuthTestApp` for a webtest wrapper using this loader.
         """
         session_key = request.environ.get('TEST_USER_ID')
         if session_key is None:
@@ -300,6 +318,12 @@ class AuthManager(object):
         return self.create_user(user_kwargs)
 
     def create_user(self, user_kwargs, _commit=True):
+        """Create a new user record and optionally persist to the database.
+
+        :param user_kwargs: dict of values to construct the User record. Special arg is
+            `mail_enabled`, which will be popped out.
+        :param _commit: option for persisting record to database. Default True.
+        """
         mail_enabled = user_kwargs.pop('mail_enabled', True)
         from passlib.pwd import genword
         user_kwargs.setdefault('password', genword(entropy='secure'))
@@ -316,15 +340,17 @@ class AuthManager(object):
             self.mail_manager.send_new_user(user)
 
         # use add + commit here instead of user_class.add() above so the user isn't actually
-        # committed if mail isn't set.
+        # committed if mail isn't sent.
         if _commit:
             db.session.commit()
         return user
 
     def get_request_loader(self, identifier):
+        """Returns a registered request loader, keyed by its identifier."""
         return self.request_loaders.get(identifier)
 
     def resend_verification_email(self, user_id):
+        """Generate a fresh token and send the account verification email."""
         user = self.user_by_id(user_id)
         if not self.mail_manager:
             raise Exception("Tried to resend verification email, but email is not setup.")

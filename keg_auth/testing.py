@@ -17,11 +17,20 @@ from keg import current_app
 
 from keg_auth.libs.authenticators import AttemptLimitMixin
 
-has_attempt_model = flask.current_app.auth_manager.entity_registry.is_registered('attempt')
+try:
+    has_attempt_model = flask.current_app.auth_manager.entity_registry.is_registered('attempt')
+except RuntimeError as exc:
+    if 'application context' not in str(exc):
+        raise
+    has_attempt_model = False
+
 has_attempt_skip_reason = 'no attempt model registered in entity registry'
 
 
 class AuthAttemptTests(object):
+    """Tests to verify that automated attempt logging/blocking works as intended. These
+    tests are included in the AuthTests class and are intended to be used in target
+    applications to verify customization hasn't broken basic KegAuth functionality."""
     forgot_invalid_flashes = [('error', 'No user account matches: foo@bar.com')]
     forgot_lockout_flashes = [('error', 'Too many failed attempts.')]
     forgot_success_flashes = [
@@ -157,8 +166,8 @@ class AuthAttemptTests(object):
         'KEGAUTH_LOGIN_ATTEMPT_TIMESPAN': 3600,
         'KEGAUTH_LOGIN_ATTEMPT_LOCKOUT': 7200,
     })
-    @mock.patch.object(current_app.auth_manager.entity_registry, '_attempt_cls',
-                       new_callable=mock.PropertyMock(return_value=None))
+    @mock.patch('flask.current_app.auth_manager.entity_registry._attempt_cls',
+                new_callable=mock.PropertyMock(return_value=None))
     def test_login_attempts_not_blocked(self, _):
         '''
         Test that we do not block any attempts with missing attempt entity.
@@ -377,8 +386,8 @@ class AuthAttemptTests(object):
         'KEGAUTH_FORGOT_ATTEMPT_TIMESPAN': 3600,
         'KEGAUTH_FORGOT_ATTEMPT_LOCKOUT': 7200,
     })
-    @mock.patch.object(current_app.auth_manager.entity_registry, '_attempt_cls',
-                       new_callable=mock.PropertyMock(return_value=None))
+    @mock.patch('flask.current_app.auth_manager.entity_registry._attempt_cls',
+                new_callable=mock.PropertyMock(return_value=None))
     def test_forgot_attempts_not_blocked(self, _):
         '''
         Test that we do not block any attempts with missing attempt entity.
@@ -534,8 +543,8 @@ class AuthAttemptTests(object):
         'KEGAUTH_RESET_ATTEMPT_TIMESPAN': 3600,
         'KEGAUTH_RESET_ATTEMPT_LOCKOUT': 7200,
     })
-    @mock.patch.object(current_app.auth_manager.entity_registry, '_attempt_cls',
-                       new_callable=mock.PropertyMock(return_value=None))
+    @mock.patch('flask.current_app.auth_manager.entity_registry._attempt_cls',
+                new_callable=mock.PropertyMock(return_value=None))
     def test_reset_pw_attempts_not_blocked(self, _):
         user = self.user_ent.testing_create()
         assert self.attempt_ent.query.count() == 0
@@ -1053,7 +1062,9 @@ def with_crypto_context(field, context=None):
     :param context (optional): :class:`passlib.context.CryptoContext` to use for this test. The
         default value is `keg_auth.core.DEFAULT_CRYPTO_SCHEMES`.
 
-    .. NOTE: In most situations we don't want a real crypto scheme to run in the tests, it is
+    .. NOTE:
+
+    In most situations we don't want a real crypto scheme to run in the tests, it is
     slow on entities like Users which have a password. ``User.testing_create`` will generate a value
     for that instance and then hash which takes a bunch of time. However, when testing certain
     schemes, it is useful to execute the real behavior instead of the ``plaintext`` behaviour.
@@ -1087,6 +1098,19 @@ def with_crypto_context(field, context=None):
 
 
 class AuthTestApp(flask_webtest.TestApp):
+    """Wrapper of `flask_webtest.TestApp` that will inject a user into the session.
+
+    Pass in a user instance to "log in" the session:
+
+        user = User.testing_create(permissions=['auth-manage', 'do-something'])
+        test_app = AuthTestApp(flask.current_app, user=user)
+
+    When running integration tests, following the view sequence to log a user in can
+    be quite time-consuming and unnecessary. Login tests can be elsewhere. Once a user
+    is logged in, they are identified by their `session_key`. So, we simply inject
+    that key in the environment, and then follow the request out to webtest per
+    normal.
+    """
     def __init__(self, app, **kwargs):
         user = kwargs.pop('user', None)
         extra_environ = kwargs.pop('extra_environ', {})
@@ -1143,10 +1167,9 @@ class ViewTestBase:
     """ Simple helper class that will set up Permission tokens as specified, log in a user, and
         provide the test app client on the class for use in tests.
 
-        Usage: `permissions` class attribute can be scalar or list, giving either tokens or
-        Permission instances
+        Usage: `permissions` class attribute can be scalar or list.
 
-        Tests:
+        For tests:
         - `self.current_user`: User instance that is logged in
         - `self.client`: AuthTestApp instance
     """
