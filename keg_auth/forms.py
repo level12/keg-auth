@@ -9,6 +9,7 @@ from sqlalchemy.sql.functions import coalesce
 from sqlalchemy_utils import EmailType
 from webhelpers2.html.tags import link_to
 from wtforms.fields import (
+    BooleanField,
     DateField,
     HiddenField,
     PasswordField,
@@ -200,6 +201,10 @@ def user_form(config=None, allow_superuser=False, endpoint='',
             ])
             confirm = PasswordField(_('Confirm Password'))
             field_order = field_order + ('reset_password', 'confirm')
+        else:
+            # place a Send Welcome field after the initial set of fields
+            send_welcome = BooleanField('Send Welcome Email', default=True)
+            field_order = tuple(_fields + ['send_welcome'] + list(field_order[len(_fields):]))
 
         def get_object_by_field(self, field):
             return user_cls.get_by(username=field.data)
@@ -211,6 +216,13 @@ def user_form(config=None, allow_superuser=False, endpoint='',
         def __iter__(self):
             order = ('csrf_token', ) + self.field_order
             return (getattr(self, field_id) for field_id in order)
+
+        def after_init(self, args, kwargs):
+            if kwargs.get('obj') and hasattr(self, 'send_welcome'):
+                self.send_welcome = None
+                self.field_order = tuple(filter(lambda v: v != 'send_welcome', self.field_order))
+
+            return super().after_init(args, kwargs)
 
     return User
 

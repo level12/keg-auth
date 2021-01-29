@@ -375,7 +375,11 @@ class User(CrudView):
 
     def create_user(self, form):
         auth_manager = keg.current_app.auth_manager
-        email_enabled = flask.current_app.config.get('KEGAUTH_EMAIL_OPS_ENABLED', True)
+        email_enabled = (
+            flask.current_app.config.get('KEGAUTH_EMAIL_OPS_ENABLED', True)
+            and hasattr(form, 'send_welcome')
+            and form.send_welcome.data
+        )
         user_kwargs = {}
         user_kwargs['mail_enabled'] = email_enabled
         for field in form.data:

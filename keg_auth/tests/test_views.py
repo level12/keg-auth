@@ -566,6 +566,19 @@ class TestUserCrud(ViewTestBase):
         assert user.groups == [group_approve]
         assert user.bundles == [bundle_approve]
 
+    def test_add_no_welcome(self):
+        resp = self.client.get('/users/add')
+
+        resp.form['email'] = 'abc3@example.com'
+        resp.form['send_welcome'] = False
+        with mail_ext.record_messages() as outbox:
+            resp = resp.form.submit()
+        assert resp.status_code == 302
+        assert resp.location.endswith('/users')
+        assert resp.flashes == [('success', 'Successfully created User')]
+        assert len(outbox) == 0
+        assert self.user_ent.get_by(email='abc3@example.com')
+
     def test_resend_verification(self):
         self.current_user.is_verified = True
         self.current_user.permissions = ents.Permission.query.filter_by(token='auth-manage').all()
