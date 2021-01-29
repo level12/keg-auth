@@ -59,6 +59,9 @@ Extension Setup
 -  Note that the mail_manager is optional. If a mail_manager is not given, no mail will be sent
 -  Permissions may be passed as simple string tokens, or as tuples of `(token, description)`
 
+  - Note, the ``auth_manage`` permission is not assumed to be present, and must be specified
+    to be preserved during sync.
+
 .. code-block:: python
 
     from flask_mail import Mail
@@ -254,6 +257,16 @@ Create entities using the existing mixins, and register them with keg_auth.
 ..
 
 
+Migrations
+^^^^^^^^^^
+
+Keg-Auth does not provide any model migrations out of the box. We want to be very flexible
+with regard to the type of auth model in the app, so migrations become the app developer's
+responsibility.
+
+If you are using a migration library like ``alembic``, you can autogenerate a migration
+after upgrading Keg-Auth to ensure any model updates from mixins are included.
+
 .. _gs-navigation:
 
 Navigation Helpers
@@ -384,6 +397,31 @@ Views
     - Because the standard action routes are predefined, you can assign specific permission(s) to
       them in the view's `permissions` dictionary, keyed by action (e.g. `permissions['add'] = 'foo'`)
 
+
+.. _gs-global-hooks:
+
+Global Request Hooks
+--------------------
+
+The authorization decorators will likely normally be used against view methods/classes and
+blueprints. However, another scenario for usage would be request hooks. For example, if
+authorization needs to be run across the board for any request, we can register a callback
+on that hook, and apply the decorator accordingly.
+
+.. code-block:: python
+
+    from keg.signals import app_ready
+
+    @app_ready.connect
+    def register_request_started_handler(app):
+        from keg_auth.libs.decorators import requires_permissions
+
+        @app.before_request
+        @requires_permissions(lambda user: user.is_qualified)
+        def request_started_handler(*args, **kwargs):
+            # Nothing special needs to happen here - the decorator does it all
+            pass
+..
 
 
 .. _gs-limiting:
