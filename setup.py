@@ -35,7 +35,7 @@ setup(
         'commonmark',
 
         'Flask-Login>0.4.1',
-        'Keg>=0.8.1',
+        'Keg>=0.8.6',
         'KegElements>=0.5.24',
         'inflect',
         'passlib',

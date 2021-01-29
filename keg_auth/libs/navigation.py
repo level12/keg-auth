@@ -30,6 +30,14 @@ def get_defining_class(func):
 
 
 class NavURL(object):
+    """Wraps url_for with permission-checking to determine if user should see a route.
+
+    Endpoint is checked for user/permission requirements. Or, `requires_permissions` kwarg may
+    be provided in the constructor to specify required conditions.
+
+    Note that permission requirements are checked at all levels of the view hierarchy as
+    needed: method, class, and blueprint.
+    """
     def __init__(self, route_string, *args, **kwargs):
         self.route_string = route_string
         self.route_args = args
@@ -125,6 +133,26 @@ class NavURL(object):
 
 
 class NavItem(object):
+    """Defines a menu item or structure of a menu.
+
+    Example::
+
+        my_menu = NavItem(
+            NavItem(
+                'Admin',
+                NavItem('Users', NavURL('auth.user:list')),
+                NavItem('Groups', NavURL('auth.group:list')),
+                nav_group='admin',
+                icon_class='fas fa-briefcase'
+            ),
+            NavItem(
+                'Reports',
+                NavItem('Frequency', NavURL('frequency-report')),
+                NavItem('Financial', NavURL('money-report', requires_permissions='secret-perm'))
+            )
+        )
+
+    """
     class NavItemType(object):
         STEM = 0
         LEAF = 1
@@ -159,6 +187,7 @@ class NavItem(object):
                 self.nav_group = simplify_string(self.label or '__root__')
 
     def clear_authorization(self, session_key):
+        """Reset cached authorization in this and all subnodes for the given session key."""
         self._is_permitted.pop(session_key, None)
         self._permitted_sub_nodes.pop(session_key, None)
         for sub_node in (self.sub_nodes or []):
@@ -166,12 +195,14 @@ class NavItem(object):
 
     @property
     def node_type(self):
+        """Return type NavItemType indicating whether this node is at the end of the structure."""
         if self.sub_nodes:
             return NavItem.NavItemType.STEM
         return NavItem.NavItemType.LEAF
 
     @property
     def is_permitted(self):
+        """Compute/cache authorization from permission conditions, and return bool."""
         current_user = flask_login.current_user
         session_key = current_user.get_id() if current_user else None
         if self._is_permitted.get(session_key) is None:
@@ -186,6 +217,7 @@ class NavItem(object):
 
     @property
     def permitted_sub_nodes(self):
+        """Return list of subnodes accessible to current user."""
         current_user = flask_login.current_user
         session_key = current_user.get_id() if current_user else None
         if self._permitted_sub_nodes.get(session_key) is None:
@@ -197,6 +229,7 @@ class NavItem(object):
 
     @property
     def has_current_route(self):
+        """Returns true if current request matches this nav node."""
         if self.route:
             return self.route.route_string == flask.request.endpoint
         else:

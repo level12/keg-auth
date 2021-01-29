@@ -5,13 +5,12 @@ Welcome to Keg-Auth's documentation!
    :maxdepth: 2
    :caption: Documentation:
 
-   libs/index.rst
-   model/index.rst
-   cli.rst
+   getting-started.rst
    core.rst
-   extensions.rst
+   model/index.rst
+   testing.rst
+   views.rst
+   libs/index.rst
    forms.rst
    grids.rst
    mail.rst
-   testing.rst
-   views.rst

@@ -16,6 +16,23 @@ except ImportError:
 
 
 class CrudView(keg.web.BaseView):
+    """Base CRUD view class providing add/edit/delete/list functionality.
+
+    Basic subclass setup involves:
+    - set the `grid_cls`, `form_cls`, and `orm_cls` attributes
+    - set `object_name` to be the human readable label.
+    - assign `object_name_plural` only if necessary
+    - assign base permissions for reach of the four endpoints
+
+    Grid is assumed to be WebGrid. Form is assumed to be WTForms. ORM is
+    assumed to be SQLAlchemy. Default templates are provided with keg-auth.
+
+    Permissions are set for each endpoint under the `permissions` dict attribute.
+    Note that it is usually helpful to put a general @requires_permissions on the
+    class itself, as that will aid in conditionally displaying navigation links
+    based on a user's access level.
+    """
+
     grid_cls = None
     form_cls = None
     orm_cls = None
@@ -72,6 +89,7 @@ class CrudView(keg.web.BaseView):
 
     @property
     def object_name_plural(self):
+        """Plural version of `object_name`. Uses the inflect library for a default value."""
         return self._inflect.plural(
             self.object_name
             if not is_lazy_string(self.object_name)
@@ -79,6 +97,11 @@ class CrudView(keg.web.BaseView):
         )
 
     def page_title(self, action):
+        """Generates a heading title based on the page action.
+
+        `action` should be a string. Values "Create" and "Edit" are handled, with a
+        fall-through to return `object_name_plural` (for the list case).
+        """
         if action == _('Create'):
             return _('Create {name}').format(name=self.object_name)
 
@@ -88,15 +111,30 @@ class CrudView(keg.web.BaseView):
         return self.object_name_plural
 
     def create_form(self, obj):
+        """Create an instance of `form_cls`. Must return a form if overloaded.
+
+        `obj` is an instance of `orm_cls` (edit) or None (add).
+        """
         return self.form_cls(obj=obj)
 
     def form_page_heading(self, action):
+        """Allows customization of add/edit heading. Defaults to `page_title`."""
         return self.page_title(action)
 
     def form_template_args(self, arg_dict):
+        """Allows customization of jinja template args for add/edit views.
+
+        `arg_dict` contains the default arguments, including anything set with `self.assign`.
+
+        Must return a dict of template args.
+        """
         return arg_dict
 
     def render_form(self, obj, action, form, action_button_text=_('Save Changes')):
+        """Renders the form template.
+
+        Template arguments may be customized with the `form_template_args` method.
+        """
         # args added with self.assign should be passed through here
         template_args = self.form_template_args(dict(self.template_args, **{
             'action': action,
@@ -110,16 +148,28 @@ class CrudView(keg.web.BaseView):
         return flask.render_template(self.form_template, **template_args)
 
     def add_orm_obj(self):
+        """Generate a blank object instance and add it to the session."""
         o = self.orm_cls()
         db.session.add(o)
         return o
 
     def update_obj(self, obj, form):
+        """Update an existing object instance from form data. Does not explicitly
+        flush or commit."""
         obj = obj or self.add_orm_obj()
         form.populate_obj(obj)
         return obj
 
     def add_edit(self, meth, obj=None):
+        """Handle form-related requests for add/edit.
+
+        Form instance comes from `create_form`.
+        Valid form updates the object via `update_obj`.
+        If post successful, returns result of `on_add_edit_success`.
+        If post failure, runs `on_add_edit_failure` and renders the form via `render_form`.
+        If get, renders the form via `render_form`.
+        """
+
         form = self.create_form(obj)
         if form is None:
             raise Exception('create_form returned None instead of a form instance')
@@ -144,6 +194,14 @@ class CrudView(keg.web.BaseView):
         )
 
     def init_object(self, obj_id, action=None):
+        """Load record from ORM for edit/delete cases.
+
+        Forces 404 response if the record does not exist.
+
+        Additional object-loading customization can be provided on action-specific hooks
+        `init_object_edit` and `init_object_delete`. These methods will take no parameters, but
+        they may assume `self.objinst` refers to the requested entity.
+        """
         if obj_id is None:
             flask.abort(400)
         self.objinst = self.orm_cls.query.get(obj_id)
@@ -160,9 +218,11 @@ class CrudView(keg.web.BaseView):
         return self.objinst
 
     def add(self):
+        """View method for add. Enforce permissions and call `add_edit`."""
         return requires_permissions(self.permissions['add'])(self.add_edit)(flask.request.method)
 
     def edit(self, objid):
+        """View method for edit. Enforce permissions, load the record, and call `add_edit`."""
         def action():
             obj = self.init_object(objid, 'edit')
             return self.add_edit(flask.request.method, obj)
@@ -170,6 +230,11 @@ class CrudView(keg.web.BaseView):
         return requires_permissions(self.permissions['edit'])(action)()
 
     def delete(self, objid):
+        """View method for delete. Enforce permissions, load the record, run ORM delete.
+
+        If delete succeeds, return result of `on_delete_success`.
+        If delete fails, return result of `on_delete_failure`.
+        """
         def action():
             self.init_object(objid, 'delete')
 
@@ -183,14 +248,17 @@ class CrudView(keg.web.BaseView):
         return requires_permissions(self.permissions['delete'])(action)()
 
     def list(self):
+        """View method for list. Enforce permissions, then render grid via `render_grid`."""
         return requires_permissions(self.permissions['list'])(self.render_grid)()
 
     @property
     def list_url_with_session(self):
+        """Return list url with the session_key from the request, to support webgrid sessions."""
         return flask.url_for(self.endpoint_for_action('list'),
                              session_key=flask.request.args.get('session_key'))
 
     def flash_success(self, verb):
+        """Add a flask flash message for success with the given `verb`."""
         # i18n: this may require reworking in order to support proper
         #       sentence structures...
         flash(_('Successfully {verb} {object}').format(
@@ -198,10 +266,12 @@ class CrudView(keg.web.BaseView):
         )
 
     def on_delete_success(self):
+        """Flash a delete success message, and redirect to list view."""
         self.flash_success(_('removed'))
         return flask.redirect(self.list_url_with_session)
 
     def on_delete_failure(self):
+        """Flash a delete failure message, and redirect to list view."""
         flash(
             _('Unable to delete {name}. It may be referenced by other items.').format(
                 name=self.object_name
@@ -211,6 +281,7 @@ class CrudView(keg.web.BaseView):
         return flask.redirect(self.list_url_with_session)
 
     def on_add_edit_success(self, entity, is_edit):
+        """Flash an add/edit success message, and redirect to list view."""
         self.flash_success(
             _('modified')
             if is_edit
@@ -219,32 +290,55 @@ class CrudView(keg.web.BaseView):
         return flask.redirect(self.list_url_with_session)
 
     def on_add_edit_failure(self, entity, is_edit):
+        """Flash an add/edit message. No redirect in this case."""
         flash(_('Form errors detected.  Please see below for details.'), 'error')
 
     @classmethod
     def endpoint_for_action(cls, action):
+        """Compute the flask endpoint for the given CRUD action."""
         return '{}:{}'.format(cls.calc_endpoint(), case_cw2dash(action))
 
     def make_grid(self):
+        """Create an instance of `grid_cls` and initialize from request.
+
+        Returns a grid instance."""
         grid = self.grid_cls()
         grid.apply_qs_args()
         return grid
 
     @property
     def grid_page_heading(self):
+        """Allows customization of grid heading. Defaults to `page_title`."""
         return self.page_title(_('list'))
 
     def post_args_grid_setup(self, grid):
-        """ Apply changes to grid instance after QS args/session are loaded """
+        """Apply changes to grid instance after QS args/session are loaded."""
         return grid
 
     def grid_template_args(self, arg_dict):
+        """Allows customization of jinja template args for list view.
+
+        `arg_dict` contains the default arguments, including anything set with `self.assign`.
+
+        Must return a dict of template args.
+        """
         return arg_dict
 
     def on_render_limit_exceeded(self, grid):
+        """Flash a message for webgrid limit exceeded case.
+
+        This gets run in export cases where more records are in the set than the
+        file format can support."""
         flask.flash(_('Too many records to export as {}').format(grid.export_to), 'error')
 
     def render_grid(self):
+        """Renders the grid template.
+
+        Grid instance comes from `make_grid`.
+        Grid instance may be customized via `post_args_grid_setup`.
+        If grid is set to export, give that response or handle the limit exceeded error.
+        Otherwise, render `grid_template` with `grid_template_args`.
+        """
         grid = self.make_grid()
         grid = self.post_args_grid_setup(grid)
 
@@ -268,9 +362,11 @@ class CrudView(keg.web.BaseView):
         return flask.render_template(self.grid_template, **template_args)
 
     def add_url_with_session(self, session_key):
+        """Return add url with the session_key from the request, to support webgrid sessions."""
         return flask.url_for(self.endpoint_for_action('add'), session_key=session_key)
 
     def cancel_url(self):
+        """Return list url with the session_key from the request, to support webgrid sessions."""
         return self.list_url_with_session
 
 
@@ -290,14 +386,21 @@ class AuthRespondedView(keg.web.BaseView):
 
     @classmethod
     def calc_url(cls, **kwargs):
+        """Leans on login authenticator's responders to provide a URL."""
         authenticator_cls = cls.auth_manager.login_authenticator_cls
         responder_cls = authenticator_cls.responder_cls.get(cls.responder_key)
         return getattr(responder_cls, 'url', None)
 
     def on_missing_responder(self):
+        """Handler for requests that do not match a responder in authenticator.
+
+        By default, aborts with 404 response."""
         flask.abort(404)
 
     def responder(self, *args, **kwargs):
+        """Refer all requests to the responder and return the response.
+
+        If no responder, call `on_missing_responder`."""
         authenticator = flask.current_app.auth_manager.login_authenticator
         responder = authenticator.get_responder(self.responder_key)
 
@@ -315,31 +418,38 @@ class AuthRespondedView(keg.web.BaseView):
         pass
 
     def head(self):
+        # needed in keg to set up a HEAD route
         pass
 
 
 class Login(AuthRespondedView):
+    """Login view that uses the login authenticator's responders."""
     responder_key = 'login'
 
 
 class ForgotPassword(AuthRespondedView):
+    """Forgot Password view that uses the login authenticator's responders."""
     responder_key = 'forgot-password'
 
 
 class ResetPassword(AuthRespondedView):
+    """Reset Password view that uses the login authenticator's responders."""
     responder_key = 'reset-password'
 
 
 class VerifyAccount(AuthRespondedView):
+    """Verification view that uses the login authenticator's responders."""
     responder_key = 'verify-account'
 
 
 class Logout(AuthRespondedView):
+    """Logout view that uses the login authenticator's responders."""
     responder_key = 'logout'
 
 
 @requires_permissions('auth-manage')
 class User(CrudView):
+    """Default User CRUD view. Uses auth-manage permission for all targets."""
     url = '/users'
     object_name = _('User')
     object_name_plural = _('Users')
@@ -417,6 +527,7 @@ class User(CrudView):
 
 @requires_permissions('auth-manage')
 class Group(CrudView):
+    """Default Group CRUD view. Uses auth-manage permission for all targets."""
     url = '/groups'
     object_name = _('Group')
     object_name_plural = _('Groups')
@@ -449,6 +560,7 @@ class Group(CrudView):
 
 @requires_permissions('auth-manage')
 class Bundle(CrudView):
+    """Default Bundle CRUD view. Uses auth-manage permission for all targets."""
     url = '/bundles'
     object_name = _('Bundle')
     object_name_plural = _('Bundles')
@@ -480,6 +592,7 @@ class Bundle(CrudView):
 
 @requires_permissions('auth-manage')
 class Permission(keg.web.BaseView):
+    """Default Permission view. Uses auth-manage permission."""
     url = '/permissions'
     grid_template = 'keg_auth/crud-list.html'
 
@@ -510,9 +623,6 @@ def make_blueprint(import_name, _auth_manager, bp_name='auth', login_cls=Login,
                    blueprint_class=flask.Blueprint, **kwargs):
     """ Blueprint factory for keg-auth views
 
-        Naming the blueprint here requires us to create separate view classes so that the routes
-        get applied to the blueprint. Override view classes may be provided.
-
         Most params are assumed to be view classes. `_auth_manager` is the extension instance meant
         for the app on which this blueprint will be used: it is necessary in order to apply url
         routes for user functions.
@@ -522,48 +632,16 @@ def make_blueprint(import_name, _auth_manager, bp_name='auth', login_cls=Login,
     """
     _blueprint = blueprint_class(bp_name, import_name, **kwargs)
 
-    # It's not ideal we have to redefine the classes, but it's needed because of how
-    # Keg.web.BaseView does it's meta programming.  If we don't redefine the class, then
-    # the view doesn't actually get created on blueprint.
-    if login_cls:
-        class Login(login_cls):
-            blueprint = _blueprint
-            auth_manager = _auth_manager
+    # auth responded views get the auth manager assigned for URL calculation, etc.
+    # This has to happen before assign_blueprint.
+    auth_responded_views = (login_cls, forgot_cls, reset_cls, verify_cls, logout_cls)
+    for view_cls in auth_responded_views:
+        if view_cls:
+            view_cls.auth_manager = _auth_manager
 
-    if forgot_cls:
-        class ForgotPassword(forgot_cls):
-            blueprint = _blueprint
-            auth_manager = _auth_manager
-
-    if reset_cls:
-        class ResetPassword(reset_cls):
-            blueprint = _blueprint
-            auth_manager = _auth_manager
-
-    if verify_cls:
-        class VerifyAccount(verify_cls):
-            blueprint = _blueprint
-            auth_manager = _auth_manager
-
-    if logout_cls:
-        class Logout(logout_cls):
-            blueprint = _blueprint
-            auth_manager = _auth_manager
-
-    if user_crud_cls:
-        class User(user_crud_cls):
-            blueprint = _blueprint
-
-    if group_crud_cls:
-        class Group(group_crud_cls):
-            blueprint = _blueprint
-
-    if bundle_crud_cls:
-        class Bundle(bundle_crud_cls):
-            blueprint = _blueprint
-
-    if permission_cls:
-        class Permission(permission_cls):
-            blueprint = _blueprint
+    for view_cls in (user_crud_cls, group_crud_cls, bundle_crud_cls, permission_cls,
+                     *auth_responded_views):
+        if view_cls:
+            view_cls.assign_blueprint(_blueprint)
 
     return _blueprint

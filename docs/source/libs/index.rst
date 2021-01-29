@@ -10,4 +10,3 @@ Libs
 
 .. automodule:: keg_auth.libs.__init__
     :members:
-    :undoc-members:

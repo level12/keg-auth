@@ -59,6 +59,7 @@ class KAPasswordType(PasswordType):
 
 
 class UserMixin(object):
+    """Generic mixin for user entities."""
     # These two attributes are needed by Flask-Login.
     is_anonymous = False
     is_authenticated = True
@@ -312,7 +313,7 @@ class UserMixin(object):
 
 
 class UserTokenMixin(object):
-
+    """Mixin for users who will be authenticated by tokens."""
     token = sa.Column(KAPasswordType(onload=_create_cryptcontext_kwargs))
 
     @classmethod
@@ -376,6 +377,7 @@ class UserTokenMixin(object):
 
 
 class UserEmailMixin(object):
+    """Mixin for users who will be authenticated by email/password."""
     # Assume the user will need to verify their email address before they become active.
     is_verified = sa.Column(sa.Boolean, nullable=False, default=False)
     email = sa.Column(EmailType, nullable=False, unique=True)
@@ -424,6 +426,7 @@ class UserEmailMixin(object):
 
 
 class PermissionMixin(object):
+    """Generic mixin for permissions."""
     token = sa.Column(sa.Unicode(1024), nullable=False, unique=True)
     description = sa.Column(sa.Unicode)
 
@@ -440,24 +443,19 @@ class PermissionMixin(object):
 
 
 class BundleMixin(object):
+    """Generic mixin for permission bundles."""
     name = sa.Column(sa.Unicode(1024), nullable=False, unique=True)
 
     @might_commit
     @might_flush
     @classmethod
     def edit(cls, oid=None, **kwargs):
-        """obj = cls.query.get(oid)
-
-        rights_keys = ('permissions', )
-        original_rights = _rights_as_dict(obj, *rights_keys)
-        original_users = {user.id for user in obj.users}
-        original_groups = {group.id for group in obj.groups}"""
-
         obj = super(BundleMixin, cls).edit(oid=oid, _commit=False, **kwargs)
         return obj
 
 
 class GroupMixin(object):
+    """Generic mixin for user groups."""
     name = sa.Column(sa.Unicode(1024), nullable=False, unique=True)
 
     def get_all_permissions(self):
@@ -499,6 +497,7 @@ class GroupMixin(object):
 
 
 class AttemptMixin(object):
+    """Generic mixin for logging user login attempts."""
     # Form input data, e.g. username
     user_input = sa.Column(sa.Unicode(512), nullable=False)
 
@@ -528,6 +527,7 @@ class AttemptMixin(object):
 
 
 def get_username(user):
+    """Based on the registered user entity, find the column representing the login ID."""
     user_cls = registry().get_entity_cls('user')
     return getattr(user, get_username_key(user_cls))
 

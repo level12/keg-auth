@@ -1,18 +1,4 @@
+--extra-index-url https://package-index.level12.net
+
 sphinx
-Flask-Login==0.4.1
-Keg>=0.8.1
-KegElements>=0.5.21
-bcrypt
-commonmark
-flask-bootstrap
-flask-jwt-extended
-flask-mail
-flask-oidc
-inflect
-passlib
-psycopg2-binary
-pyldap
-shortuuid
-six
-webgrid
-xlsxwriter
+-e .[test]

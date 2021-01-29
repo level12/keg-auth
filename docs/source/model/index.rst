@@ -9,4 +9,3 @@ Model
 
 .. automodule:: keg_auth.model.__init__
     :members:
-    :undoc-members:
