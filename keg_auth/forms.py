@@ -7,7 +7,6 @@ from keg_elements.forms import Form, ModelForm, FieldMeta, MultiCheckboxField
 from keg_elements.forms.validators import ValidateUnique
 from sqlalchemy.sql.functions import coalesce
 from sqlalchemy_utils import EmailType
-from webhelpers2.html.tags import link_to
 from wtforms.fields import (
     BooleanField,
     DateField,
@@ -19,6 +18,7 @@ from wtforms import ValidationError, validators
 from wtforms_components.widgets import EmailInput
 
 from keg_auth.extensions import lazy_gettext as _
+from keg_auth.libs.templates import link_to
 from keg_auth.model import get_username_key
 
 

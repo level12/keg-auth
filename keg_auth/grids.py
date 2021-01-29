@@ -1,11 +1,11 @@
 import flask
 import flask_login
+from markupsafe import Markup
 import webgrid
 from webgrid import filters
-from webhelpers2.html import literal
-from webhelpers2.html.tags import link_to, HTML, form, end_form
 
 from keg_auth.extensions import lazy_gettext as _
+from keg_auth.libs.templates import link_to, render_jinja
 from keg_auth.model.utils import has_permissions
 from flask_wtf.csrf import generate_csrf
 
@@ -94,34 +94,34 @@ class ActionColumn(webgrid.Column):
 
     def format_data(self, value, show_edit, show_delete, show_view,
                     view_link_class, edit_link_class, delete_link_class):
-        result = literal()
+        result = Markup()
         if self.edit_endpoint and show_edit:
             result += link_to(
-                literal('&nbsp;'),
+                Markup('&nbsp;'),
                 flask.url_for(self.edit_endpoint, objid=value, session_key=self.grid.session_key),
                 **{
                     'aria-label': _('Edit'),
-                    'class_': edit_link_class,
+                    'class': edit_link_class,
                     'title': _('Edit')
                 }
             )
         if self.delete_endpoint and show_delete:
             result += link_to(
-                literal('&nbsp;'),
+                Markup('&nbsp;'),
                 flask.url_for(self.delete_endpoint, objid=value, session_key=self.grid.session_key),
                 **{
                     'aria-label': _('Delete'),
-                    'class_': delete_link_class,
+                    'class': delete_link_class,
                     'title': _('Delete')
                 }
             )
         if self.view_endpoint and show_view:
             result += link_to(
-                literal('&nbsp;'),
+                Markup('&nbsp;'),
                 flask.url_for(self.view_endpoint, objid=value, session_key=self.grid.session_key),
                 **{
                     'aria-label': _('View'),
-                    'class_': view_link_class,
+                    'class': view_link_class,
                     'title': _('View')
                 }
             )
@@ -151,25 +151,19 @@ def make_user_grid(edit_endpoint, edit_permission, delete_endpoint, delete_permi
             return self.format_data(record)
 
         def format_data(self, data):
-            result = literal()
+            result = Markup()
             if data.is_verified is False:
-                result += form(
-                    flask.url_for(self.url),
-                    hidden_fields={
-                        'csrf_token': generate_csrf(),
-                        'user_id': data.id
-                    }
+                result += render_jinja(
+                    '<form action="{{ url }}" method="post">'
+                    '<input type="hidden" name="csrf_token" value="{{ csrf_token }}" />'
+                    '<input type="hidden" name="user_id" value="{{ user_id }}" />'
+                    '<input type="submit" class"btn btn-primary" value="{{ submit_label }}" />'
+                    '</form>',
+                    url=flask.url_for(self.url),
+                    csrf_token=generate_csrf(),
+                    user_id=data.id,
+                    submit_label=self.label,
                 )
-                result += HTML.tag(
-                    'input',
-                    type='submit',
-                    value=self.label,
-                    url=self.url,
-                    **{
-                        'class_': 'btn btn-primary',
-                    }
-                )
-                result += end_form()
             return result
 
     class User(grid_cls):

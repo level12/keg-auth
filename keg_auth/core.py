@@ -6,6 +6,7 @@ import sqlalchemy as sa
 from blazeutils import tolist
 from keg.db import db
 from keg.signals import db_init_post
+from webgrid.renderers import render_html_attributes
 
 import keg_auth.cli
 from keg_auth import model
@@ -146,6 +147,9 @@ class AuthManager(object):
             'auth_manager': self,
             'use_select2': app.config.get('KEGAUTH_USE_SELECT2'),
         })
+        app.jinja_env.filters['html_attributes'] = app.jinja_env.filters.get(
+            'html_attributes', render_html_attributes
+        )
 
     def init_model(self, app):
         if not self._model_initialized:
