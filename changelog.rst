@@ -1,6 +1,26 @@
 Changelog
 =========
 
+0.2.26 released 2021-01-29
+--------------------------
+
+- Provide Spinx documentation (62aca54_)
+- Provide a default JS handler for confirm-delete in crud-list (7b6785a_)
+- Use marksafe and jinja templates instead of webhelpers2 (8f68e07_)
+- Allow user to prevent sending welcome email after user form (3bb8f7a_)
+- Validate that create_form returned a value (83ff034_)
+- Trap integrity error on permission sync to mitigate race condition (4d7497c_)
+- Move disabled_utc to be with the other fields (dd1bf5e_)
+
+.. _62aca54: https://github.com/level12/keg-auth/commit/62aca54
+.. _7b6785a: https://github.com/level12/keg-auth/commit/7b6785a
+.. _8f68e07: https://github.com/level12/keg-auth/commit/8f68e07
+.. _3bb8f7a: https://github.com/level12/keg-auth/commit/3bb8f7a
+.. _83ff034: https://github.com/level12/keg-auth/commit/83ff034
+.. _4d7497c: https://github.com/level12/keg-auth/commit/4d7497c
+.. _dd1bf5e: https://github.com/level12/keg-auth/commit/dd1bf5e
+
+
 0.2.25 released 2020-12-08
 --------------------------
 
