@@ -551,10 +551,10 @@ Email/Reset Password Functionality
 Internationalization
 --------------------
 
-WebGrid supports `Babel`-style internationalization of text strings through the `morphi` library.
+Keg-Auth supports `Babel`-style internationalization of text strings through the `morphi` library.
 To use this feature, specify the extra requirements on install::
 
-    pip install webgrid[i18n]
+    pip install keg-auth[i18n]
 
 Currently, English (default) and Spanish are the supported languages in the UI.
 
