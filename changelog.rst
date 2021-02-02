@@ -1,6 +1,16 @@
 Changelog
 =========
 
+0.2.27 released 2021-02-02
+--------------------------
+
+- fix documentation of internationalization support (8a41f03_)
+- make form/crud templates less opinionated about how base templates render page title (0b71303_)
+
+.. _8a41f03: https://github.com/level12/keg-auth/commit/8a41f03
+.. _0b71303: https://github.com/level12/keg-auth/commit/0b71303
+
+
 0.2.26 released 2021-01-29
 --------------------------
 
