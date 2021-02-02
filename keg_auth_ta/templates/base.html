@@ -1,5 +1,17 @@
 {% extends "bootstrap/base.html" %}
-{% block title %}Keg Auth Demo{% endblock %}
+
+{%- block head %}
+<title>{% block title %}{{title|default}}{% endblock title %} | Keg Auth Demo</title>
+
+{%- block metas %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{%- endblock metas %}
+
+{%- block styles %}
+<!-- Bootstrap -->
+<link href="{{bootstrap_find_resource('css/bootstrap.css', cdn='bootstrap')}}" rel="stylesheet">
+{%- endblock styles %}
+{%- endblock head %}
 
 {% block content %}
   <h1>Hello World from Keg Auth</h1>
