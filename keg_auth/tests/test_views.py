@@ -300,6 +300,13 @@ class TestViews(object):
         assert doc('div#page-content a').text() == 'Cancel'
         assert doc('div#page-content a').attr('href') == '/login'
 
+    def test_reset_pw_head(self):
+        user = ents.User.testing_create()
+        token = user.token_generate()
+
+        client = flask_webtest.TestApp(flask.current_app)
+        client.head('/reset-password/{}/{}'.format(user.id, token), status=405)
+
     def test_reset_pw_actions(self):
         user = ents.User.testing_create()
         token = user.token_generate()

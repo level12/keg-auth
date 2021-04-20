@@ -114,7 +114,7 @@ class ViewResponder(object):
 
         return resp or self.render()
 
-    def head(self):
+    def head(self, *args, **kwargs):
         valid_methods = []
         for method in ('get', 'post'):
             if hasattr(self, method):
