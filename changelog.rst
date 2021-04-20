@@ -1,6 +1,15 @@
 Changelog
 =========
 
+0.2.28 released 2021-04-20
+--------------------------
+
+- support args in http head requests (97f8961_)
+- pin flask-jwt-extended < 4 until we support the update
+
+.. _97f8961: https://github.com/level12/keg-auth/commit/97f8961
+
+
 0.2.27 released 2021-02-02
 --------------------------
 
