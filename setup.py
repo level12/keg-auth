@@ -51,7 +51,7 @@ setup(
             'email_validator',
             'flake8',
             'flask-bootstrap',
-            'flask-jwt-extended',
+            'flask-jwt-extended<4.0',
             'flask-mail',
             'flask-oidc',
             'flask-webtest',
