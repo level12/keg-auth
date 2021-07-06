@@ -21,10 +21,12 @@ class RequiresUser(object):
         - @requires_user
         - @requires_user()
         - @requires_user(on_authentication_failure=lambda: flask.abort(400))
+        - @requires_user(http_methods_excluded=['OPTIONS'])
     """
-    def __init__(self, on_authentication_failure=None):
+    def __init__(self, on_authentication_failure=None, http_methods_excluded=None):
         # defaults for these handlers are provided, but may be overridden here
         self._on_authentication_failure = on_authentication_failure
+        self.http_methods_excluded = http_methods_excluded
 
     def __call__(self, class_or_function):
         # decorator may be applied to a class or a function, but the effect is different
@@ -113,6 +115,12 @@ class RequiresUser(object):
             flask.abort(401)
 
     def check_auth(self, instance=None):
+        methods_excluded = flask.current_app.config.get('KEGAUTH_HTTP_METHODS_EXCLUDED')
+        if self.http_methods_excluded is not None:
+            methods_excluded = self.http_methods_excluded
+        if flask.request.method in methods_excluded:
+            return
+
         # if flask_login has an authenticated user in session, that's who we want
         if flask_login.current_user.is_authenticated:
             return
@@ -147,9 +155,11 @@ class RequiresPermissions(RequiresUser):
         - @requires_permissions(custom_authorization_callable that takes user arg)
         - @requires_permissions('token1', on_authorization_failure=lambda: flask.abort(404))
     """
-    def __init__(self, condition, on_authentication_failure=None, on_authorization_failure=None):
+    def __init__(self, condition, on_authentication_failure=None, on_authorization_failure=None,
+                 http_methods_excluded=None):
         super(RequiresPermissions, self).__init__(
             on_authentication_failure=on_authentication_failure,
+            http_methods_excluded=http_methods_excluded,
         )
         self.condition = condition
         self._on_authorization_failure = on_authorization_failure

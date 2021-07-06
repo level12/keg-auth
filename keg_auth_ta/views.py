@@ -18,7 +18,7 @@ class ProtectedBlueprint(flask.Blueprint):
         flask.abort(405)
 
 
-@requires_user()
+@requires_user(http_methods_excluded=['OPTIONS'])
 class ProtectedBlueprint2(flask.Blueprint):
     pass
 

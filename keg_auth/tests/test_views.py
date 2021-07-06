@@ -519,6 +519,11 @@ class TestPermissionsRequired:
         client.get('/protected-class', status=405)
         client.get('/protected-class2', status=302)
 
+    def test_user_requirement_excludes_method(self):
+        client = flask_webtest.TestApp(flask.current_app)
+        # should have a 200 response
+        client.options('/protected-class2')
+
 
 class TestRequestLoaders(object):
     def test_token_auth_no_token(self):

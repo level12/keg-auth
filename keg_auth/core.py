@@ -107,6 +107,10 @@ class AuthManager(object):
 
         app.config.setdefault('KEGAUTH_CLI_USER_ARGS', ['email'])
 
+        # HTTP methods to ignore during auth checks. This can be useful for excluding
+        # methods like OPTIONS during front-end API requests, for CORS compatibility.
+        app.config.setdefault('KEGAUTH_HTTP_METHODS_EXCLUDED', [])
+
         # Use select2 for form selects in templates extending keg_auth/form-base.
         app.config.setdefault('KEGAUTH_USE_SELECT2', True)
 

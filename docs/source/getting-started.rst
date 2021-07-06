@@ -37,6 +37,11 @@ Configuration
 
     -  Names arguments to be accepted by CLI user commands and passed to the model
 
+- ``KEGAUTH_HTTP_METHODS_EXCLUDED``: List of HTTP methods to exclude from auth checks
+
+    -  Useful for CORS-applicable situations, where it may be advantageous to respond normally
+       to an OPTIONS request. Then, auth will apply as expected on the ensuing GET/POST/PUT/etc.
+
 -  Email settings
 
     -  ``KEGAUTH_EMAIL_SITE_NAME = 'Keg Application'``: Used in email body if mail is enabled
@@ -371,6 +376,8 @@ Views
        redirect to the login page
     -  A decorated class/blueprint may have a custom `on_authentication_failure` instance method instead
        of passing one to the decorator
+    -  ``KEGAUTH_HTTP_METHODS_EXCLUDED`` can be overridden at the individual decorator level by passing
+       ``http_methods_excluded`` to the decorator's constructor
 
 -  ``requires_permissions``
 
