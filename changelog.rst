@@ -1,6 +1,22 @@
 Changelog
 =========
 
+0.3.0 released 2021-07-06
+-------------------------
+
+- click changed output for hidden inputs, resolve for set-password CLI (6cd5a09_)
+- update python requirements and pip usage (760da0b_)
+- add options to exclude specific HTTP methods from auth checks (b66d090_)
+- update JWT usage to reflect flask-jwt-extended 4.0 breaking changes (1cd0895_)
+- switch ldap requirement to python-ldap (63485f3_)
+
+.. _6cd5a09: https://github.com/level12/keg-auth/commit/6cd5a09
+.. _760da0b: https://github.com/level12/keg-auth/commit/760da0b
+.. _b66d090: https://github.com/level12/keg-auth/commit/b66d090
+.. _1cd0895: https://github.com/level12/keg-auth/commit/1cd0895
+.. _63485f3: https://github.com/level12/keg-auth/commit/63485f3
+
+
 0.2.28 released 2021-04-20
 --------------------------
 
