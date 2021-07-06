@@ -58,7 +58,7 @@ setup(
             'freezegun',
             'mock',
             'psycopg2-binary',
-            'pyldap',
+            'python-ldap',
             'pyquery',
             'pytest',
             'pytest-cov',
@@ -73,7 +73,7 @@ setup(
             'flask-jwt-extended',
         ],
         'ldap': [
-            'pyldap',
+            'python-ldap',
         ],
         'mail': [
             'Flask-Mail',

@@ -101,7 +101,7 @@ Login Authenticators control validation of users.
 - LDAP authentication
 
     - ``from keg_auth import LdapAuthenticator``
-    - Uses pyldap, which needs to be installed: ``pip install keg-auth[ldap]``
+    - Uses python-ldap, which needs to be installed: ``pip install keg-auth[ldap]``
     - Additional config:
 
         - ``KEGAUTH_LDAP_TEST_MODE``: When True, bypasses LDAP calls. Defaults to False
