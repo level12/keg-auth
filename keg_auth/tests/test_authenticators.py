@@ -258,7 +258,7 @@ class TestJwtRequestLoader:
         user = User.testing_create()
         jwt_auth = auth.JwtRequestLoader(flask.current_app)
         token = jwt_auth.create_access_token(user)
-        assert flask_jwt_extended.decode_token(token)['identity'] == user.session_key
+        assert flask_jwt_extended.decode_token(token)['sub'] == user.session_key
 
 
 class TestPasswordPolicy:

@@ -51,7 +51,7 @@ setup(
             'email_validator',
             'flake8',
             'flask-bootstrap',
-            'flask-jwt-extended<4.0',
+            'flask-jwt-extended>=4.0.0',
             'flask-mail',
             'flask-oidc',
             'flask-webtest',
@@ -70,7 +70,7 @@ setup(
             'webgrid[i18n]'
         ],
         'jwt': [
-            'flask-jwt-extended',
+            'flask-jwt-extended>=4.0.0',
         ],
         'ldap': [
             'python-ldap',

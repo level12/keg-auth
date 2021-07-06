@@ -927,24 +927,26 @@ class JwtRequestLoader(TokenLoaderMixin, RequestLoader):
         def user_identity_loader(user):
             """
             Serialize a user entity to the JWT token
-            This method is the complement of `user_loader_callback_loader`
+            This method is the complement of `user_lookup_loader`
             """
             return user.session_key
 
-        @jwt_manager.user_loader_callback_loader
-        def user_loader_callback_loader(session_key):
+        @jwt_manager.user_lookup_loader
+        def user_loader_callback_loader(jwt_header, jwt_data):
             """
             Load a user entity from the JWT token
             This method is the complement of `user_identity_loader`
 
             Note, if user is not found or inactive, fail silently - user just won't get loaded
             """
-            return self.user_ent.get_by(session_key=session_key, is_active=True)
+            data_key = flask.current_app.config.get('JWT_IDENTITY_CLAIM')
+            return self.user_ent.get_by(session_key=jwt_data[data_key], is_active=True)
 
     @staticmethod
     def get_authenticated_user():
         try:
-            flask_jwt_extended.verify_jwt_in_request()
+            if flask_jwt_extended.verify_jwt_in_request() is None:
+                return None
             user = flask_jwt_extended.get_current_user()
             flask_login.login_user(user)
             return user
