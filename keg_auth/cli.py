@@ -27,8 +27,13 @@ class PasswordType(click.ParamType):
 
         if errors:
             error_list = '\n'.join('\t\N{BULLET} {}'.format(e) for e in errors)
+            message = _('Password does not meet the following restrictions:\n{errs}',
+                        errs=error_list)
+
+            # because we hide the input, click also hides the error message, so echo manually
+            click.echo(message)
             self.fail(
-                _('Password does not meet the following restrictions:\n{errs}', errs=error_list),
+                message,
                 param,
                 ctx,
             )

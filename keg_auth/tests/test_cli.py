@@ -114,8 +114,9 @@ class TestCLI(CLIBase):
         result = self.invoke('auth', 'set-password', 'test@level12.com', input=input_)
         assert result.stdout == (
             'Password: \n'
-            'Error: Password does not meet the following restrictions:\n'
+            'Password does not meet the following restrictions:\n'
             '\t• Password must be at least 8 characters long\n'
+            'Error: The value you entered was invalid.\n'
             'Password: \n'
             'Repeat for confirmation: \n'
         )
