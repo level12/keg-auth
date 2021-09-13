@@ -342,6 +342,9 @@ class CrudView(keg.web.BaseView):
         grid = self.make_grid()
         grid = self.post_args_grid_setup(grid)
 
+        if grid.session_on and flask.request.method.lower() == 'post':
+            return flask.redirect(self.list_url_with_session)
+
         if grid.export_to:
             import webgrid
 

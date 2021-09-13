@@ -8,6 +8,7 @@ import flask_webtest
 from keg.db import db
 import pytest
 import sqlalchemy as sa
+from webgrid.extensions import RequestArgsLoader, RequestFormLoader
 from werkzeug.datastructures import MultiDict
 from keg_auth_ta.app import mail_ext
 from keg_auth.libs.decorators import requires_user
@@ -937,6 +938,20 @@ class TestUserCrud(ViewTestBase):
             resp = client.get('/users?op(username)=eq&v1(username)=' + user.username)
             assert resp.pyquery('.datagrid table.records thead th').eq(1).text() == 'User ID'
             assert resp.pyquery('.datagrid table.records tbody td').eq(1).text() == user.username
+
+    @mock.patch('keg_auth_ta.extensions.Grid.manager.args_loaders',
+                [RequestArgsLoader, RequestFormLoader])
+    def test_list_post(self):
+        resp = self.client.get('/users')
+        form = resp.forms[0]
+        assert form.method == 'post'
+        resp = form.submit()
+        assert resp.status_code == 302
+        assert '/users' in resp.location
+
+    @mock.patch('keg_auth_ta.extensions.Grid.manager.args_loaders', [RequestArgsLoader])
+    def test_list_post_no_form_loader(self):
+        self.client.post('/users', status=400)
 
     def test_list_export(self):
         ents.User.testing_create()
