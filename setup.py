@@ -12,7 +12,7 @@ with open(version_fpath) as fo:
     exec(fo.read(), version_globals)
 
 setup(
-    name='Keg Auth',
+    name='Keg-Auth',
     version=version_globals['VERSION'],
     description='Authentication plugin for Keg',
     long_description='\n\n'.join((README, CHANGELOG)),
@@ -36,11 +36,11 @@ setup(
 
         'Flask-Login>0.4.1',
         'Keg>=0.8.6',
-        'KegElements>=0.5.24',
+        'KegElements>=0.6.0',
         'inflect',
         'passlib',
         'shortuuid',
-        'webgrid',
+        'webgrid>=0.4.0',
     ],
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
