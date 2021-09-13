@@ -391,3 +391,27 @@ class TestNavItem(object):
         label = 12
         node = NavItem(label, NavURL('public.home'))
         assert node.label == label
+
+    def test_logout_presence(self):
+        node = NavItem('Foo', NavURL('auth.logout'))
+
+        with flask.current_app.test_request_context('/'):
+            flask_login.logout_user()
+            assert not node.is_permitted
+
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create()
+            flask_login.login_user(user)
+            node.clear_authorization(user.get_id())
+            assert node.is_permitted
+
+    def test_login_presence(self):
+        node = NavItem('Foo', NavURL('auth.login', requires_anonymous=True))
+
+        with flask.current_app.test_request_context('/'):
+            flask_login.logout_user()
+            assert node.is_permitted
+
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create()
+            flask_login.login_user(user)
+            node.clear_authorization(user.get_id())
+            assert not node.is_permitted

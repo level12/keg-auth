@@ -446,6 +446,12 @@ class Logout(AuthRespondedView):
     """Logout view that uses the login authenticator's responders."""
     responder_key = 'logout'
 
+    # Do this manually here, rather than using requires_user, because we want
+    #   better control over what happens if an unauthenticated user uses the
+    #   view. But, this prevents the route from being present in nav if a user
+    #   is not logged in.
+    __keg_auth_requires_user__ = True
+
 
 @requires_permissions('auth-manage')
 class User(CrudView):

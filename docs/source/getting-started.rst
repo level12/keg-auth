@@ -331,6 +331,8 @@ Example:
                         'private.secret3', requires_permissions='permission3'
                     )),
                 NavItem('User Manage', NavURL('auth.user:add')),
+                NavItem('Logout', NavURL('auth.logout')),
+                NavItem('Login', NavURL('auth.login', requires_anonymous=True)),
             )
         )
 ..

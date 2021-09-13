@@ -32,8 +32,10 @@ def get_defining_class(func):
 class NavURL(object):
     """Wraps url_for with permission-checking to determine if user should see a route.
 
-    Endpoint is checked for user/permission requirements. Or, `requires_permissions` kwarg may
-    be provided in the constructor to specify required conditions.
+    Endpoint is checked for user/permission requirements.
+    - method/class/blueprint permissions from decorators (preferred in most cases)
+    - `requires_permissions` kwarg specifies conditions and disregards the decorators
+    - `requires_anonymous` kwarg forces nav for only unauthenticated users
 
     Note that permission requirements are checked at all levels of the view hierarchy as
     needed: method, class, and blueprint.
@@ -43,6 +45,7 @@ class NavURL(object):
         self.route_args = args
         self.route_kwargs = kwargs
         self.requires_permissions = kwargs.pop('requires_permissions', None)
+        self.requires_anonymous = kwargs.pop('requires_anonymous', None)
 
     @property
     def url(self):
@@ -53,11 +56,18 @@ class NavURL(object):
         """ Check permitted status of this route for the current user """
         # simplest case: route has requirements directly assigned
         if self.requires_permissions:
-            if not flask_login.current_user:
+            if not flask_login.current_user or not flask_login.current_user.is_authenticated:
                 return False
             return has_permissions(
                 self.requires_permissions,
                 flask_login.current_user
+            )
+
+        # other simple case: route is forced to show only anonymous users
+        if self.requires_anonymous:
+            return not bool(
+                flask_login.current_user
+                and flask_login.current_user.is_authenticated
             )
 
         # otherwise, we need to find the view for the route. In that case, both the route and its
