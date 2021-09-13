@@ -1167,19 +1167,30 @@ class ViewTestBase:
     """ Simple helper class that will set up Permission tokens as specified, log in a user, and
         provide the test app client on the class for use in tests.
 
-        Usage: `permissions` class attribute can be scalar or list.
+        Usage: ``permissions`` class attribute can be scalar or list.
 
         For tests:
-        - `self.current_user`: User instance that is logged in
-        - `self.client`: AuthTestApp instance
+
+        - ``self.current_user``: User instance that is logged in
+        - ``self.client``: AuthTestApp instance
     """
     permissions = tuple()
+
+    @classmethod
+    def create_user(cls):
+        """ Creates a User record for tests. By default, simply calls ``testing_create`` with
+            permissions."""
+        return cls.user_ent.testing_create(permissions=cls.permissions)
+
+    @classmethod
+    def setup_user(cls):
+        """Hook to do further setup on ``cls.current_user``."""
+        pass
 
     @classmethod
     def setup_class(cls):
         cls.user_ent = flask.current_app.auth_manager.entity_registry.user_cls
         cls.permission_ent = flask.current_app.auth_manager.entity_registry.permission_cls
-        cls.user_ent.delete_cascaded()
 
         # ensure all of the tokens exists
         defined_perms = set(
@@ -1190,5 +1201,6 @@ class ViewTestBase:
                 raise Exception('permission {} not specified in the auth manager'.format(perm))
             cls.permission_ent.testing_create(token=perm)
 
-        cls.current_user = cls.user_ent.testing_create(permissions=cls.permissions)
+        cls.current_user = cls.create_user()
+        cls.setup_user()
         cls.client = AuthTestApp(flask.current_app, user=cls.current_user)
