@@ -1264,7 +1264,7 @@ class TestViewTestBase:
             'flask.current_app.auth_manager.permissions', ['foo', 'baz']
         ):
             with pytest.raises(
-                Exception, match='permission bar not specified in the auth manager'
+                Exception, match=r"permission\(s\) \{'bar'\} not specified in the auth manager"
             ):
                 Foo.setup_class()
 

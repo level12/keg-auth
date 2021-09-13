@@ -16,6 +16,8 @@ csrf = CSRFProtect()
 
 permissions = (
     'auth-manage',
+    'permission1',
+    'permission2',
 )
 
 auth_entity_registry = AuthEntityRegistry()

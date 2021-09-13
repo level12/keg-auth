@@ -269,6 +269,14 @@ class AuthManager(object):
             if 'permissions' not in str(exc):
                 raise
 
+    def validate_permission_set(self, permissions):
+        defined_tokens = set(
+            tolist(perm)[0] for perm in self.permissions
+        )
+        undefined_tokens = set(tolist(permissions)) - defined_tokens
+        if undefined_tokens:
+            raise Exception(f'permission(s) {undefined_tokens} not specified in the auth manager')
+
     def add_navigation_menu(self, name, menu):
         """Create a navigation menu that may be referenced with the given name."""
         self.menus[name] = menu

@@ -128,8 +128,17 @@ class UserMixin(object):
 
         if 'permissions' in kwargs:
             perm_cls = registry().permission_cls
+
+            # ensure all of the tokens exists
+            flask.current_app.auth_manager.validate_permission_set(
+                list(filter(
+                    lambda perm: not isinstance(perm, perm_cls),
+                    tolist(kwargs['permissions'])
+                ))
+            )
+
             kwargs['permissions'] = [
-                perm_cls.get_by_token(perm)
+                perm_cls.testing_create(token=perm)
                 if not isinstance(perm, perm_cls) else perm
                 for perm in tolist(kwargs['permissions'])
             ]

@@ -11,7 +11,7 @@ import flask_webtest
 import passlib
 import pytest
 import wrapt
-from blazeutils import randchars, tolist
+from blazeutils import randchars
 from blazeutils.containers import LazyDict
 from keg import current_app
 
@@ -1193,13 +1193,7 @@ class ViewTestBase:
         cls.permission_ent = flask.current_app.auth_manager.entity_registry.permission_cls
 
         # ensure all of the tokens exists
-        defined_perms = set(
-            tolist(perm)[0] for perm in flask.current_app.auth_manager.permissions
-        )
-        for perm in tolist(cls.permissions):
-            if perm not in defined_perms:
-                raise Exception('permission {} not specified in the auth manager'.format(perm))
-            cls.permission_ent.testing_create(token=perm)
+        flask.current_app.auth_manager.validate_permission_set(cls.permissions)
 
         cls.current_user = cls.create_user()
         cls.setup_user()
