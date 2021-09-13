@@ -1,6 +1,24 @@
 Changelog
 =========
 
+0.4.0 released 2021-09-13
+-------------------------
+
+- ensure grid header posts are supported (e0638dc_)
+- shift to use Bootstrap 4 templates by default (39335bc_)
+- centralize validation of permission sets in testing (9f04f1d_)
+- ViewTestBase no longer delete users in setup, and provide hooks into user creation (7d72fc3_)
+- enhance navigation menu options for login/logout cases (667a1ac_)
+- rename package for proper semantics (6a6a202_)
+
+.. _e0638dc: https://github.com/level12/keg-auth/commit/e0638dc
+.. _39335bc: https://github.com/level12/keg-auth/commit/39335bc
+.. _9f04f1d: https://github.com/level12/keg-auth/commit/9f04f1d
+.. _7d72fc3: https://github.com/level12/keg-auth/commit/7d72fc3
+.. _667a1ac: https://github.com/level12/keg-auth/commit/667a1ac
+.. _6a6a202: https://github.com/level12/keg-auth/commit/6a6a202
+
+
 0.3.0 released 2021-07-06
 -------------------------
 
