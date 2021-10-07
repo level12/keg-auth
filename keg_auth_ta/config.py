@@ -7,7 +7,7 @@ class DefaultProfile(object):
 
     # These three just get rid of warnings on the console.
     KEG_KEYRING_ENABLE = False
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres@localhost/postgres'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     SITE_NAME = 'Keg Auth Demo'
@@ -22,9 +22,9 @@ class TestProfile(object):
 
     MAIL_DEFAULT_SENDER = 'sender@example.com'
 
-    # These settings reflect what is needed in CI.  For local development, use
-    # keg_auth_ta-config.py to override.
-    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:password@localhost/postgres'
+    # These settings reflect what is needed in CI & when using docker compose.
+    # Use keg_auth_ta-config.py to override if needed.
+    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres@localhost/kegauth_tests'
 
 
 class TestProfileUserArgs(config.TestProfile, TestProfile):

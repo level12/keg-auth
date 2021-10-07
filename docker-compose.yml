@@ -1,0 +1,13 @@
+version: '3.1'
+
+services:
+  keg-auth-pg:
+    image: postgres:12-alpine
+    container_name: keg-auth-pg
+    environment:
+      POSTGRES_DB: kegauth_tests
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      # Can use a .env to customize, but that will only work when running docker-compose in the
+      # same directory as this file.  You can also use an override file if desired.
+      - '${KEG_AUTH_DB_IP:-127.0.0.1}:${KEG_AUTH_DB_PORT:-5432}:5432'

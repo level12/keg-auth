@@ -45,3 +45,19 @@ Links
 * Issue tracker: https://github.com/level12/keg-auth/issues
 * Keg framework: https://github.com/level12/keg
 * Questions & comments: http://groups.google.com/group/blazelibs
+
+
+Development
+-----------
+
+To run this project's tests:
+
+- Copy keg_auth_ta-config-example.py -> keg_auth_ta-config.py, update as needed
+- Override database addr &/or port with environment vars or docker compose override if needed.
+- `docker-compose up [-d]`
+- `tox ...`
+
+There is a test application defined that can be ran like:
+
+- `cd keg_auth_ta`
+- `python app.py ...`

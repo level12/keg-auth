@@ -17,3 +17,4 @@ include .circleci/config.yml
 include .circleci/pytest.ini
 exclude keg_auth_ta-config.py coverage.xml .coverage
 exclude pyp.ini
+include docker-compose.yml
