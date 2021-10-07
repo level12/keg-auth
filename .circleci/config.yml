@@ -3,10 +3,10 @@ jobs:
     build:
         docker:
             - image: level12/python-test-multi
-            - image: postgres:9.6
+            - image: postgres:12
               environment:
-                  POSTGRES_USER: postgres
-                  POSTGRES_PASSWORD: password
+                POSTGRES_DB: kegauth_tests
+                POSTGRES_HOST_AUTH_METHOD: trust
         steps:
             - checkout
 
