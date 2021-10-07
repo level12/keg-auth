@@ -220,8 +220,11 @@ def user_form(config=None, allow_superuser=False, endpoint='',
             return self._obj
 
         def __iter__(self):
-            order = ('csrf_token', ) + self.field_order
-            return (getattr(self, field_id) for field_id in order)
+            if hasattr(self, 'csrf_token'):
+                field_ids = ('csrf_token', ) + self.field_order
+            else:
+                field_ids = self.field_order
+            return (getattr(self, field_id) for field_id in field_ids)
 
         def after_init(self, args, kwargs):
             if kwargs.get('obj') and hasattr(self, 'send_welcome'):
