@@ -1,6 +1,18 @@
 Changelog
 =========
 
+0.4.1 released 2021-11-29
+-------------------------
+
+- fix navigation use of callable permissions on classes/blueprints (f19f513_)
+- user form: don't assume csrf_token field exists (07fe642_)
+- improve testing developer ux (b687c72_)
+
+.. _f19f513: https://github.com/level12/keg-auth/commit/f19f513
+.. _07fe642: https://github.com/level12/keg-auth/commit/07fe642
+.. _b687c72: https://github.com/level12/keg-auth/commit/b687c72
+
+
 0.4.0 released 2021-09-13
 -------------------------
 
