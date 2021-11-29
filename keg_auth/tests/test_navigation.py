@@ -205,6 +205,22 @@ class TestNavItem(object):
             node.clear_authorization(user.get_id())
             assert node.is_permitted
 
+    def test_leaf_method_requires_callable_permissions(self):
+        node = NavItem('Foo', NavURL('private.secret_callable'))
+
+        with flask.current_app.test_request_context('/'):
+            flask_login.logout_user()
+            assert not node.is_permitted
+
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create()
+            flask_login.login_user(user)
+            node.clear_authorization(user.get_id())
+            assert not node.is_permitted
+
+            flask_login.current_user.email = 'foo@bar.baz'
+            node.clear_authorization(user.get_id())
+            assert node.is_permitted
+
     @pytest.mark.parametrize('endpoint', ['private.secret3', 'private.secret-flask'])
     def test_leaf_class_requires_permissions(self, endpoint):
         node = NavItem('Foo', NavURL(endpoint))
@@ -223,6 +239,23 @@ class TestNavItem(object):
             user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create(
                 permissions=[perm1, perm2])
             flask_login.login_user(user)
+            node.clear_authorization(user.get_id())
+            assert node.is_permitted
+
+    def test_leaf_class_requires_callable_permissions(self):
+        node = NavItem('Foo', NavURL('callable_protected.callable-protected-class'))
+
+        with flask.current_app.test_request_context('/'):
+            flask_login.logout_user()
+            assert not node.is_permitted
+
+            user = flask.current_app.auth_manager.entity_registry.user_cls.testing_create()
+            flask_login.login_user(user)
+            node.clear_authorization(user.get_id())
+            assert not node.is_permitted
+
+            user.class_pass = True
+            user.blueprint_pass = True
             node.clear_authorization(user.get_id())
             assert node.is_permitted
 

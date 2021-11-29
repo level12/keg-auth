@@ -18,6 +18,11 @@ class ProtectedBlueprint(flask.Blueprint):
         flask.abort(405)
 
 
+@requires_permissions(lambda user: hasattr(user, 'blueprint_pass'))
+class CallableProtectedBlueprint(flask.Blueprint):
+    pass
+
+
 @requires_user(http_methods_excluded=['OPTIONS'])
 class ProtectedBlueprint2(flask.Blueprint):
     pass
@@ -41,9 +46,10 @@ public_bp = flask.Blueprint('public', __name__)
 private_bp = flask.Blueprint('private', __name__)
 protected_bp = ProtectedBlueprint('protected', __name__)
 protected_bp2 = ProtectedBlueprint2('protected2', __name__)
+callable_protected_bp = CallableProtectedBlueprint('callable_protected', __name__)
 auth_bp = make_blueprint(__name__, auth_manager, user_crud_cls=User)
 
-blueprints = public_bp, private_bp, protected_bp, protected_bp2, auth_bp
+blueprints = public_bp, private_bp, protected_bp, protected_bp2, callable_protected_bp, auth_bp
 
 # Exempt from CSRF or we have problems with Secret2.post.
 csrf.exempt(private_bp)
@@ -197,6 +203,14 @@ def secret_callable():
                               lambda user: user.email == 'foo@bar.baz'))
 def secret_nested_callable():
     return 'secret_nested_callable'
+
+
+@requires_permissions(lambda user: hasattr(user, 'class_pass'))
+class CallableProtectedClass(keg.web.BaseView):
+    blueprint = callable_protected_bp
+
+    def get(self):
+        return 'callable-protected-class'
 
 
 class SecretNavURLOnClass(keg.web.BaseView):

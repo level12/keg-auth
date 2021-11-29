@@ -166,7 +166,13 @@ class RequiresPermissions(RequiresUser):
 
     def store_auth_info(self, obj):
         super(RequiresPermissions, self).store_auth_info(obj)
-        obj.__keg_auth_requires_permissions__ = self.condition
+        condition = self.condition
+        if callable(condition) and isinstance(obj, type):
+            # When applying to a class (usually a class view or a blueprint), we have to explicitly
+            # wrap callables as static. Otherwise, when the obj class is instantiated, the function
+            # will become bound, and we'll get parameter count exceptions.
+            condition = staticmethod(condition)
+        obj.__keg_auth_requires_permissions__ = condition
 
     def on_authorization_failure(self):
         if self._on_authorization_failure:
