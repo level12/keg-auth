@@ -32,7 +32,7 @@ setup(
     zip_safe=False,
     install_requires=[
         'bcrypt',
-        'commonmark',
+        'markdown-it-py',
 
         'Flask-Login>0.4.1',
         'Keg>=0.8.6',
