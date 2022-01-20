@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.4.2 released 2022-01-20
+-------------------------
+
+- replace commonmark with markdown-it-py (8b4822d_)
+
+.. _8b4822d: https://github.com/level12/keg-auth/commit/8b4822d
+
+
 0.4.1 released 2021-11-29
 -------------------------
 
