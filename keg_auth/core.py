@@ -105,6 +105,7 @@ class AuthManager(object):
         app.config.setdefault('KEGAUTH_BASE_TEMPLATE', 'base-page.html')
         app.config.setdefault('KEGAUTH_TEMPLATE_TITLE_VAR', 'page_title')
         app.config.setdefault('KEGAUTH_TOKEN_EXPIRE_MINS', 60 * 4)
+        app.config.setdefault('KEGAUTH_LOGOUT_CLEAR_SESSION', True)
 
         app.config.setdefault('KEGAUTH_CLI_USER_ARGS', ['email'])
 
@@ -388,5 +389,11 @@ def on_login(app, user):
     update_last_login(app, user)
 
 
+def clear_session(app, user):
+    if app.config.get('KEGAUTH_LOGOUT_CLEAR_SESSION'):
+        flask.session.clear()
+
+
 flask_login.signals.user_logged_in.connect(on_login)
 flask_login.signals.user_logged_out.connect(refresh_session_menus)
+flask_login.signals.user_logged_out.connect(clear_session)

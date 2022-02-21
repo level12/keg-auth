@@ -42,6 +42,8 @@ Configuration
     -  Useful for CORS-applicable situations, where it may be advantageous to respond normally
        to an OPTIONS request. Then, auth will apply as expected on the ensuing GET/POST/PUT/etc.
 
+- ``KEGAUTH_LOGOUT_CLEAR_SESSION``: Flag to clear flask session on logout. Default True
+
 -  Email settings
 
     -  ``KEGAUTH_EMAIL_SITE_NAME = 'Keg Application'``: Used in email body if mail is enabled
