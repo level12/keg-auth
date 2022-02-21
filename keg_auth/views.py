@@ -193,6 +193,9 @@ class CrudView(keg.web.BaseView):
             form=form
         )
 
+    def fetch_orm_obj(self, obj_id):
+        return self.orm_cls.query.get(obj_id)
+
     def init_object(self, obj_id, action=None):
         """Load record from ORM for edit/delete cases.
 
@@ -204,7 +207,7 @@ class CrudView(keg.web.BaseView):
         """
         if obj_id is None:
             flask.abort(400)
-        self.objinst = self.orm_cls.query.get(obj_id)
+        self.objinst = self.fetch_orm_obj(obj_id)
         if not self.objinst:
             flask.abort(404)
         if action:
