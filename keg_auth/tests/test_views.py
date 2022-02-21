@@ -669,7 +669,7 @@ class TestUserCrud(ViewTestBase):
         resp.form['email'] = 'foobar@baz.com'
         resp = resp.form.submit()
 
-        assert resp.pyquery('#reset_password').siblings('.help-block').text() == \
+        assert resp.pyquery('#reset_password').siblings('.invalid-feedback').text() == \
             'This field is required.'
         resp.form['reset_password'] = 'bleh'
         resp.form['confirm'] = 'bleh'
