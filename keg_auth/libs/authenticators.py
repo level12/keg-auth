@@ -207,9 +207,10 @@ class FormResponderMixin(object):
         return self.form_cls()
 
     def assign_template_vars(self, form):
+        title_var = flask.current_app.config.get('KEGAUTH_TEMPLATE_TITLE_VAR')
         self.assign('form', form)
         self.assign('form_action_text', self.page_title)
-        self.assign('page_title', self.page_title)
+        self.assign(title_var, self.page_title)
         self.assign('page_heading', self.page_title)
 
     def get(self, *args, **kwargs):

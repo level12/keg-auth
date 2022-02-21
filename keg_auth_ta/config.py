@@ -5,6 +5,8 @@ from keg import config
 class DefaultProfile(object):
     SECRET_KEY = randchars()
 
+    KEGAUTH_TEMPLATE_TITLE_VAR = 'title'
+
     # These three just get rid of warnings on the console.
     KEG_KEYRING_ENABLE = False
     SQLALCHEMY_DATABASE_URI = 'postgresql://postgres@localhost/postgres'

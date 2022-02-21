@@ -1,8 +1,6 @@
 {% import 'keg_elements/forms/horizontal_b4.html' as horizontal %}
 {% extends config.get('BASE_TEMPLATE') or config['KEGAUTH_BASE_TEMPLATE'] %}
 
-{% block title %}{{ page_title }}{% endblock %}
-
 {% block scripts %}
 {{ super() }}
 {% if (use_select2 == true) %}

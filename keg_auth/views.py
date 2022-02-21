@@ -135,6 +135,8 @@ class CrudView(keg.web.BaseView):
 
         Template arguments may be customized with the `form_template_args` method.
         """
+        title_var = flask.current_app.config.get('KEGAUTH_TEMPLATE_TITLE_VAR')
+
         # args added with self.assign should be passed through here
         template_args = self.form_template_args(dict(self.template_args, **{
             'action': action,
@@ -142,7 +144,7 @@ class CrudView(keg.web.BaseView):
             'cancel_url': self.cancel_url(),
             'form': form,
             'obj_inst': obj,
-            'page_title': self.page_title(action),
+            title_var: self.page_title(action),
             'page_heading': self.form_page_heading(action),
         }))
         return flask.render_template(self.form_template, **template_args)
@@ -356,10 +358,12 @@ class CrudView(keg.web.BaseView):
             except webgrid.renderers.RenderLimitExceeded:
                 self.on_render_limit_exceeded(grid)
 
+        title_var = flask.current_app.config.get('KEGAUTH_TEMPLATE_TITLE_VAR')
+
         # args added with self.assign should be passed through here
         template_args = self.grid_template_args(dict(self.template_args, **{
             'add_url': self.add_url_with_session(grid.session_key),
-            'page_title': self.page_title(_('list')),
+            title_var: self.page_title(_('list')),
             'page_heading': self.grid_page_heading,
             'object_name': self.object_name,
             'grid': grid,
@@ -619,9 +623,12 @@ class Permission(keg.web.BaseView):
         if grid.export_to:
             return grid.export_as_response()
 
+        title_var = flask.current_app.config.get('KEGAUTH_TEMPLATE_TITLE_VAR')
+        self.assign(title_var, _('Permissions'))
+        print(self.template_args)
+
         return flask.render_template(
             self.grid_template,
-            page_title=_('Permissions'),
             page_heading=_('Permissions'),
             grid=grid,
             **self.template_args,

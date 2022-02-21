@@ -350,6 +350,10 @@ Base templates are referenced from settings. The first of these defined is used:
     -  `BASE_TEMPLATE`
     -  `KEGAUTH_BASE_TEMPLATE`
 
+Keg-Auth will assume that a variable is used in the master template to determine the contents
+of a title block. That variable name defaults to ``page_title``, but may be customized
+via ``KEGAUTH_TEMPLATE_TITLE_VAR``.
+
 Form selects are rendered with select2 in templates extending ``keg_auth/form-base.html``.
 ``keg_auth/select2-scripts.html`` and ``keg_auth/select2-styles.html`` can be included
 in templates to render select2s without extending form-base. Apps can opt out of select2
