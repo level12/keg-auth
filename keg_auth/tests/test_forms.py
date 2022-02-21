@@ -1,6 +1,7 @@
 # Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
 from __future__ import unicode_literals
 
+from blazeutils.strings import randchars
 import pytest
 from flask import current_app
 from mock import mock
@@ -289,7 +290,7 @@ class TestGroup(FormBase):
 
     def ok_data(self, **kwargs):
         data = {
-            'name': 'some-group',
+            'name': randchars(),
             'permission_ids': [str(self.perms[0].id), str(self.perms[1].id)],
             'bundle_ids': [str(self.bundles[0].id), str(self.bundles[1].id)],
         }
@@ -312,7 +313,7 @@ class TestGroup(FormBase):
     def test_unique(self):
         obj = ents.Group.testing_create(name='some-group')
 
-        form = self.assert_not_valid()
+        form = self.assert_not_valid(name='some-group')
         print(form.name.errors[0])
         error = PyQuery(form.name.errors[0])
         assert 'Already exists.' in error.text()
@@ -332,7 +333,7 @@ class TestBundle(FormBase):
 
     def ok_data(self, **kwargs):
         data = {
-            'name': 'some-bundle',
+            'name': randchars(),
             'permission_ids': [str(self.perms[0].id), str(self.perms[1].id)],
         }
         data.update(kwargs)
@@ -352,7 +353,7 @@ class TestBundle(FormBase):
     def test_unique(self):
         obj = ents.Bundle.testing_create(name='some-bundle')
 
-        form = self.assert_not_valid()
+        form = self.assert_not_valid(name='some-bundle')
         print(form.name.errors[0])
         error = PyQuery(form.name.errors[0])
         assert 'Already exists.' in error.text()
