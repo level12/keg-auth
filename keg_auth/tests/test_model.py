@@ -1,7 +1,10 @@
 # Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
 from __future__ import unicode_literals
 import base64
+import hashlib
 import string
+import time
+from authlib import jose
 import arrow
 import flask
 from keg.db import db
@@ -154,6 +157,24 @@ class TestUser(object):
         assert not user.token_verify('foo')
         assert user.token_verify(token)
         assert user.token_verify(user._token_plain)
+
+    def test_legacy_token(self):
+        """
+        Mimic an itsdangerous token and validate it only verifies in legacy mode.
+        - sha1 signature instead of sha512
+        - iat/exp claims are in header, not payload
+        """
+        user = ents.User.testing_create()
+        base_key = user.get_token_salt() + 'signer' + flask.current_app.config.get('SECRET_KEY')
+        signature = hashlib.sha1(base_key.encode()).digest()
+        now = int(time.time())
+        exp = now + (flask.current_app.config.get('KEGAUTH_TOKEN_EXPIRE_MINS') * 60)
+        header = {'alg': 'HS512', 'iat': now, 'exp': exp}
+        payload = {'user_id': user.id}
+        token = jose.jwt.encode(header, payload, signature)
+
+        assert user.token_verify(token)
+        assert not user.token_verify(token, _block_legacy=True)
 
     def test_token_salt_info_changed(self):
         def check_field(field, new_value):
