@@ -1,6 +1,16 @@
 Changelog
 =========
 
+0.5.0 released 2022-02-21
+-------------------------
+
+- use the Bootstrap 4 base form template from keg-elements (16c393a_)
+- shift to authlib for verification token generate/verify - support generated itsdangerous tokens for now refs #147 (e96ac2e_)
+
+.. _16c393a: https://github.com/level12/keg-auth/commit/16c393a
+.. _e96ac2e: https://github.com/level12/keg-auth/commit/e96ac2e
+
+
 0.4.2 released 2022-01-20
 -------------------------
 
