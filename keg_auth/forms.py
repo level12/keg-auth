@@ -188,8 +188,8 @@ def user_form(config=None, allow_superuser=False, endpoint='',
             is_superuser = FieldMeta('Superuser')
             __default__ = FieldMeta
 
-        field_order = tuple(_fields + ['group_ids', 'bundle_ids',
-                                       'permission_ids'])
+        _field_order = tuple(_fields + ['group_ids', 'bundle_ids',
+                                        'permission_ids'])
 
         setattr(FieldsMeta, username_key, FieldMeta(
             extra_validators=[validators.data_required(),
@@ -206,11 +206,11 @@ def user_form(config=None, allow_superuser=False, endpoint='',
                 validators.EqualTo('confirm', message=_('Passwords must match'))
             ])
             confirm = PasswordField(_('Confirm Password'))
-            field_order = field_order + ('reset_password', 'confirm')
+            _field_order = _field_order + ('reset_password', 'confirm')
         else:
             # place a Send Welcome field after the initial set of fields
             send_welcome = BooleanField('Send Welcome Email', default=True)
-            field_order = tuple(_fields + ['send_welcome'] + list(field_order[len(_fields):]))
+            _field_order = tuple(_fields + ['send_welcome'] + list(_field_order[len(_fields):]))
 
         def get_object_by_field(self, field):
             return user_cls.get_by(username=field.data)
@@ -219,17 +219,11 @@ def user_form(config=None, allow_superuser=False, endpoint='',
         def obj(self):
             return self._obj
 
-        def __iter__(self):
-            if hasattr(self, 'csrf_token'):
-                field_ids = ('csrf_token', ) + self.field_order
-            else:
-                field_ids = self.field_order
-            return (getattr(self, field_id) for field_id in field_ids)
-
         def after_init(self, args, kwargs):
             if kwargs.get('obj') and hasattr(self, 'send_welcome'):
                 self.send_welcome = None
-                self.field_order = tuple(filter(lambda v: v != 'send_welcome', self.field_order))
+                del self._fields['send_welcome']
+                self._field_order = tuple(filter(lambda v: v != 'send_welcome', self._field_order))
 
             return super().after_init(args, kwargs)
 

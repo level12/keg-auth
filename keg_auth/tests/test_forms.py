@@ -219,11 +219,13 @@ class TestUser(FormBase):
     def test_send_welcome_present(self):
         form = self.make_form()
         assert form.send_welcome
+        assert 'send_welcome' in form._fields
 
     def test_send_welcome_absent(self):
         user = ents.User.testing_create()
         form = self.make_form(obj=user)
         assert not form.send_welcome
+        assert 'send_welcome' not in form._fields
 
     def test_no_email(self):
         with mock.patch('keg_auth_ta.extensions.auth_entity_registry._user_cls', ents.UserNoEmail):
