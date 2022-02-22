@@ -1,3 +1,4 @@
+import warnings
 from datetime import timedelta
 from urllib.parse import urljoin, urlparse
 
@@ -798,6 +799,10 @@ class OidcLoginViewResponder(LoginResponderMixin, ViewResponder):
     page_title = 'Log In'
     template_name = 'keg_auth/flash-messages-only.html'
 
+    def __init__(self, parent):
+        warnings.warn(OidcAuthenticator.usage_warning, PendingDeprecationWarning, 2)
+        super().__init__(parent)
+
     def get(self, *args, **kwargs):
         oidc = flask.current_app.auth_manager.oidc
         oidc_check = oidc.require_login(lambda: True)()
@@ -825,6 +830,10 @@ class OidcLoginViewResponder(LoginResponderMixin, ViewResponder):
 
 class OidcLogoutViewResponder(LogoutViewResponder):
     """ OIDC logout requires some extra leg-work, because token gets refreshed server-side"""
+
+    def __init__(self, parent):
+        warnings.warn(OidcAuthenticator.usage_warning, PendingDeprecationWarning, 2)
+        super().__init__(parent)
 
     def get(self):
         oidc = flask.current_app.auth_manager.oidc
@@ -877,8 +886,16 @@ class OidcAuthenticator(LoginAuthenticator):
         'login': OidcLoginViewResponder,
         'logout': OidcLogoutViewResponder,
     }
+    usage_warning = (
+        'flask-oidc formed the core of this authenticator but has not received much maintenance '
+        'in the last few years. At this time, the library is depending on deprecated/removed '
+        'items in other libraries (such as itsdangerous) and will need to be updated to be '
+        'reliably operational again.'
+    )
 
     def __init__(self, app):
+        warnings.warn(self.usage_warning, PendingDeprecationWarning, 2)
+
         from flask_oidc import OpenIDConnect
 
         oidc_settings = {

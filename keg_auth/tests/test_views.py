@@ -1388,6 +1388,7 @@ def oidc_auth_client(oidc_client, auth_user):
         yield oidc_client
 
 
+@pytest.mark.skip('flask-oidc is broken against latest itsdangerous')
 class TestOidcLogin:
     def test_authenticated(self, oidc_auth_client):
         resp = oidc_auth_client.get('/login', status=302)
@@ -1408,6 +1409,7 @@ class TestOidcLogin:
         assert 'oauth2/v1/authorize?' in resp.location
 
 
+@pytest.mark.skip('flask-oidc is broken against latest itsdangerous')
 class TestOidcLogout:
     def test_unauthenticated(self, oidc_client):
         resp = oidc_client.get('/logout', status=302)
