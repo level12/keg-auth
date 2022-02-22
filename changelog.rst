@@ -1,6 +1,24 @@
 Changelog
 =========
 
+0.5.1 released 2022-02-22
+-------------------------
+
+- warn on usage of OIDC authenticator due to current breakage in flask-oidc (c582781_)
+- *potential BC break* use keg-elements field ordering scheme on the User form (ee31b79_)
+- add class and code options to NavItems for better control of rendering (2842cc2_)
+- clear flask session on logout, behavior can be turned off via config setting (71e6b10_)
+- stop overriding a title block in templates, use config value to set the proper variable for the app template (210f227_)
+- load orm entity in CRUD method (89bc7d4_)
+
+.. _c582781: https://github.com/level12/keg-auth/commit/c582781
+.. _ee31b79: https://github.com/level12/keg-auth/commit/ee31b79
+.. _2842cc2: https://github.com/level12/keg-auth/commit/2842cc2
+.. _71e6b10: https://github.com/level12/keg-auth/commit/71e6b10
+.. _210f227: https://github.com/level12/keg-auth/commit/210f227
+.. _89bc7d4: https://github.com/level12/keg-auth/commit/89bc7d4
+
+
 0.5.0 released 2022-02-21
 -------------------------
 
