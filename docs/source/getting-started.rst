@@ -306,6 +306,14 @@ by an instance-level ``check_auth`` method, that will not be used by the navigat
 -  NavItems can specify an icon to display in the menu item by passing an ``icon_class`` string to the
    NavItem constructor. e.g., ``NavItem('Title', NavURL(...), icon_class='fas fa-shopping-cart')``.
 
+-  NavItems can be given a ``class_`` kwarg that will be applied to the whole ``li`` tag in the default
+   render. This applies to both group items and the menu links themselves.
+
+-  NavItems can also be provided a ``code`` kwarg, which is useful when doing custom templating to render
+   the menu. The code is a code-only tag for the menu that can remain the same even if the menu wording
+   changes. For example, the code could be used in a conditional template block to render certain menu
+   items differently from the rest.
+
 Example:
 
 .. code-block:: python
@@ -324,6 +332,7 @@ Example:
                     'Nesting',
                     NavItem('Secret1', NavURL('private.secret1')),
                     NavItem('Secret1 Class', NavURL('private.secret1-class')),
+                    class_='my-nest-class',
                 ),
                 NavItem('Permissions On Stock Methods', NavURL('private.secret2')),
                 NavItem('Permissions On Methods', NavURL('private.someroute')),
@@ -333,7 +342,7 @@ Example:
                         'private.secret3', requires_permissions='permission3'
                     )),
                 NavItem('User Manage', NavURL('auth.user:add')),
-                NavItem('Logout', NavURL('auth.logout')),
+                NavItem('Logout', NavURL('auth.logout'), code='i-am-different'),
                 NavItem('Login', NavURL('auth.login', requires_anonymous=True)),
             )
         )

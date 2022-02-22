@@ -130,6 +130,20 @@ class TestViews(object):
             nav_el = resp.pyquery('#navigation')
             assert nav_el('[href="#navgroup-auth"]').attr('aria-expanded') != 'true'
 
+    def test_navigation_group_class(self):
+        user = ents.User.testing_create(permissions=[self.perm_auth, self.perm1, self.perm2])
+        client = AuthTestApp(flask.current_app, user=user)
+        resp = client.get('/')
+        nav_el = resp.pyquery('#navigation')
+        assert nav_el('.group-header.my-group-class').text() == 'Sub-Menu'
+
+    def test_navigation_link_class(self):
+        user = ents.User.testing_create(permissions=[self.perm_auth, self.perm1, self.perm2])
+        client = AuthTestApp(flask.current_app, user=user)
+        resp = client.get('/')
+        nav_el = resp.pyquery('#navigation')
+        assert nav_el('.my-link-class').text() == 'Secret View'
+
     def test_navigation_icon(self):
         user = ents.User.testing_create(permissions=[self.perm_auth])
         client = AuthTestApp(flask.current_app, user=user)

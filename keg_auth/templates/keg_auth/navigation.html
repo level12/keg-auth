@@ -5,9 +5,12 @@
 {% macro render_node(node, expand_to_current) -%}
     {# render a node (and its children, if appropriate) #}
     {% set NODE_LEAF = 1 %}
+    {% set has_classes = node.has_current_route or node.class_ %}
 
     {% if node.node_type == NODE_LEAF %}
-    <li{% if node.has_current_route %} class="nav-current"{% endif %}>
+    <li{% if has_classes %} class="
+        {%- if node.has_current_route %}nav-current {% endif %}
+        {%- if node.class_ %}{{ node.class_ }}{% endif %}"{% endif %}>
         <a href="{{ node.route.url }}">{{ render_link_text(node) }}</a>
     </li>
     {% elif node.sub_nodes %}
@@ -18,7 +21,8 @@
 {%- endmacro %}
 
 {% macro render_group(node, expand_to_current) %}
-    <a class="menu-header group-header" data-toggle="collapse" href="#navgroup-{{ node.nav_group }}"
+    <a class="menu-header group-header {{- (' ' + node.class_) if node.class_ }}"
+        data-toggle="collapse" href="#navgroup-{{ node.nav_group }}"
         {% if expand_to_current and node.has_current_route %}aria-expanded="true"{% endif %}>
         {{ render_link_text(node) }}
         <b class="caret"></b>

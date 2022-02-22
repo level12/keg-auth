@@ -153,11 +153,12 @@ class NavItem(object):
                 NavItem('Users', NavURL('auth.user:list')),
                 NavItem('Groups', NavURL('auth.group:list')),
                 nav_group='admin',
-                icon_class='fas fa-briefcase'
+                icon_class='fas fa-briefcase',
+                class_='my-menu-group'
             ),
             NavItem(
                 'Reports',
-                NavItem('Frequency', NavURL('frequency-report')),
+                NavItem('Frequency', NavURL('frequency-report'), code='frequency'),
                 NavItem('Financial', NavURL('money-report', requires_permissions='secret-perm'))
             )
         )
@@ -167,7 +168,7 @@ class NavItem(object):
         STEM = 0
         LEAF = 1
 
-    def __init__(self, *args, nav_group=None, icon_class=None):
+    def __init__(self, *args, nav_group=None, icon_class=None, class_=None, code=None):
         self.label = None
         if len(args) and (isinstance(args[0], str) or is_lazy_string(args[0])):
             self.label = args[0]
@@ -176,6 +177,8 @@ class NavItem(object):
         self.sub_nodes = None
         self.nav_group = nav_group
         self.icon_class = icon_class
+        self.class_ = class_
+        self.code = code
 
         # cache permission-related items
         self._is_permitted = {}

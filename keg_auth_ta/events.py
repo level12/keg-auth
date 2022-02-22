@@ -19,7 +19,8 @@ def init_navigation(app):
             NavItem(
                 'Sub-Menu',
                 NavItem('User Manage', NavURL('private.secret2')),
-                NavItem('Secret View', NavURL('private.secret_nested')),
+                NavItem('Secret View', NavURL('private.secret_nested'), class_='my-link-class'),
+                class_='my-group-class'
             ),
             NavItem(
                 'Menu-Group',
