@@ -55,6 +55,8 @@ class AuthAttemptTests(object):
         if has_attempt_model:
             cls.attempt_ent = flask.current_app.auth_manager.entity_registry.attempt_cls
         cls.client = flask_webtest.TestApp(flask.current_app)
+        cls.group_ent = flask.current_app.auth_manager.entity_registry.group_cls
+        cls.bundle_ent = flask.current_app.auth_manager.entity_registry.bundle_cls
 
     def do_login(self, client, email, password, submit_status=200):
         login_url = flask.url_for(flask.current_app.auth_manager.endpoint('login'))
@@ -1056,6 +1058,126 @@ class AuthTests(AuthAttemptTests):
 
         # Confirm logout occured
         client.get(self.protected_url, status=302)
+
+    def test_list_user(self):
+        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        client = AuthTestApp(flask.current_app, user=user)
+        resp = client.get('/users?op(username)=eq&v1(username)=' + user.email)
+        assert resp.pyquery('.grid-header-add-link a').attr('href').startswith('/users/add')
+        assert resp.pyquery('#page-content')('h1').eq(0).text() == 'Users'
+        assert resp.pyquery('.grid-header-add-link').eq(0).text() == 'Create User'
+
+    def test_edit_user(self):
+        user_edit = self.user_ent.testing_create()
+        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        client = AuthTestApp(flask.current_app, user=user)
+        resp = client.get('/users/{}/edit'.format(user_edit.id))
+        assert resp.pyquery('#page-content')('h1').eq(0).text() == 'Edit User'
+        resp = resp.form.submit()
+
+        assert resp.status_code == 302
+        assert resp.location.endswith('/users')
+        assert resp.flashes == [('success', 'Successfully modified User')]
+
+    def test_delete_user(self):
+        user_delete_id = self.user_ent.testing_create().id
+        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        client = AuthTestApp(flask.current_app, user=user)
+        resp = client.get('/users/{}/delete'.format(user_delete_id))
+
+        assert resp.status_code == 302
+        assert resp.location.endswith('/users')
+        assert resp.flashes == [('success', 'Successfully removed User')]
+
+        assert not self.user_ent.query.get(user_delete_id)
+
+    def test_list_group(self):
+        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        client = AuthTestApp(flask.current_app, user=user)
+        group = self.group_ent.testing_create()
+        resp = client.get('/groups?op(name)=eq&v1(name)=' + group.name)
+        assert resp.pyquery('.grid-header-add-link a').attr('href').startswith('/groups/add')
+        assert resp.pyquery('#page-content')('h1').eq(0).text() == 'Groups'
+        assert resp.pyquery('.grid-header-add-link').eq(0).text() == 'Create Group'
+
+    def test_add_group(self):
+        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        client = AuthTestApp(flask.current_app, user=user)
+        resp = client.get('/groups/add')
+        group_name = randchars()
+        resp.form['name'] = group_name
+        resp = resp.form.submit()
+        assert resp.status_code == 302
+        assert resp.location.endswith('/groups')
+        assert resp.flashes == [('success', 'Successfully created Group')]
+
+        assert self.group_ent.get_by(name=group_name)
+
+    def test_edit_group(self):
+        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        client = AuthTestApp(flask.current_app, user=user)
+        group = self.group_ent.testing_create()
+        resp = client.get(f'/groups/{group.id}/edit')
+        resp = resp.form.submit()
+        assert resp.status_code == 302
+        assert resp.location.endswith('/groups')
+        assert resp.flashes == [('success', 'Successfully modified Group')]
+
+    def test_delete_group(self):
+        group_delete_id = self.group_ent.testing_create().id
+        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        client = AuthTestApp(flask.current_app, user=user)
+        resp = client.get(f'/groups/{group_delete_id}/delete')
+
+        assert resp.status_code == 302
+        assert resp.location.endswith('/groups')
+        assert resp.flashes == [('success', 'Successfully removed Group')]
+
+        assert not self.group_ent.query.get(group_delete_id)
+
+    def test_list_bundle(self):
+        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        client = AuthTestApp(flask.current_app, user=user)
+        bundle = self.bundle_ent.testing_create()
+        resp = client.get('/bundles?op(name)=eq&v1(name)=' + bundle.name)
+        assert resp.pyquery('.grid-header-add-link a').attr('href').startswith('/bundles/add')
+        assert resp.pyquery('#page-content')('h1').eq(0).text() == 'Bundles'
+        assert resp.pyquery('.grid-header-add-link').eq(0).text() == 'Create Bundle'
+
+    def test_add_bundle(self):
+        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        client = AuthTestApp(flask.current_app, user=user)
+        resp = client.get('/bundles/add')
+        bundle_name = randchars()
+        resp.form['name'] = bundle_name
+        resp = resp.form.submit()
+        assert resp.status_code == 302
+        assert resp.location.endswith('/bundles')
+        assert resp.flashes == [('success', 'Successfully created Bundle')]
+
+        assert self.bundle_ent.get_by(name=bundle_name)
+
+    def test_edit_bundle(self):
+        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        client = AuthTestApp(flask.current_app, user=user)
+        bundle = self.bundle_ent.testing_create()
+        resp = client.get(f'/bundles/{bundle.id}/edit')
+        resp = resp.form.submit()
+        assert resp.status_code == 302
+        assert resp.location.endswith('/bundles')
+        assert resp.flashes == [('success', 'Successfully modified Bundle')]
+
+    def test_delete_bundle(self):
+        bundle_delete_id = self.bundle_ent.testing_create().id
+        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        client = AuthTestApp(flask.current_app, user=user)
+        resp = client.get(f'/bundles/{bundle_delete_id}/delete')
+
+        assert resp.status_code == 302
+        assert resp.location.endswith('/bundles')
+        assert resp.flashes == [('success', 'Successfully removed Bundle')]
+
+        assert not self.bundle_ent.query.get(bundle_delete_id)
 
 
 @wrapt.decorator
