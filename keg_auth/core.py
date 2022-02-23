@@ -124,20 +124,27 @@ class AuthManager(object):
         app.config.setdefault('KEGAUTH_OIDC_LOGOUT_REDIRECT', None)
 
         # Attempt lockout parameters.
+        # - Enabled: default True, turns on attempt limits and requires the attempt entity.
         # - Limit: maximum number of attempts within the timespan.
         # - Timespan: number of seconds in which the limit can be reached.
         # - Lockout: number of seconds until an attempt can be made after the limit is reached.
         # - KEGAUTH_ATTEMPT_IP_LIMIT: base locking on IP address as well as input
-        app.config.setdefault('KEGAUTH_LOGIN_ATTEMPT_LIMIT', 3)
-        app.config.setdefault('KEGAUTH_LOGIN_ATTEMPT_TIMESPAN', 3600)  # 1 hour
-        app.config.setdefault('KEGAUTH_LOGIN_ATTEMPT_LOCKOUT', 3600)  # 1 hour
-        app.config.setdefault('KEGAUTH_FORGOT_ATTEMPT_LIMIT', 5)
-        app.config.setdefault('KEGAUTH_FORGOT_ATTEMPT_TIMESPAN', 3600)  # 1 hour
-        app.config.setdefault('KEGAUTH_FORGOT_ATTEMPT_LOCKOUT', 3600)  # 1 hour
-        app.config.setdefault('KEGAUTH_RESET_ATTEMPT_LIMIT', 1)
-        app.config.setdefault('KEGAUTH_RESET_ATTEMPT_TIMESPAN', 86400)  # 24 hours
-        app.config.setdefault('KEGAUTH_RESET_ATTEMPT_LOCKOUT', 86400)  # 24 hours
-        app.config.setdefault('KEGAUTH_ATTEMPT_IP_LIMIT', False)
+        app.config.setdefault('KEGAUTH_ATTEMPT_LIMIT_ENABLED', True)
+        app.config.setdefault('KEGAUTH_ATTEMPT_LIMIT', 15)
+        app.config.setdefault('KEGAUTH_ATTEMPT_TIMESPAN', 600)  # 10 minutes
+        app.config.setdefault('KEGAUTH_ATTEMPT_LOCKOUT', 3600)  # 1 hour
+        app.config.setdefault('KEGAUTH_ATTEMPT_IP_LIMIT', True)
+        # Lockout parameters may also be set for specific views (login, forgot, reset). If these
+        # specific values are not set, the generic ATTEMPT values will be used.
+        # app.config.setdefault('KEGAUTH_LOGIN_ATTEMPT_LIMIT', 3)
+        # app.config.setdefault('KEGAUTH_LOGIN_ATTEMPT_TIMESPAN', 3600)  # 1 hour
+        # app.config.setdefault('KEGAUTH_LOGIN_ATTEMPT_LOCKOUT', 3600)  # 1 hour
+        # app.config.setdefault('KEGAUTH_FORGOT_ATTEMPT_LIMIT', 5)
+        # app.config.setdefault('KEGAUTH_FORGOT_ATTEMPT_TIMESPAN', 3600)  # 1 hour
+        # app.config.setdefault('KEGAUTH_FORGOT_ATTEMPT_LOCKOUT', 3600)  # 1 hour
+        # app.config.setdefault('KEGAUTH_RESET_ATTEMPT_LIMIT', 1)
+        # app.config.setdefault('KEGAUTH_RESET_ATTEMPT_TIMESPAN', 86400)  # 24 hours
+        # app.config.setdefault('KEGAUTH_RESET_ATTEMPT_LOCKOUT', 86400)  # 24 hours
 
     def init_cli(self, app):
         """Add a CLI group for auth."""

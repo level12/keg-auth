@@ -82,16 +82,21 @@ class AuthAttemptTests(object):
         False,
         True,
     ])
-    def test_login_attempts_blocked(self, limit, timespan, lockout, create_user):
+    @pytest.mark.parametrize('view_config', [
+        False,
+        True,
+    ])
+    def test_login_attempts_blocked(self, limit, timespan, lockout, create_user, view_config):
         '''
         Test that login attempts get blocked after reaching the failed login attempt
         limit. Login attempts after the lockout period has passed (since the failed attempt
         that caused the lockout) should not be blocked.
         '''
+        config_key = 'LOGIN_' if view_config else ''
         with mock.patch.dict('flask.current_app.config', {
-            'KEGAUTH_LOGIN_ATTEMPT_LIMIT': limit,
-            'KEGAUTH_LOGIN_ATTEMPT_TIMESPAN': timespan,
-            'KEGAUTH_LOGIN_ATTEMPT_LOCKOUT': lockout,
+            f'KEGAUTH_{config_key}ATTEMPT_LIMIT': limit,
+            f'KEGAUTH_{config_key}ATTEMPT_TIMESPAN': timespan,
+            f'KEGAUTH_{config_key}ATTEMPT_LOCKOUT': lockout,
         }):
             # We want to test blocking attempts for existing and non-existing users.
             username = 'foo@bar.com'
@@ -162,13 +167,12 @@ class AuthAttemptTests(object):
 
     @pytest.mark.skipif(not has_attempt_model, reason=has_attempt_skip_reason)
     @mock.patch.dict('flask.current_app.config', {
+        'KEGAUTH_ATTEMPT_LIMIT_ENABLED': False,
         'KEGAUTH_LOGIN_ATTEMPT_LIMIT': 3,
         'KEGAUTH_LOGIN_ATTEMPT_TIMESPAN': 3600,
         'KEGAUTH_LOGIN_ATTEMPT_LOCKOUT': 7200,
     })
-    @mock.patch('flask.current_app.auth_manager.entity_registry._attempt_cls',
-                new_callable=mock.PropertyMock(return_value=None))
-    def test_login_attempts_not_blocked(self, _):
+    def test_login_attempts_not_blocked(self):
         '''
         Test that we do not block any attempts with missing attempt entity.
         '''
@@ -186,6 +190,18 @@ class AuthAttemptTests(object):
         do_test(0, self.login_invalid_flashes)
         do_test(0, self.login_invalid_flashes)
         do_test(0, self.login_success_flashes, 'pass', 302)
+
+    @mock.patch('flask.current_app.auth_manager.entity_registry._attempt_cls',
+                new_callable=mock.PropertyMock(return_value=None))
+    def test_login_attempts_blocked_but_not_configured(self, _):
+        '''
+        Test that we check for the registered attempt entity when limiting is enabled.
+        '''
+        user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
+        assert self.attempt_ent.query.count() == 0
+
+        with pytest.raises(Exception, match=r'.*attempt entity is not registered.*'):
+            self.do_login(self.client, user.email, 'badpass', 200)
 
     @pytest.mark.skipif(not has_attempt_model, reason=has_attempt_skip_reason)
     @pytest.mark.parametrize('limit, timespan, lockout', [
@@ -382,13 +398,12 @@ class AuthAttemptTests(object):
 
     @pytest.mark.skipif(not has_attempt_model, reason=has_attempt_skip_reason)
     @mock.patch.dict('flask.current_app.config', {
+        'KEGAUTH_ATTEMPT_LIMIT_ENABLED': False,
         'KEGAUTH_FORGOT_ATTEMPT_LIMIT': 3,
         'KEGAUTH_FORGOT_ATTEMPT_TIMESPAN': 3600,
         'KEGAUTH_FORGOT_ATTEMPT_LOCKOUT': 7200,
     })
-    @mock.patch('flask.current_app.auth_manager.entity_registry._attempt_cls',
-                new_callable=mock.PropertyMock(return_value=None))
-    def test_forgot_attempts_not_blocked(self, _):
+    def test_forgot_attempts_not_blocked(self):
         '''
         Test that we do not block any attempts with missing attempt entity.
         '''
@@ -539,13 +554,12 @@ class AuthAttemptTests(object):
 
     @pytest.mark.skipif(not has_attempt_model, reason=has_attempt_skip_reason)
     @mock.patch.dict('flask.current_app.config', {
+        'KEGAUTH_ATTEMPT_LIMIT_ENABLED': False,
         'KEGAUTH_RESET_ATTEMPT_LIMIT': 2,
         'KEGAUTH_RESET_ATTEMPT_TIMESPAN': 3600,
         'KEGAUTH_RESET_ATTEMPT_LOCKOUT': 7200,
     })
-    @mock.patch('flask.current_app.auth_manager.entity_registry._attempt_cls',
-                new_callable=mock.PropertyMock(return_value=None))
-    def test_reset_pw_attempts_not_blocked(self, _):
+    def test_reset_pw_attempts_not_blocked(self):
         user = self.user_ent.testing_create()
         assert self.attempt_ent.query.count() == 0
 

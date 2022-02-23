@@ -453,26 +453,31 @@ on that hook, and apply the decorator accordingly.
 Attempt Limiting
 ----------------
 
-Login and password reset attempts can be limited by registering an Attempt entity.
+Login, forgot password, and reset attempts are limited by registering an Attempt entity.
 The Attempt entity must be a subclass of `AttemptMixin`.
+
+Attempt limiting is enabled by default, which requires the entity. But, it may be disabled
+in configuration.
 
 Login attempts are limited by counting failed attempts. A successful login attempt will
 reset the limit counter. Reset attempts are limited by counting all password reset attempts.
 
 Attempt limiting can be configured with the following options:
 
--  ``KEGAUTH_LOGIN_ATTEMPT_LIMIT``
--  ``KEGAUTH_LOGIN_ATTEMPT_TIMESPAN``
--  ``KEGAUTH_LOGIN_ATTEMPT_LOCKOUT``
--  ``KEGAUTH_RESET_ATTEMPT_LIMIT``
--  ``KEGAUTH_RESET_ATTEMPT_TIMESPAN``
--  ``KEGAUTH_RESET_ATTEMPT_LOCKOUT``
-
-For each of these options:
-
-- Limit: maximum number of attempts within the timespan.
-- Timespan: timespan in seconds in which the limit can be reached.
-- Lockout: timespan in seconds until a successful attempt can be made after the limit is reached.
+-  ``KEGAUTH_ATTEMPT_LIMIT_ENABLED``: primary config switch, default True.
+-  ``KEGAUTH_ATTEMPT_LIMIT``: maximum number of attempts within the timespan, default 15.
+-  ``KEGAUTH_ATTEMPT_TIMESPAN``: timespan in seconds in which the limit can be reached, default 10 minutes.
+-  ``KEGAUTH_ATTEMPT_LOCKOUT``: timespan in seconds until a successful attempt can be made after the limit is reached, default 1 hour.
+-  ``KEGAUTH_ATTEMPT_IP_LIMIT``: base locking on IP address as well as input, default True.
+-  ``KEGAUTH_LOGIN_ATTEMPT_LIMIT``: overrides KEGAUTH_ATTEMPT_LIMIT for the login view.
+-  ``KEGAUTH_LOGIN_ATTEMPT_TIMESPAN``: overrides KEGAUTH_ATTEMPT_TIMESPAN for the login view.
+-  ``KEGAUTH_LOGIN_ATTEMPT_LOCKOUT``: overrides KEGAUTH_ATTEMPT_LOCKOUT for the login view.
+-  ``KEGAUTH_FORGOT_ATTEMPT_LIMIT``: overrides KEGAUTH_ATTEMPT_LIMIT for the forgot password view.
+-  ``KEGAUTH_FORGOT_ATTEMPT_TIMESPAN``: overrides KEGAUTH_ATTEMPT_TIMESPAN for the forgot password view.
+-  ``KEGAUTH_FORGOT_ATTEMPT_LOCKOUT``: overrides KEGAUTH_ATTEMPT_LOCKOUT for the forgot password view.
+-  ``KEGAUTH_RESET_ATTEMPT_LIMIT``: overrides KEGAUTH_ATTEMPT_LIMIT for the reset password view.
+-  ``KEGAUTH_RESET_ATTEMPT_TIMESPAN``: overrides KEGAUTH_ATTEMPT_TIMESPAN for the reset password view.
+-  ``KEGAUTH_RESET_ATTEMPT_LOCKOUT``: overrides KEGAUTH_ATTEMPT_LOCKOUT for the reset password view.
 
 CLI `purge-attempts` will delete attempts for a given username. Optionally accepts `--attempt-type`
 argument to only delete attempts of a certain type.

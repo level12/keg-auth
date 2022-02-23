@@ -236,10 +236,15 @@ class AttemptLimitMixin(object):
         return flask.current_app.auth_manager.entity_registry.attempt_cls
 
     def should_limit_attempts(self):
-        try:
-            return self.attempt_ent is not None
-        except RegistryError:
+        if not flask.current_app.config.get('KEGAUTH_ATTEMPT_LIMIT_ENABLED'):
+            # limiting can be turned off by config
             return False
+        try:
+            # verify the attempt entity has been configured for logging attempts
+            self.attempt_ent
+        except RegistryError:
+            raise Exception('Rate limiting is enabled, but the attempt entity is not registered')
+        return True
 
     @property
     def should_filter_ip(self):
@@ -320,17 +325,34 @@ class AttemptLimitMixin(object):
     def get_flash_attempts_limit_reached(self):
         raise NotImplementedError  # pragma: no cover
 
-    def get_attempt_limit(self):
-        raise NotImplementedError  # pragma: no cover
-
-    def get_attempt_timespan(self):
-        raise NotImplementedError  # pragma: no cover
-
     def get_attempt_type(self):
         raise NotImplementedError  # pragma: no cover
 
+    def get_config_value(self, key):
+        """Fetch the config value for the view specified in get_attempt_type.
+
+        Checks the view-specific key first, and if the value is not configured,
+        falls to the default for the key.
+
+        Example: get_attempt_type returns login, and key is attempt_limit.
+        - Checks for KEGAUTH_LOGIN_ATTEMPT_LIMIT first
+        - If that is not set, falls back to KEGAUTH_ATTEMPT_LIMIT
+        """
+        view_key = self.get_attempt_type().upper()
+        key = key.upper()
+        return flask.current_app.config.get(
+            f'KEGAUTH_{view_key}_{key}',
+            flask.current_app.config.get(f'KEGAUTH_{key}')
+        )
+
+    def get_attempt_limit(self):
+        return self.get_config_value('attempt_limit')
+
+    def get_attempt_timespan(self):
+        return self.get_config_value('attempt_timespan')
+
     def get_attempt_lockout_period(self):
-        raise NotImplementedError  # pragma: no cover
+        return self.get_config_value('attempt_lockout')
 
 
 class PasswordSetterResponderBase(FormResponderMixin, ViewResponder):
@@ -410,15 +432,6 @@ class ResetPasswordViewResponder(AttemptLimitMixin, PasswordSetterResponderBase)
 
     def get_flash_attempts_limit_reached(self):
         return _('Too many password reset attempts.'), 'error'
-
-    def get_attempt_limit(self):
-        return flask.current_app.config.get('KEGAUTH_RESET_ATTEMPT_LIMIT')
-
-    def get_attempt_timespan(self):
-        return flask.current_app.config.get('KEGAUTH_RESET_ATTEMPT_TIMESPAN')
-
-    def get_attempt_lockout_period(self):
-        return flask.current_app.config.get('KEGAUTH_RESET_ATTEMPT_LOCKOUT')
 
     def get_attempt_type(self):
         return 'reset'
@@ -507,15 +520,6 @@ class PasswordFormViewResponder(AttemptLimitMixin, LoginResponderMixin,
 
     def get_flash_attempts_limit_reached(self):
         return _('Too many failed login attempts.'), 'error'
-
-    def get_attempt_limit(self):
-        return flask.current_app.config.get('KEGAUTH_LOGIN_ATTEMPT_LIMIT')
-
-    def get_attempt_timespan(self):
-        return flask.current_app.config.get('KEGAUTH_LOGIN_ATTEMPT_TIMESPAN')
-
-    def get_attempt_lockout_period(self):
-        return flask.current_app.config.get('KEGAUTH_LOGIN_ATTEMPT_LOCKOUT')
 
     def get_attempt_type(self):
         return 'login'
@@ -614,15 +618,6 @@ class ForgotPasswordViewResponder(AttemptLimitMixin, UserResponderMixin, FormRes
 
     def get_flash_attempts_limit_reached(self):
         return _('Too many failed attempts.'), 'error'
-
-    def get_attempt_limit(self):
-        return flask.current_app.config.get('KEGAUTH_FORGOT_ATTEMPT_LIMIT')
-
-    def get_attempt_timespan(self):
-        return flask.current_app.config.get('KEGAUTH_FORGOT_ATTEMPT_TIMESPAN')
-
-    def get_attempt_lockout_period(self):
-        return flask.current_app.config.get('KEGAUTH_FORGOT_ATTEMPT_LOCKOUT')
 
     def get_attempt_type(self):
         return 'forgot'
