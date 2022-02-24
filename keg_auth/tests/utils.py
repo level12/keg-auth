@@ -45,3 +45,19 @@ def listen_to(signal):
         yield results
     finally:
         signal.disconnect(results.add)
+
+
+def oauth_profile(**kwargs):
+    base = {
+        'domain_filter': 'mycompany.biz',
+        'id_field': 'email',
+        'oauth_client_kwargs': {
+            'name': 'google',
+            'client_id': 'my-google-client',
+            'client_secret': 'super-secret',
+            'server_metadata_url': 'http://mysite/openid-configuration',
+            'client_kwargs': {'scope': 'openid email'},
+        }
+    }
+    base.update(**kwargs)
+    return base

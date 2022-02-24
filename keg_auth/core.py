@@ -13,6 +13,7 @@ from keg_auth import model
 from keg_auth.libs.authenticators import (
     DefaultPasswordPolicy,
     KegAuthenticator,
+    OAuthAuthenticator,
 )
 
 DEFAULT_CRYPTO_SCHEMES = ('bcrypt', 'pbkdf2_sha256',)
@@ -52,12 +53,15 @@ class AuthManager(object):
         'after-reset': '{blueprint}.login',
         'verify-account': '{blueprint}.verify-account',
         'after-verify-account': '{blueprint}.login',
+        'oauth-login': '{blueprint}.oauth-login',
+        'oauth-authorize': '{blueprint}.oauth-authorize',
     }
     cli_group_name = 'auth'
 
     def __init__(self, mail_manager=None, blueprint='auth', endpoints=None,
                  cli_group_name=None, grid_cls=None, login_authenticator=KegAuthenticator,
                  request_loaders=None, permissions=None, entity_registry=None,
+                 oauth_authenticator=OAuthAuthenticator,
                  password_policy_cls=DefaultPasswordPolicy):
         self.mail_manager = mail_manager
         self.blueprint_name = blueprint
@@ -70,6 +74,7 @@ class AuthManager(object):
         self.cli_group = None
         self.grid_cls = grid_cls
         self.login_authenticator_cls = login_authenticator
+        self.oauth_authenticator_cls = oauth_authenticator
         self.request_loader_cls = tolist(request_loaders or [])
         self.request_loaders = dict()
         self.menus = dict()
@@ -115,6 +120,12 @@ class AuthManager(object):
 
         # Use select2 for form selects in templates extending keg_auth/form-base.
         app.config.setdefault('KEGAUTH_USE_SELECT2', True)
+
+        # Set the login target for the redirect authenticator
+        app.config.setdefault('KEGAUTH_REDIRECT_LOGIN_TARGET', None)
+
+        # OAuth profiles
+        app.config.setdefault('KEGAUTH_OAUTH_PROFILES', [])
 
         # Set defaults for OIDC URI locations
         app.config.setdefault('OIDC_AUTH_URI', '/oauth2/v1/authorize')
@@ -192,6 +203,9 @@ class AuthManager(object):
             return
 
         self.login_authenticator = self.login_authenticator_cls(app)
+
+        if app.config.get('KEGAUTH_OAUTH_PROFILES'):
+            self.oauth_authenticator = OAuthAuthenticator(app)
 
         for loader_cls in self.request_loader_cls:
             self.request_loaders[loader_cls.get_identifier()] = loader_cls(app)
@@ -357,7 +371,11 @@ class AuthManager(object):
         # which may not be available earlier
         user.token_generate()
 
-        if mail_enabled and self.mail_manager:
+        if (
+            mail_enabled
+            and self.mail_manager
+            and not self.login_authenticator.is_domain_excluded(user.username)
+        ):
             self.mail_manager.send_new_user(user)
 
         # use add + commit here instead of user_class.add() above so the user isn't actually

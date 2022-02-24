@@ -18,6 +18,7 @@ from wtforms import ValidationError, validators
 from wtforms_components.widgets import EmailInput
 
 from keg_auth.extensions import lazy_gettext as _
+from keg_auth.libs import get_domain_from_email
 from keg_auth.libs.templates import link_to
 from keg_auth.model import get_username_key
 
@@ -144,6 +145,22 @@ class _ValidatePasswordRequired(object):
         return True
 
 
+class _ValidateUsername:
+    def __init__(self, username_key=None):
+        self.username_key = username_key
+
+    def __call__(self, form, field):
+        if form.obj and getattr(form.obj, self.username_key) != field.data:
+            original_domain = get_domain_from_email(getattr(form.obj, self.username_key))
+            new_domain = get_domain_from_email(field.data)
+            is_exclusion = flask.current_app.auth_manager.login_authenticator.is_domain_excluded(
+                getattr(form.obj, self.username_key)
+            )
+            if original_domain and is_exclusion and original_domain != new_domain:
+                raise ValidationError(_('Cannot change user domain.'))
+        return True
+
+
 def user_form(config=None, allow_superuser=False, endpoint='',
               fields=['is_enabled', 'disabled_utc']):
     """Returns a form for User CRUD.
@@ -193,7 +210,8 @@ def user_form(config=None, allow_superuser=False, endpoint='',
 
         setattr(FieldsMeta, username_key, FieldMeta(
             extra_validators=[validators.data_required(),
-                              ValidateUnique(html_link)]
+                              ValidateUnique(html_link),
+                              _ValidateUsername(username_key)]
         ))
 
         if isinstance(flask.current_app.auth_manager.entity_registry.user_cls.username.type,

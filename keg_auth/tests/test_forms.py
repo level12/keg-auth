@@ -252,6 +252,20 @@ class TestUser(FormBase):
         assert form.get_selected_groups() == []
         assert form.get_selected_bundles() == []
 
+    def test_domain_lock(self):
+        with mock.patch(
+            'flask.current_app.auth_manager.login_authenticator.domain_exclusions',
+            ['example.com']
+        ):
+            self.assert_valid()
+            usr = ents.User.testing_create(email='foo@example.com')
+            self.assert_valid(obj=usr)
+            self.assert_valid(obj=usr, email='bar@example.com')
+            form = self.assert_not_valid(obj=usr, email='bar@otherdomain.biz')
+            assert form.email.errors == ['Cannot change user domain.']
+
+        self.assert_valid(obj=usr, email='bar@otherdomain.biz')
+
     def test_unique(self):
         usr = ents.User.testing_create(email='foo@example.com')
 
@@ -316,7 +330,6 @@ class TestGroup(FormBase):
         obj = ents.Group.testing_create(name='some-group')
 
         form = self.assert_not_valid(name='some-group')
-        print(form.name.errors[0])
         error = PyQuery(form.name.errors[0])
         assert 'Already exists.' in error.text()
 
@@ -356,7 +369,6 @@ class TestBundle(FormBase):
         obj = ents.Bundle.testing_create(name='some-bundle')
 
         form = self.assert_not_valid(name='some-bundle')
-        print(form.name.errors[0])
         error = PyQuery(form.name.errors[0])
         assert 'Already exists.' in error.text()
 

@@ -63,6 +63,7 @@ setup(
             'pyquery',
             'pytest',
             'pytest-cov',
+            'requests',
             'tox',
             'xlsxwriter',
         ],
@@ -78,6 +79,9 @@ setup(
         ],
         'mail': [
             'Flask-Mail',
+        ],
+        'oauth': [
+            'requests',
         ],
         'oidc': [
             'flask-oidc',

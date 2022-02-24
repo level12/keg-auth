@@ -119,21 +119,33 @@ Login Authenticators control validation of users.
 
             - ex. ``uid={},dc=example,dc=org``
 
-- OAuth/OIDC authentication
+- OAuth authentication
 
-    - ``from keg_auth import OidcAuthenticator``
-    - Uses flask-oidc, which needs to be installed: ``pip install keg-auth[oidc]``
+    - ``from keg_auth import OAuthAuthenticator``
+    - Uses additional dependencies: ``pip install keg-auth[oauth]``
+    - Leans on ``authlib`` for the OAuth client
+
+        - A number of client configurations may be found at https://github.com/authlib/loginpass
+
     - Additional config:
 
-        - ``OIDC_PROVIDER_URL``: Target service location.
-        - ``OIDC_CLIENT_ID``: OAuth ID for the app in the target service.
-        - ``OIDC_CLIENT_SECRET``: Authenticating secret for app in the target service.
-        - ``OIDC_AUTH_URI``: OAuth authorize URI. Default "/oauth2/v1/authorize".
-        - ``OIDC_TOKEN_URI``: OAuth token URI. Default "/oauth2/v1/token".
-        - ``OIDC_ISSUER``: OAuth issuer location. Default "/oauth2".
-        - ``OIDC_USERINFO_URI``: OAuth user info URI. Default "/oauth2/userinfo".
-        - ``KEGAUTH_OIDC_LOGOUT_REDIRECT``: Logout should bypass OAuth logout and just redirect
-          to this URL. Default None.
+        - ``KEGAUTH_OAUTH_PROFILES``: list of OAuth provider profile dicts
+        - Each profile should have the following keys:
+
+            - ``domain_filter``: string or list of strings
+            - ``id_field``: field in the resulting user info to use as the user identity
+            - ``oauth_client_kwargs``: ``authlib`` client configuration. All of these args will be passed.
+
+        - Multiple providers are supported. Login will be served at ``/login/<profile-name>``
+        - If using a single provider and OAuth will be the only authenticator, consider mapping
+          ``/login`` via the ``RedirectAuthenticator`` and setting ``KEGAUTH_REDIRECT_LOGIN_TARGET``.
+
+    - Domain exclusions
+
+        - If an OAuth profile is given a domain filter, only user identities within that domain will be
+          allowed to login via that provider.
+        - Filtered domains will be disallowed from password login, if ``KegAuthenticator`` is the primary.
+        - Filtered domains will also prevent a user's domain from being changed in user admin.
 
 
 .. _gs-loaders:

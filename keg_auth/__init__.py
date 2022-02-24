@@ -5,6 +5,7 @@ from keg_auth.libs.authenticators import (
     JwtRequestLoader,
     KegAuthenticator,
     LdapAuthenticator,
+    OAuthAuthenticator,
     TokenRequestLoader,
     PasswordPolicy,
     PasswordPolicyError,
