@@ -238,6 +238,8 @@ class AuthAttemptTests(object):
             # Create a successful login to reset the attempt counter.
             do_test(login_time, self.login_success_flashes, 'pass', 302)
 
+            self.client.get('/logout')
+
             # We can attempt (limit) more times after a successful login before
             # getting locked out.
             for i in range(0, limit):
@@ -1064,7 +1066,7 @@ class AuthTests(AuthAttemptTests):
         client = AuthTestApp(flask.current_app, user=user)
         resp = client.get('/users?op(username)=eq&v1(username)=' + user.email)
         assert resp.pyquery('.grid-header-add-link a').attr('href').startswith('/users/add')
-        assert resp.pyquery('#page-content')('h1').eq(0).text() == 'Users'
+        assert resp.pyquery('h1').eq(0).text() == 'Users'
         assert resp.pyquery('.grid-header-add-link').eq(0).text() == 'Create User'
 
     def test_edit_user(self):
@@ -1072,7 +1074,7 @@ class AuthTests(AuthAttemptTests):
         user = self.user_ent.testing_create(permissions=['auth-manage'])
         client = AuthTestApp(flask.current_app, user=user)
         resp = client.get('/users/{}/edit'.format(user_edit.id))
-        assert resp.pyquery('#page-content')('h1').eq(0).text() == 'Edit User'
+        assert resp.pyquery('h1').eq(0).text() == 'Edit User'
         resp = resp.form.submit()
 
         assert resp.status_code == 302
@@ -1097,7 +1099,7 @@ class AuthTests(AuthAttemptTests):
         group = self.group_ent.testing_create()
         resp = client.get('/groups?op(name)=eq&v1(name)=' + group.name)
         assert resp.pyquery('.grid-header-add-link a').attr('href').startswith('/groups/add')
-        assert resp.pyquery('#page-content')('h1').eq(0).text() == 'Groups'
+        assert resp.pyquery('h1').eq(0).text() == 'Groups'
         assert resp.pyquery('.grid-header-add-link').eq(0).text() == 'Create Group'
 
     def test_add_group(self):
@@ -1141,7 +1143,7 @@ class AuthTests(AuthAttemptTests):
         bundle = self.bundle_ent.testing_create()
         resp = client.get('/bundles?op(name)=eq&v1(name)=' + bundle.name)
         assert resp.pyquery('.grid-header-add-link a').attr('href').startswith('/bundles/add')
-        assert resp.pyquery('#page-content')('h1').eq(0).text() == 'Bundles'
+        assert resp.pyquery('h1').eq(0).text() == 'Bundles'
         assert resp.pyquery('.grid-header-add-link').eq(0).text() == 'Create Bundle'
 
     def test_add_bundle(self):
