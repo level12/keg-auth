@@ -11,8 +11,10 @@ import sqlalchemy as sa
 from webgrid.extensions import RequestArgsLoader, RequestFormLoader
 from werkzeug.datastructures import MultiDict
 from keg_auth_ta.app import mail_ext
+from keg_auth.libs.authenticators import OAuthAuthenticator, RedirectAuthenticator
 from keg_auth.libs.decorators import requires_user
 from keg_auth.testing import AuthTests, AuthTestApp, ViewTestBase
+from keg_auth.tests.utils import oauth_profile
 
 from keg_auth_ta.model import entities as ents
 import flask_login
@@ -1331,6 +1333,111 @@ class TestFormSelect2(ViewTestBase):
 def auth_user():
     user = ents.User.testing_create()
     yield user
+
+
+@pytest.fixture
+def redirect_authenticator():
+    authenticator = RedirectAuthenticator(flask.current_app)
+    with mock.patch(
+        'flask.current_app.auth_manager.login_authenticator',
+        authenticator,
+    ):
+        yield authenticator
+
+
+class TestRedirectAuthenticator(ViewTestBase):
+    @mock.patch.dict(flask.current_app.config, {'KEGAUTH_REDIRECT_LOGIN_TARGET': '/l2'})
+    def test_login(self, redirect_authenticator):
+        resp = self.client.get('/login', status=302)
+        assert resp.location.endswith('/l2')
+
+    def test_login_no_target(self, redirect_authenticator):
+        with pytest.raises(Exception, match='KEGAUTH_REDIRECT_LOGIN_TARGET not set.*'):
+            self.client.get('/login')
+
+    @mock.patch.dict(flask.current_app.config, {'KEGAUTH_REDIRECT_LOGIN_TARGET': 'https://l2'})
+    def test_login_target_absolute(self, redirect_authenticator):
+        with pytest.raises(Exception, match='KEGAUTH_REDIRECT_LOGIN_TARGET not set.*'):
+            self.client.get('/login')
+
+    def test_not_found_targets(self, redirect_authenticator):
+        self.client.get('/forgot-password', status=404)
+        self.client.get('/reset-password', status=404)
+        self.client.get('/verify-account', status=404)
+
+    def test_logout(self, redirect_authenticator):
+        resp = self.client.get('/logout', status=302)
+        assert resp.flashes == [('success', 'You have been logged out.')]
+
+
+@pytest.fixture
+def oauth_client():
+    with mock.patch.dict(
+        flask.current_app.config,
+        {'KEGAUTH_OAUTH_PROFILES': [oauth_profile()]}
+    ):
+        authenticator = OAuthAuthenticator(flask.current_app)
+        flask.current_app.auth_manager.oauth_authenticator = authenticator
+        client = flask.current_app.auth_manager.oauth.create_client('google')
+        yield client
+
+
+class TestOAuthLogin:
+    def test_profile_not_found(self, oauth_client):
+        client = AuthTestApp(flask.current_app)
+        client.get('/login/foo', status=404)
+
+    def test_authenticated(self, oauth_client):
+        client = AuthTestApp(flask.current_app)
+        with mock.patch.object(oauth_client, 'authorize_redirect') as m_redirect:
+            m_redirect.return_value = 'foo'
+            resp = client.get('/login/google')
+            assert resp.body == b'foo'
+            m_redirect.assert_called_once_with('http://keg.example.com/oauth-authorize/google')
+
+
+class TestOAuthAuthorize:
+    def setup(self):
+        ents.User.delete_cascaded()
+
+    def test_profile_not_found(self, oauth_client):
+        client = AuthTestApp(flask.current_app)
+        client.get('/oauth-authorize/foo', status=404)
+
+    def test_user_found(self, oauth_client):
+        auth_user = ents.User.testing_create(email='foo@mycompany.biz')
+        client = AuthTestApp(flask.current_app)
+        with mock.patch.object(oauth_client, 'authorize_access_token') as m_auth:
+            m_auth.return_value = {'userinfo': {'email': auth_user.email}}
+            resp = client.get('/oauth-authorize/google', status=302)
+            assert resp.location == 'http://keg.example.com/'
+            assert resp.flashes == [('success', 'Login successful.')]
+
+    def test_user_found_alt_token_path(self, oauth_client):
+        auth_user = ents.User.testing_create(email='foo@mycompany.biz')
+        client = AuthTestApp(flask.current_app)
+        with mock.patch.object(oauth_client, 'authorize_access_token') as m_auth:
+            m_auth.return_value = {}
+            with mock.patch.object(oauth_client, 'userinfo') as m_info:
+                m_info.return_value = {'email': auth_user.email}
+                resp = client.get('/oauth-authorize/google', status=302)
+            assert resp.location == 'http://keg.example.com/'
+            assert resp.flashes == [('success', 'Login successful.')]
+
+    def test_not_exists(self, oauth_client):
+        client = AuthTestApp(flask.current_app)
+        with mock.patch.object(oauth_client, 'authorize_access_token') as m_auth:
+            m_auth.return_value = {'userinfo': {'email': 'foo@mycompany.biz'}}
+            resp = client.get('/oauth-authorize/google')
+            assert 'No user account matches' in resp
+
+    def test_user_inactive(self, oauth_client):
+        auth_user = ents.User.testing_create(email='foo@mycompany.biz', is_enabled=False)
+        client = AuthTestApp(flask.current_app)
+        with mock.patch.object(oauth_client, 'authorize_access_token') as m_auth:
+            m_auth.return_value = {'userinfo': {'email': auth_user.email}}
+            resp = client.get('/oauth-authorize/google')
+            assert 'has been disabled' in resp
 
 
 @pytest.fixture

@@ -389,6 +389,7 @@ class AuthRespondedView(keg.web.BaseView):
     """
     responder_key = None
     auth_manager = None
+    auth_manager_key = 'login_authenticator'
 
     def __init__(self):
         super(AuthRespondedView, self).__init__()
@@ -397,7 +398,7 @@ class AuthRespondedView(keg.web.BaseView):
     @classmethod
     def calc_url(cls, **kwargs):
         """Leans on login authenticator's responders to provide a URL."""
-        authenticator_cls = cls.auth_manager.login_authenticator_cls
+        authenticator_cls = getattr(cls.auth_manager, f'{cls.auth_manager_key}_cls')
         responder_cls = authenticator_cls.responder_cls.get(cls.responder_key)
         return getattr(responder_cls, 'url', None)
 
@@ -411,7 +412,10 @@ class AuthRespondedView(keg.web.BaseView):
         """Refer all requests to the responder and return the response.
 
         If no responder, call `on_missing_responder`."""
-        authenticator = flask.current_app.auth_manager.login_authenticator
+        authenticator = getattr(flask.current_app.auth_manager, self.auth_manager_key, None)
+        if not authenticator:
+            self.on_missing_responder()
+
         responder = authenticator.get_responder(self.responder_key)
 
         if not responder:
@@ -435,6 +439,30 @@ class AuthRespondedView(keg.web.BaseView):
 class Login(AuthRespondedView):
     """Login view that uses the login authenticator's responders."""
     responder_key = 'login'
+
+
+class OAuthLogin(AuthRespondedView):
+    """Login view that uses the OAuth authenticator's responders."""
+    responder_key = 'login'
+    auth_manager_key = 'oauth_authenticator'
+
+    @classmethod
+    def calc_endpoint(cls, use_blueprint=True):
+        prefix = (cls.blueprint.name + '.') if cls.blueprint and use_blueprint else ''
+        return prefix + 'oauth-login'
+
+
+class OAuthAuthorize(AuthRespondedView):
+    """Authorization view that uses the OAuth authenticator's responders.
+
+    Completes the OAuth login flow."""
+    responder_key = 'authorize'
+    auth_manager_key = 'oauth_authenticator'
+
+    @classmethod
+    def calc_endpoint(cls, use_blueprint=True):
+        prefix = (cls.blueprint.name + '.') if cls.blueprint and use_blueprint else ''
+        return prefix + 'oauth-authorize'
 
 
 class ForgotPassword(AuthRespondedView):
@@ -481,8 +509,9 @@ class User(CrudView):
     def resend_verification_email(self):
         validate_csrf(flask.request.form['csrf_token'])
         auth_manager = keg.current_app.auth_manager
-        auth_manager.resend_verification_email(flask.request.form['user_id'])
-        flask.flash(str(_('Verification email has been sent')), 'success')
+        if not auth_manager.login_authenticator.is_domain_excluded(flask.request.form['user_id']):
+            auth_manager.resend_verification_email(flask.request.form['user_id'])
+            flask.flash(str(_('Verification email has been sent')), 'success')
         return flask.redirect(flask.url_for(self.endpoint_for_action('list')))
 
     @property
@@ -638,8 +667,8 @@ class Permission(keg.web.BaseView):
 def make_blueprint(import_name, _auth_manager, bp_name='auth', login_cls=Login,
                    forgot_cls=ForgotPassword, reset_cls=ResetPassword, logout_cls=Logout,
                    verify_cls=VerifyAccount, user_crud_cls=User, group_crud_cls=Group,
-                   bundle_crud_cls=Bundle, permission_cls=Permission,
-                   blueprint_class=flask.Blueprint, **kwargs):
+                   bundle_crud_cls=Bundle, permission_cls=Permission, oauth_login_cls=OAuthLogin,
+                   oauth_auth_cls=OAuthAuthorize, blueprint_class=flask.Blueprint, **kwargs):
     """ Blueprint factory for keg-auth views
 
         Most params are assumed to be view classes. `_auth_manager` is the extension instance meant
@@ -653,7 +682,9 @@ def make_blueprint(import_name, _auth_manager, bp_name='auth', login_cls=Login,
 
     # auth responded views get the auth manager assigned for URL calculation, etc.
     # This has to happen before assign_blueprint.
-    auth_responded_views = (login_cls, forgot_cls, reset_cls, verify_cls, logout_cls)
+    auth_responded_views = (
+        login_cls, forgot_cls, reset_cls, verify_cls, logout_cls, oauth_login_cls, oauth_auth_cls
+    )
     for view_cls in auth_responded_views:
         if view_cls:
             view_cls.auth_manager = _auth_manager

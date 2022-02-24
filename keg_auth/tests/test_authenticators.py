@@ -7,7 +7,8 @@ import jwt
 import ldap
 import pytest
 
-from keg_auth.libs import authenticators as auth
+from keg_auth.libs import authenticators as auth, get_domain_from_email
+from keg_auth.tests.utils import oauth_profile
 from keg_auth_ta.model.entities import User, UserNoEmail
 
 
@@ -37,6 +38,13 @@ class TestKegAuthenticator:
         found_user = authenticator.verify_user(login_id=user.email, password=user._plaintext_pass)
         assert user is found_user
 
+    def test_user_excluded(self):
+        user = User.testing_create()
+        authenticator = auth.KegAuthenticator(app=flask.current_app)
+        authenticator.domain_exclusions = [get_domain_from_email(user.email)]
+        with pytest.raises(auth.UserNotFound):
+            authenticator.verify_user(login_id=user.email, password=user._plaintext_pass)
+
     def test_unverified_user(self):
         user = User.testing_create()
         user.is_verified = False
@@ -48,6 +56,88 @@ class TestKegAuthenticator:
         found_user = authenticator.verify_user(login_id=user.email, password=user._plaintext_pass,
                                                allow_unverified=True)
         assert user is found_user
+
+    @mock.patch.dict(
+        'flask.current_app.config',
+        {
+            'KEGAUTH_OAUTH_PROFILES': [
+                oauth_profile(domain_filter='bar.baz'),
+                oauth_profile(domain_filter=('foo.co', 'foo.mo')),
+            ]
+        }
+    )
+    def test_loads_oauth_exclusions(self):
+        authenticator = auth.KegAuthenticator(app=flask.current_app)
+        assert authenticator.domain_exclusions == ['bar.baz', 'foo.co', 'foo.mo']
+
+    def test_domain_excluded(self):
+        authenticator = auth.KegAuthenticator(app=flask.current_app)
+        assert not authenticator.is_domain_excluded('foo@bar.baz')
+        authenticator.domain_exclusions = ['bar.baz', 'foo.co', 'foo.mo']
+        assert authenticator.is_domain_excluded('foo@bar.baz')
+        assert not authenticator.is_domain_excluded('foo@bar.co')
+
+
+class TestOAuthAuthenticator:
+    @mock.patch.dict('flask.current_app.config', {'KEGAUTH_OAUTH_PROFILES': [oauth_profile()]})
+    def test_profiles_loaded(self):
+        auth.OAuthAuthenticator(app=flask.current_app)
+        assert flask.current_app.auth_manager.oauth.create_client('google')
+        assert not flask.current_app.auth_manager.oauth.create_client('twitter')
+
+    @mock.patch.dict(
+        'flask.current_app.config',
+        {'KEGAUTH_OAUTH_PROFILES': [oauth_profile(oauth_client_kwargs={'name': 'foo'})]}
+    )
+    @mock.patch('authlib.integrations.flask_client.OAuth', autospec=True, spec_set=True)
+    def test_kwargs_passed_to_oauth_client(self, m_oauth):
+        auth.OAuthAuthenticator(app=flask.current_app)
+        m_oauth.return_value.register.assert_called_once_with(name='foo')
+
+    @mock.patch.dict('flask.current_app.config', {'KEGAUTH_OAUTH_PROFILES': [oauth_profile()]})
+    def test_user_not_found(self):
+        with pytest.raises(auth.UserNotFound):
+            authenticator = auth.OAuthAuthenticator(app=flask.current_app)
+            authenticator.verify_user(
+                profile_name='google', login_id='nobodybythisnamehere@mycompany.biz'
+            )
+
+    @mock.patch.dict('flask.current_app.config', {'KEGAUTH_OAUTH_PROFILES': [oauth_profile()]})
+    def test_user_not_active(self):
+        user = User.testing_create(is_enabled=False, email='usernotfound@mycompany.biz')
+        with pytest.raises(auth.UserInactive) as e_info:
+            authenticator = auth.OAuthAuthenticator(app=flask.current_app)
+            authenticator.verify_user(profile_name='google', login_id=user.email)
+        assert e_info.value.user is user
+
+    @mock.patch.dict('flask.current_app.config', {'KEGAUTH_OAUTH_PROFILES': [oauth_profile()]})
+    def test_user_verified(self):
+        user = User.testing_create(email='userverified@mycompany.biz')
+        authenticator = auth.OAuthAuthenticator(app=flask.current_app)
+        found_user = authenticator.verify_user(profile_name='google', login_id=user.email)
+        assert user is found_user
+
+    @mock.patch.dict('flask.current_app.config', {'KEGAUTH_OAUTH_PROFILES': [oauth_profile()]})
+    def test_user_unverified(self):
+        user = User.testing_create(email='userunverified@mycompany.biz')
+        user.is_verified = False
+        authenticator = auth.OAuthAuthenticator(app=flask.current_app)
+        found_user = authenticator.verify_user(profile_name='google', login_id=user.email)
+        assert user is found_user
+        assert user.is_verified
+
+    @mock.patch.dict('flask.current_app.config', {'KEGAUTH_OAUTH_PROFILES': [oauth_profile()]})
+    def test_domain_exclusion(self):
+        user = User.testing_create(email='userverified@someothercompany.co')
+        authenticator = auth.OAuthAuthenticator(app=flask.current_app)
+        with pytest.raises(auth.UserNotFound):
+            authenticator.verify_user(profile_name='google', login_id=user.email)
+
+    def test_bad_profile(self):
+        user = User.testing_create()
+        authenticator = auth.OAuthAuthenticator(app=flask.current_app)
+        with pytest.raises(Exception, match='.*foo is not configured'):
+            authenticator.verify_user(profile_name='foo', login_id=user.email)
 
 
 class TestLdapAuthenticator:

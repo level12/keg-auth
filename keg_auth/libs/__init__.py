@@ -21,3 +21,11 @@ def get_current_user():
     if not user or not user.is_authenticated:
         return None
     return user
+
+
+def get_domain_from_email(email):
+    """Extract domain portion of email address."""
+    parts = email.split('@')
+    if len(parts) != 2:
+        return None
+    return parts[1]

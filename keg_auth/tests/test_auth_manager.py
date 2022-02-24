@@ -1,9 +1,9 @@
-from __future__ import unicode_literals
+from unittest import mock
 
 import flask
-import mock
 from keg_auth.core import AuthManager
 from keg_auth.libs.authenticators import KegAuthenticator, JwtRequestLoader
+from keg_auth.tests.utils import oauth_profile
 
 from keg_auth_ta.app import mail_ext
 from keg_auth_ta.extensions import auth_entity_registry
@@ -16,6 +16,20 @@ class TestAuthManager(object):
         ents.User.delete_cascaded()
         self.am = flask.current_app.auth_manager
 
+    def test_init_loaders_no_oauth(self):
+        manager = AuthManager()
+        manager.init_loaders(flask.current_app)
+        assert not hasattr(manager, 'oauth_authenticator')
+
+    def test_init_loaders_with_oauth(self):
+        manager = AuthManager()
+        with mock.patch.dict(
+            flask.current_app.config,
+            {'KEGAUTH_OAUTH_PROFILES': [oauth_profile()]},
+        ):
+            manager.init_loaders(flask.current_app)
+        assert manager.oauth_authenticator
+
     def test_create_user(self):
         with mail_ext.record_messages() as outbox:
             user = self.am.create_user(dict(email=u'foo@bar.com'))
@@ -26,6 +40,16 @@ class TestAuthManager(object):
         assert user.email == 'foo@bar.com'
         assert user._token_plain
         assert ents.User.query.count() == 1
+
+    @mock.patch(
+        'flask.current_app.auth_manager.login_authenticator.domain_exclusions',
+        ['mycompany.biz']
+    )
+    def test_create_user_domain_exclusion(self):
+        with mail_ext.record_messages() as outbox:
+            self.am.create_user(dict(email=u'foo@mycompany.biz'))
+
+        assert len(outbox) == 0
 
     def test_create_user_no_commit(self):
         self.am.create_user(dict(email=u'foo@bar.com'), _commit=False)

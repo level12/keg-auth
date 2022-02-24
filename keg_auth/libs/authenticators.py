@@ -9,11 +9,13 @@ import sqlalchemy as sa
 import string
 import typing
 import wtforms
+from blazeutils import tolist
 from keg.db import db
 from sqlalchemy_utils import EmailType
 
 from keg_auth import forms
 from keg_auth.extensions import flash, lazy_gettext as _
+from keg_auth.libs import get_domain_from_email
 from keg_auth.model import get_username_key, get_username
 from keg_auth.model.entity_registry import RegistryError
 
@@ -82,6 +84,9 @@ class LoginAuthenticator(object):
 
     def get_responder(self, key):
         return self.responders.get(key)
+
+    def is_domain_excluded(self, login_id):
+        return False
 
 
 class ViewResponder(object):
@@ -565,6 +570,63 @@ class PasswordFormViewResponder(AttemptLimitMixin, LoginResponderMixin,
         ).count()
 
 
+class OAuthLoginViewResponder(ViewResponder):
+    """ OAuth logins, using a provider via authlib"""
+    url = '/login/<name>'
+
+    def get(self, *args, **kwargs):
+        name = kwargs.get('name')
+        oauth = flask.current_app.auth_manager.oauth
+        client = oauth.create_client(name)
+        if not client:
+            return flask.abort(404)
+
+        redirect_uri = flask.current_app.auth_manager.url_for(
+            'oauth-authorize', name=name, _external=True
+        )
+        return client.authorize_redirect(redirect_uri)
+
+    def head(self, *args, **kwargs):
+        return flask.abort(405, valid_methods=['GET'])
+
+    def post(self, *args, **kwargs):
+        return flask.abort(405, valid_methods=['GET'])
+
+
+class OAuthAuthorizeViewResponder(LoginResponderMixin, ViewResponder):
+    """ OAuth logins, using a provider via authlib"""
+    url = '/oauth-authorize/<name>'
+    template_name = 'keg_auth/flash-messages-only.html'
+
+    def get(self, *args, **kwargs):
+        name = kwargs.get('name')
+        oauth = flask.current_app.auth_manager.oauth
+        client = oauth.create_client(name)
+        if not client:
+            return flask.abort(404)
+
+        oauth_profile = self.parent.select_oauth_profile(name)
+        token = client.authorize_access_token()
+        userinfo = token.get('userinfo')
+        if not userinfo:
+            userinfo = client.userinfo()
+
+        login_id = userinfo.get(oauth_profile['id_field'])
+
+        try:
+            user = self.parent.verify_user(profile_name=name, login_id=login_id)
+
+            # User is active and password is verified
+            return self.on_success(user)
+        except UserNotFound:
+            self.on_invalid_user(login_id)
+        except UserInactive as exc:
+            self.on_inactive_user(exc.user)
+
+    def head(self, *args, **kwargs):
+        return flask.abort(405, valid_methods=['GET'])
+
+
 class ForgotPasswordViewResponder(AttemptLimitMixin, UserResponderMixin, FormResponderMixin,
                                   ViewResponder):
     """ Master responder for keg-integrated logins, using an email form"""
@@ -675,6 +737,26 @@ class LogoutViewResponder(ViewResponder):
         flask.abort(flask.redirect(redirect_to))
 
 
+def not_found_view_responder_factory(target_url):
+    class NotFoundViewResponder(ViewResponder):
+        url = target_url
+
+        def get(self):
+            flask.abort(404)
+
+    return NotFoundViewResponder
+
+
+class RedirectLoginViewResponder(ViewResponder):
+    url = '/login'
+
+    def get(self):
+        target = flask.current_app.config.get('KEGAUTH_REDIRECT_LOGIN_TARGET')
+        if not target or not target.startswith('/'):
+            raise Exception('KEGAUTH_REDIRECT_LOGIN_TARGET not set or not relative')
+        return flask.redirect(target)
+
+
 class PasswordAuthenticatorMixin(object):
     """ Username/password authenticators will need a way to verify a user is valid
         prior to making it the current user in flask login """
@@ -698,6 +780,21 @@ class TokenLoaderMixin(object):
         raise NotImplementedError
 
 
+class RedirectAuthenticator(LoginAuthenticator):
+    """ Redirects to another source for authentication. Useful for when we have an OAuth source
+        in mind for primary auth. We will want to redirect /login there, keep /logout, and
+        direct other responder keys to return 404.
+
+        Use KEGAUTH_REDIRECT_LOGIN_TARGET to set the login target."""
+    responder_cls = {
+        'login': RedirectLoginViewResponder,
+        'forgot-password': not_found_view_responder_factory('/forgot-password'),
+        'reset-password': not_found_view_responder_factory('/reset-password'),
+        'verify-account': not_found_view_responder_factory('/verify-account'),
+        'logout': LogoutViewResponder,
+    }
+
+
 class KegAuthenticator(PasswordAuthenticatorMixin, LoginAuthenticator):
     """ Uses username/password authentication with a login form, validates against keg-auth db"""
     responder_cls = {
@@ -708,7 +805,32 @@ class KegAuthenticator(PasswordAuthenticatorMixin, LoginAuthenticator):
         'logout': LogoutViewResponder,
     }
 
+    def __init__(self, app):
+        super().__init__(app)
+
+        self.load_domain_exclusions(app)
+
+    def load_domain_exclusions(self, app):
+        domain_exclusions = []
+        for profile in app.config.get('KEGAUTH_OAUTH_PROFILES', []):
+            domain_exclusions.extend(tolist(profile.get('domain_filter', [])))
+        self.domain_exclusions = domain_exclusions
+
+    def is_domain_excluded(self, login_id):
+        """Domains configured for OAuth access are excluded from the password authenticator.
+
+        Any operations not using ``verify_user`` should check for exclusion."""
+        if self.domain_exclusions:
+            domain = get_domain_from_email(login_id)
+            if domain and domain in self.domain_exclusions:
+                return True
+        return False
+
     def verify_user(self, login_id=None, password=None, allow_unverified=False):
+        if self.is_domain_excluded(login_id):
+            # apply a domain filter before looking up the user record
+            raise UserNotFound
+
         user = self.user_ent.query.filter_by(username=login_id).one_or_none()
 
         if not user:
@@ -724,6 +846,70 @@ class KegAuthenticator(PasswordAuthenticatorMixin, LoginAuthenticator):
 
     def verify_password(self, user, password):
         return user.password == password
+
+
+class OAuthAuthenticator(LoginAuthenticator):
+    """ Uses OAuth authentication via authlib, validates user info against keg-auth db"""
+    responder_cls = {
+        'login': OAuthLoginViewResponder,
+        'authorize': OAuthAuthorizeViewResponder,
+    }
+
+    def __init__(self, app):
+        self.load_profiles(app)
+        super().__init__(app)
+
+    def load_profiles(self, app):
+        from authlib.integrations.flask_client import OAuth
+
+        app.auth_manager.oauth = oauth = OAuth(app)
+        for profile in app.config.get('KEGAUTH_OAUTH_PROFILES'):
+            expected_keys = 'domain_filter', 'id_field', 'oauth_client_kwargs'
+            if len(set(expected_keys) & set(profile.keys())) != len(expected_keys):
+                expected_keys_display = ', '.join(expected_keys)
+                raise Exception(
+                    f'OAuth profile is missing keys, expects {expected_keys_display}'
+                )
+            oauth.register(**profile['oauth_client_kwargs'])
+
+    def select_oauth_profile(self, name):
+        return next(
+            filter(
+                lambda profile: profile['oauth_client_kwargs']['name'] == name,
+                flask.current_app.config.get('KEGAUTH_OAUTH_PROFILES', [])
+            ), None
+        )
+
+    def verify_user(self, profile_name=None, login_id=None):
+        oauth_profile = self.select_oauth_profile(profile_name)
+        if not oauth_profile:
+            raise Exception(f'OAuth profile {profile_name} is not configured')
+
+        # Some OAuth providers, like Google, can be configured to only pass through users
+        #   from specific domains. But we shouldn't make that assumption for all providers,
+        #   and since we have the domain filter also for disallowing logins in KegAuthenticator,
+        #   it's best to check it here as well.
+        if oauth_profile.get('domain_filter'):
+            domain = get_domain_from_email(login_id)
+            if domain and domain not in tolist(oauth_profile['domain_filter']):
+                raise UserNotFound
+
+        user = self.user_ent.query.filter_by(username=login_id).one_or_none()
+
+        if not user:
+            raise UserNotFound
+
+        # Users from domains filtered to OAuth do not follow the usual verification
+        #   process. Check for that here - if OAuth source says it's a verified user,
+        #   trust it.
+        if not user.is_verified:
+            user.is_verified = True
+            db.session.commit()
+
+        if not user.is_active:
+            raise UserInactive(user)
+
+        return user
 
 
 class LdapAuthenticator(KegAuthenticator):
@@ -795,7 +981,7 @@ class OidcLoginViewResponder(LoginResponderMixin, ViewResponder):
     template_name = 'keg_auth/flash-messages-only.html'
 
     def __init__(self, parent):
-        warnings.warn(OidcAuthenticator.usage_warning, PendingDeprecationWarning, 2)
+        warnings.warn(OidcAuthenticator.usage_warning, DeprecationWarning, 2)
         super().__init__(parent)
 
     def get(self, *args, **kwargs):
@@ -827,7 +1013,7 @@ class OidcLogoutViewResponder(LogoutViewResponder):
     """ OIDC logout requires some extra leg-work, because token gets refreshed server-side"""
 
     def __init__(self, parent):
-        warnings.warn(OidcAuthenticator.usage_warning, PendingDeprecationWarning, 2)
+        warnings.warn(OidcAuthenticator.usage_warning, DeprecationWarning, 2)
         super().__init__(parent)
 
     def get(self):
@@ -876,12 +1062,17 @@ class OidcLogoutViewResponder(LogoutViewResponder):
 
 
 class OidcAuthenticator(LoginAuthenticator):
-    """ Uses OIDC authentication with an oauth provider, validates against keg-auth db"""
+    """ Uses OIDC authentication with an oauth provider, validates against keg-auth db.
+
+    Warning: Deprecated.
+    """
     responder_cls = {
         'login': OidcLoginViewResponder,
         'logout': OidcLogoutViewResponder,
     }
     usage_warning = (
+        'All OIDC objects are now deprecated and will be removed in a future version. Use the '
+        'OAuth authenticator alongside either a password authenticator or a redirect. '
         'flask-oidc formed the core of this authenticator but has not received much maintenance '
         'in the last few years. At this time, the library is depending on deprecated/removed '
         'items in other libraries (such as itsdangerous) and will need to be updated to be '
@@ -889,7 +1080,7 @@ class OidcAuthenticator(LoginAuthenticator):
     )
 
     def __init__(self, app):
-        warnings.warn(self.usage_warning, PendingDeprecationWarning, 2)
+        warnings.warn(self.usage_warning, DeprecationWarning, 2)
 
         from flask_oidc import OpenIDConnect
 
