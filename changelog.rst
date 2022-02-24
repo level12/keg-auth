@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.5.3 released 2022-02-24
+-------------------------
+
+- fix integrated auth tests (4318826_)
+
+.. _4318826: https://github.com/level12/keg-auth/commit/4318826
+
+
 0.5.2 released 2022-02-24
 -------------------------
 
