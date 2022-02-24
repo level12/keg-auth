@@ -330,7 +330,6 @@ class TestGroup(FormBase):
         obj = ents.Group.testing_create(name='some-group')
 
         form = self.assert_not_valid(name='some-group')
-        print(form.name.errors[0])
         error = PyQuery(form.name.errors[0])
         assert 'Already exists.' in error.text()
 
@@ -370,7 +369,6 @@ class TestBundle(FormBase):
         obj = ents.Bundle.testing_create(name='some-bundle')
 
         form = self.assert_not_valid(name='some-bundle')
-        print(form.name.errors[0])
         error = PyQuery(form.name.errors[0])
         assert 'Already exists.' in error.text()
 

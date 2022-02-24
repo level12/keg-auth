@@ -654,7 +654,6 @@ class Permission(keg.web.BaseView):
 
         title_var = flask.current_app.config.get('KEGAUTH_TEMPLATE_TITLE_VAR')
         self.assign(title_var, _('Permissions'))
-        print(self.template_args)
 
         return flask.render_template(
             self.grid_template,
