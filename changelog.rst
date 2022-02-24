@@ -1,6 +1,18 @@
 Changelog
 =========
 
+0.5.2 released 2022-02-24
+-------------------------
+
+- add OAuth authenticator to replace deprecated OIDC implementation (606c952_)
+- add basic user/group/bundle CRUD tests to the integrated auth tests (0c84a2d_)
+- *BC break* require rate-limiting setup by default, simplify configuration (7d7b532_)
+
+.. _606c952: https://github.com/level12/keg-auth/commit/606c952
+.. _0c84a2d: https://github.com/level12/keg-auth/commit/0c84a2d
+.. _7d7b532: https://github.com/level12/keg-auth/commit/7d7b532
+
+
 0.5.1 released 2022-02-22
 -------------------------
 
