@@ -27,7 +27,7 @@ class TestCLI(CLIBase):
         result = self.invoke('auth', 'create-user', 'foo@bar.com', 'abc', 'def')
 
         assert 'User created.\nEmail sent with verification URL.' in result.output
-        assert 'Verification URL: http://keg.example.com/verify-account/3/1234' in result.output
+        assert 'Verification URL: /verify-account/3/1234' in result.output
 
         m_cli_create_user.assert_called_once_with(email='foo@bar.com', extra_args=('abc', 'def'),
                                                   is_superuser=False, mail_enabled=True)
@@ -41,7 +41,7 @@ class TestCLI(CLIBase):
         result = self.invoke('auth', 'create-user', '--as-superuser', 'foo@bar.com')
 
         assert 'User created.\nEmail sent with verification URL.' in result.output
-        assert 'Verification URL: http://keg.example.com/verify-account/3/1234' in result.output
+        assert 'Verification URL: /verify-account/3/1234' in result.output
 
         m_cli_create_user.assert_called_once_with(email='foo@bar.com', extra_args=(),
                                                   is_superuser=True, mail_enabled=True)
@@ -97,7 +97,7 @@ class TestCLI(CLIBase):
 
         assert 'User created.' in result.output
         assert 'Email sent with verification URL.' not in result.output
-        assert 'Verification URL: http://keg.example.com/verify-account' in result.output
+        assert 'Verification URL: /verify-account' in result.output
         assert not m_send.call_count
 
     def test_set_password(self):

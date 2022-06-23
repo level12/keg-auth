@@ -207,7 +207,7 @@ class TestViews(object):
         resp = resp.form.submit()
 
         assert resp.status_code == 302, resp.html
-        assert resp.headers['Location'] == 'http://keg.example.com/secret1'
+        assert resp.headers['Location'] == '/secret1'
         assert resp.flashes == [('success', 'Login successful.')]
 
     def test_login_field_success_next_session(self):
@@ -222,7 +222,7 @@ class TestViews(object):
             resp = resp.form.submit()
 
         assert resp.status_code == 302, resp.html
-        assert resp.headers['Location'] == 'http://keg.example.com/secret1'
+        assert resp.headers['Location'] == '/secret1'
         assert resp.flashes == [('success', 'Login successful.')]
 
     def test_authenticated_request(self):
@@ -1410,7 +1410,7 @@ class TestOAuthAuthorize:
         with mock.patch.object(oauth_client, 'authorize_access_token') as m_auth:
             m_auth.return_value = {'userinfo': {'email': auth_user.email}}
             resp = client.get('/oauth-authorize/google', status=302)
-            assert resp.location == 'http://keg.example.com/'
+            assert resp.location == '/'
             assert resp.flashes == [('success', 'Login successful.')]
 
     def test_user_found_alt_token_path(self, oauth_client):
@@ -1421,7 +1421,7 @@ class TestOAuthAuthorize:
             with mock.patch.object(oauth_client, 'userinfo') as m_info:
                 m_info.return_value = {'email': auth_user.email}
                 resp = client.get('/oauth-authorize/google', status=302)
-            assert resp.location == 'http://keg.example.com/'
+            assert resp.location == '/'
             assert resp.flashes == [('success', 'Login successful.')]
 
     def test_not_exists(self, oauth_client):
@@ -1499,7 +1499,7 @@ def oidc_auth_client(oidc_client, auth_user):
 class TestOidcLogin:
     def test_authenticated(self, oidc_auth_client):
         resp = oidc_auth_client.get('/login', status=302)
-        assert resp.location == 'http://keg.example.com/'
+        assert resp.location == '/'
 
     def test_inactive(self, oidc_auth_client, auth_user):
         ents.User.edit(auth_user.id, is_enabled=False)
@@ -1520,11 +1520,11 @@ class TestOidcLogin:
 class TestOidcLogout:
     def test_unauthenticated(self, oidc_client):
         resp = oidc_client.get('/logout', status=302)
-        assert resp.location == 'http://keg.example.com/login'
+        assert resp.location == '/login'
 
     def test_bad_token(self, oidc_auth_client):
         resp = oidc_auth_client.get('/logout', status=302)
-        assert resp.location == 'http://keg.example.com/login?next=%2Flogout'
+        assert resp.location == '/login?next=%2Flogout'
 
     def test_success(self, oidc_auth_client, auth_user):
         with mock.patch.object(
