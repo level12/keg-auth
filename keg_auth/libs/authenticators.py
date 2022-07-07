@@ -831,7 +831,9 @@ class KegAuthenticator(PasswordAuthenticatorMixin, LoginAuthenticator):
             # apply a domain filter before looking up the user record
             raise UserNotFound
 
-        user = self.user_ent.query.filter_by(username=login_id).one_or_none()
+        user = self.user_ent.query.filter(
+            sa.func.lower(self.user_ent.username) == (login_id.lower() if login_id else None)
+        ).one_or_none()
 
         if not user:
             raise UserNotFound

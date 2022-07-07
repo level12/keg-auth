@@ -57,6 +57,24 @@ class TestKegAuthenticator:
                                                allow_unverified=True)
         assert user is found_user
 
+    def test_user_case_insensitive(self):
+        from keg import db
+        from sqlalchemy import text
+
+        user = User.testing_create(email='abc@foo.bar')
+
+        # Downstream in the process of creating a user, the email will be set to all lowercase
+        # So we need to manually set it to capital letters to test the fix
+        with db.db.engine.connect() as connection:
+            connection.execute(
+                text("UPDATE users SET email = 'ABC@Foo.Bar' WHERE email = 'abc@foo.bar'")
+            )
+        authenticator = auth.KegAuthenticator(app=flask.current_app)
+        found_user = authenticator.verify_user(login_id='aBc@Foo.Bar',
+                                               password=user._plaintext_pass)
+        assert found_user is not None
+        assert found_user.id == user.id
+
     @mock.patch.dict(
         'flask.current_app.config',
         {
