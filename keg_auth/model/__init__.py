@@ -491,7 +491,7 @@ class BundleMixin(object):
     @might_flush
     @classmethod
     def edit(cls, oid=None, **kwargs):
-        obj = super(BundleMixin, cls).edit(oid=oid, _commit=False, **kwargs)
+        obj = super(BundleMixin, cls).edit(oid, _commit=False, **kwargs)
         return obj
 
 
