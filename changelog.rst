@@ -1,6 +1,16 @@
 Changelog
 =========
 
+0.5.4 released 2022-07-08
+-------------------------
+
+- case insensitive match on user id (d01c310_)
+- use relative URLs in tests (6d6f959_)
+
+.. _d01c310: https://github.com/level12/keg-auth/commit/d01c310
+.. _6d6f959: https://github.com/level12/keg-auth/commit/6d6f959
+
+
 0.5.3 released 2022-02-24
 -------------------------
 
