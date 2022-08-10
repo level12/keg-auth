@@ -382,6 +382,24 @@ class TestUser(object):
         db.session.expire(user)
         assert user.session_key == original_session_key
 
+    def test_re_enabling_user_clears_disabled_utc(self):
+        user = ents.User.testing_create(disabled_utc=arrow.utcnow(), is_enabled=False)
+        ents.User.edit(user.id, is_enabled=True)
+        db.session.expire(user)
+        assert user.disabled_utc is None
+
+    def test_re_enabling_user_does_not_clear_disabled_utc_if_changed(self):
+        user = ents.User.testing_create(disabled_utc=arrow.utcnow().shift(days=-1), is_enabled=False)
+        ents.User.edit(user.id, is_enabled=True, disabled_utc=arrow.utcnow())
+        db.session.expire(user)
+        assert user.disabled_utc
+
+    def test_disabling_user_does_not_clear_disabled_utc(self):
+        user = ents.User.testing_create(disabled_utc=arrow.utcnow(), is_enabled=True)
+        ents.User.edit(user.id, is_enabled=False)
+        db.session.expire(user)
+        assert user.disabled_utc
+
 
 class TestUserNoEmail(object):
     def setup(self):
