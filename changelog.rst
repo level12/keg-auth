@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.5.5 released 2022-08-10
+-------------------------
+
+- flash on login for users disabled by date, autoclear disabled date when re-enabling (9330f62_)
+
+.. _9330f62: https://github.com/level12/keg-auth/commit/9330f62
+
+
 0.5.4 released 2022-07-08
 -------------------------
 
