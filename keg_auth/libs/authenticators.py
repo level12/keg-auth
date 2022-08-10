@@ -145,7 +145,9 @@ class UserResponderMixin(object):
             if self.flash_unverified_user:
                 message, category = self.flash_unverified_user
                 flash(message.format(user.email), category)
-        if not user.is_enabled:
+                return  # preventing unverified users to also get the disabled alert
+
+        if not user.is_active:
             self.on_disabled_user(user)
 
     def on_invalid_user(self, username):

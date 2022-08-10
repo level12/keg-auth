@@ -805,6 +805,26 @@ class AuthTests(AuthAttemptTests):
         message = flash_disabled_user[0]
         assert resp.flashes == [(category, message.format('foo@bar.com'))]
 
+    def test_login_user_disabled_timestamp(self):
+        self.user_ent.testing_create(
+            email='foo@bar.com',
+            password='pass',
+            disabled_utc=arrow.utcnow().shift(days=-10)
+        )
+
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get(self.login_url)
+
+        resp.form['login_id'] = 'foo@bar.com'
+        resp.form['password'] = 'badpass'
+        resp = resp.form.submit(status=200)
+
+        flash_disabled_user = flask.current_app.auth_manager.login_authenticator_cls. \
+            responder_cls['login'].flash_disabled_user
+        category = flash_disabled_user[1]
+        message = flash_disabled_user[0]
+        assert resp.flashes == [(category, message.format('foo@bar.com'))]
+
     def test_login_protection(self):
         self.user_ent.testing_create(
             email='foo@bar.com', password='pass', permissions=self.protected_url_permissions

@@ -744,6 +744,20 @@ def initialize_events(registry=None):
                 target.reset_session_key()
 
     @sa.event.listens_for(db.session, 'before_flush')
+    def re_enabling_users(session, *args):
+        for target in session.dirty:
+            if not _isinstance(target, registry.user_cls):
+                continue
+
+            if (
+                target.is_disabled_by_date
+                and target.is_enabled
+                and _sa_attr_has_changes(target, 'is_enabled')
+                and not _sa_attr_has_changes(target, 'disabled_utc')
+            ):
+                target.disabled_utc = None
+
+    @sa.event.listens_for(db.session, 'before_flush')
     def changed_groups(session, *args):
         for target in session.new | session.dirty:
             if not _isinstance(target, registry.group_cls):
