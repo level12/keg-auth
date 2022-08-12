@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.5.7 released 2022-08-12
+-------------------------
+
+- prevent attempt tests from failing when certain config values are set in app (b2f7e27_)
+
+.. _b2f7e27: https://github.com/level12/keg-auth/commit/b2f7e27
+
+
 0.5.6 released 2022-08-12
 -------------------------
 
