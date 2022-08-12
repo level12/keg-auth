@@ -100,12 +100,17 @@ class AuthAttemptTests(object):
         '''
         if not has_attempt_model():
             pytest.skip(has_attempt_skip_reason)
-        config_key = 'LOGIN_' if view_config else ''
-        with mock.patch.dict('flask.current_app.config', {
-            f'KEGAUTH_{config_key}ATTEMPT_LIMIT': limit,
-            f'KEGAUTH_{config_key}ATTEMPT_TIMESPAN': timespan,
-            f'KEGAUTH_{config_key}ATTEMPT_LOCKOUT': lockout,
-        }):
+        config_key = lambda flag: 'LOGIN_' if flag else ''
+        config_updates = lambda flag: {
+            f'KEGAUTH_{config_key(flag)}ATTEMPT_LIMIT': limit,
+            f'KEGAUTH_{config_key(flag)}ATTEMPT_TIMESPAN': timespan,
+            f'KEGAUTH_{config_key(flag)}ATTEMPT_LOCKOUT': lockout,
+        }
+        with mock.patch.dict('flask.current_app.config', config_updates(view_config)):
+            for key in config_updates(not view_config):
+                if key in flask.current_app.config:
+                    del flask.current_app.config[key]
+
             # We want to test blocking attempts for existing and non-existing users.
             username = 'foo@bar.com'
             invalid_flashes = [('error', 'No user account matches: foo@bar.com')]
