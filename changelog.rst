@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.5.6 released 2022-08-12
+-------------------------
+
+- skip attempt tests during execution to avoid import order issues (8ea6f57_)
+
+.. _8ea6f57: https://github.com/level12/keg-auth/commit/8ea6f57
+
+
 0.5.5 released 2022-08-10
 -------------------------
 
