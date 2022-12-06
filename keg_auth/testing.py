@@ -1,6 +1,3 @@
-# Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
-from __future__ import unicode_literals
-
 from datetime import timedelta
 from unittest import mock
 from urllib.parse import quote
@@ -52,7 +49,7 @@ class AuthAttemptTests(object):
         ('success', 'Password changed.  Please use the new password to login below.')
     ]
 
-    def setup(self):
+    def setup_method(self):
         if has_attempt_model:
             self.attempt_ent.delete_cascaded()
 
@@ -623,8 +620,8 @@ class AuthTests(AuthAttemptTests):
     protected_url = '/secret1'
     protected_url_permissions = None
 
-    def setup(self):
-        super().setup()
+    def setup_method(self):
+        super().setup_method()
         self.user_ent.delete_cascaded()
 
     def test_login_get(self):

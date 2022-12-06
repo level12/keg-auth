@@ -1,6 +1,3 @@
-# Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
-from __future__ import unicode_literals
-
 import sys
 from unittest import mock
 
@@ -66,7 +63,7 @@ class TestNavItem(object):
         Tests of node permissions are user-oriented, so we have to run these in a request context
     """
 
-    def setup(self):
+    def setup_method(self):
         self.Permission = flask.current_app.auth_manager.entity_registry.permission_cls
         self.Permission.delete_cascaded()
 

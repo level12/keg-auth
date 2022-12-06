@@ -54,7 +54,6 @@ setup(
             'flask-bootstrap',
             'flask-jwt-extended>=4.0.0',
             'flask-mail',
-            'flask-oidc',
             'flask-webtest',
             'freezegun',
             'mock',
@@ -82,9 +81,6 @@ setup(
         ],
         'oauth': [
             'requests',
-        ],
-        'oidc': [
-            'flask-oidc',
         ],
     }
 )

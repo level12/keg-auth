@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flask_bootstrap import Bootstrap
 from keg.app import Keg
 from keg.db import db

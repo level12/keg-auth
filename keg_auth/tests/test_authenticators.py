@@ -159,7 +159,7 @@ class TestOAuthAuthenticator:
 
 
 class TestLdapAuthenticator:
-    def setup(self):
+    def setup_method(self):
         flask.current_app.config['KEGAUTH_LDAP_SERVER_URL'] = 'abc123'
         flask.current_app.config['KEGAUTH_LDAP_DN_FORMAT'] = '{}'
 

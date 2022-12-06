@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from flask_mail import Mail
 from flask_wtf.csrf import CSRFProtect
 from keg_auth import AuthManager, AuthMailManager, JwtRequestLoader, AuthEntityRegistry

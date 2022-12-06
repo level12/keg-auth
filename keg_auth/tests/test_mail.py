@@ -1,6 +1,3 @@
-# Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
-from __future__ import unicode_literals
-
 import flask
 from keg_auth import mail
 import mock
@@ -28,7 +25,7 @@ class TestAuthMailManager(object):
     def setup_class(cls):
         cls.mb = mail.AuthMailManager(mail_ext)
 
-    def setup(self):
+    def setup_method(self):
         ents.User.delete_cascaded()
 
     def test_reset_password_message(self):

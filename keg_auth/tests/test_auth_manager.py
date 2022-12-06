@@ -11,7 +11,7 @@ from keg_auth_ta.model import entities as ents
 
 
 class TestAuthManager(object):
-    def setup(self):
+    def setup_method(self):
         ents.Permission.delete_cascaded()
         ents.User.delete_cascaded()
         self.am = flask.current_app.auth_manager

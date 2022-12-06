@@ -13,7 +13,7 @@ Installation
 - With mail (i.e. with a mail manager configured, see below): `pip install keg-auth[mail]`
 - JWT (for using JWT tokens as authenticators): `pip install keg-auth[jwt]`
 - LDAP (for using LDAP target for authentication): `pip install keg-auth[ldap]`
-- OIDC (for OAuth, e.g. Okta or Auth0): `pip install keg-auth[oidc]`
+- OAuth (e.g. Google Auth): `pip install keg-auth[oauth]`
 - Internationalization extensions: `pip install keg-auth[i18n]`
 
 
@@ -510,7 +510,7 @@ logged-in user during testing:
 
     class TestViews(object):
 
-        def setup(self):
+        def setup_method(self):
             ents.User.delete_cascaded()
 
         def test_authenticated_client(self):

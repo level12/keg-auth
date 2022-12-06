@@ -1,5 +1,3 @@
-# Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
-from __future__ import unicode_literals
 import base64
 import hashlib
 import string
@@ -20,7 +18,7 @@ import mock
 
 
 class TestUserTokenMixin(object):
-    def setup(self):
+    def setup_method(self):
         ents.UserWithToken.delete_cascaded()
 
     @with_crypto_context(ents.UserWithToken.token)
@@ -99,7 +97,7 @@ class TestUserTokenMixin(object):
 
 
 class TestUser(object):
-    def setup(self):
+    def setup_method(self):
         ents.User.delete_cascaded()
         ents.Permission.delete_cascaded()
 
@@ -402,7 +400,7 @@ class TestUser(object):
 
 
 class TestUserNoEmail(object):
-    def setup(self):
+    def setup_method(self):
         ents.UserNoEmail.delete_cascaded()
 
     @pytest.mark.parametrize('is_enabled, disabled_utc, is_active', [
@@ -435,7 +433,7 @@ class TestUserNoEmail(object):
 
 
 class TestPermission(object):
-    def setup(self):
+    def setup_method(self):
         ents.Permission.delete_cascaded()
 
     def test_token_unique(self):
@@ -449,7 +447,7 @@ class TestPermission(object):
 
 
 class TestBundle(object):
-    def setup(self):
+    def setup_method(self):
         ents.Bundle.delete_cascaded()
 
     def test_name_unique(self):
@@ -552,7 +550,7 @@ class TestBundle(object):
 
 
 class TestGroup(object):
-    def setup(self):
+    def setup_method(self):
         ents.Group.delete_cascaded()
 
     def test_name_unique(self):
@@ -742,7 +740,7 @@ class TestEntityRegistry(object):
 
 
 class TestPermissionsConditions:
-    def setup(self):
+    def setup_method(self):
         ents.Permission.delete_cascaded()
         ents.User.delete_cascaded()
 

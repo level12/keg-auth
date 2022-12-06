@@ -9,7 +9,7 @@ from keg_auth_ta.model import entities as ents
 
 class TestCLI(CLIBase):
 
-    def setup(self):
+    def setup_method(self):
         ents.UserNoEmail.delete_cascaded()
         ents.User.delete_cascaded()
         ents.Attempt.delete_cascaded()

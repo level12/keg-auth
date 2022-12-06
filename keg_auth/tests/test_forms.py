@@ -1,6 +1,3 @@
-# Using unicode_literals instead of adding 'u' prefix to all stings that go to SA.
-from __future__ import unicode_literals
-
 from blazeutils.strings import randchars
 import pytest
 from flask import current_app
@@ -179,7 +176,7 @@ class TestUser(FormBase):
         cls.groups = [ents.Group.testing_create() for _ in range(3)]
         cls.bundles = [ents.Bundle.testing_create() for _ in range(3)]
 
-    def setup(self):
+    def setup_method(self):
         ents.User.delete_cascaded()
 
     def ok_data(self, **kwargs):

@@ -127,13 +127,6 @@ class AuthManager(object):
         # OAuth profiles
         app.config.setdefault('KEGAUTH_OAUTH_PROFILES', [])
 
-        # Set defaults for OIDC URI locations
-        app.config.setdefault('OIDC_AUTH_URI', '/oauth2/v1/authorize')
-        app.config.setdefault('OIDC_TOKEN_URI', '/oauth2/v1/token')
-        app.config.setdefault('OIDC_ISSUER', '/oauth2')
-        app.config.setdefault('OIDC_USERINFO_URI', '/oauth2/userinfo')
-        app.config.setdefault('KEGAUTH_OIDC_LOGOUT_REDIRECT', None)
-
         # Attempt lockout parameters.
         # - Enabled: default True, turns on attempt limits and requires the attempt entity.
         # - Limit: maximum number of attempts within the timespan.

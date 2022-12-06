@@ -41,7 +41,7 @@ class TestViews(object):
         cls.perm2 = ents.Permission.testing_create(token='permission2')
         cls.perm_auth = ents.Permission.testing_create(token='auth-manage')
 
-    def setup(self):
+    def setup_method(self):
         ents.User.delete_cascaded()
 
     def test_class_decorator_throws_exception(self):
@@ -1397,7 +1397,7 @@ class TestOAuthLogin:
 
 
 class TestOAuthAuthorize:
-    def setup(self):
+    def setup_method(self):
         ents.User.delete_cascaded()
 
     def test_profile_not_found(self, oauth_client):
@@ -1438,111 +1438,3 @@ class TestOAuthAuthorize:
             m_auth.return_value = {'userinfo': {'email': auth_user.email}}
             resp = client.get('/oauth-authorize/google')
             assert 'has been disabled' in resp
-
-
-@pytest.fixture
-def oidc_client():
-    client = AuthTestApp(flask.current_app)
-
-    with mock.patch.dict(
-        flask.current_app.config,
-        {
-            'OIDC_CLIENT_SECRETS': 'notreallyneeded',
-            'OIDC_COOKIE_SECURE': False,
-            'OIDC_CALLBACK_ROUTE': '/oidc/callback',
-            'OIDC_SCOPES': ('openid', 'email', 'profile'),
-            'OIDC_REDIRECT_BASE': 'http://localhost:5000',
-            'OIDC_LOGOUT': '/oauth2/v1/logout',
-            'OIDC_PROVIDER_URL': 'https://the.provider',
-            'OIDC_CLIENT_ID': 'theproviderclientid',
-            'OIDC_CLIENT_SECRET': 'supersecretrandomgeneratedstring',
-        }
-    ):
-        from keg_auth.libs.authenticators import OidcAuthenticator
-
-        # clean up app so OIDC can set up again
-        flask.current_app._got_first_request = False
-        flask.current_app.view_functions.pop('_oidc_callback', None)
-
-        # set up OIDC handler and attach it to the app
-        authenticator = OidcAuthenticator(flask.current_app)
-
-        with mock.patch.object(
-            flask.current_app.auth_manager,
-            'login_authenticator',
-            authenticator
-        ):
-            yield client
-
-
-@pytest.fixture
-def oidc_auth_client(oidc_client, auth_user):
-    username = auth_user.username
-
-    def _token_setter():
-        flask.g.oidc_id_token = 'foobar'
-
-    def _field_getter(fieldname):
-        return username
-
-    with mock.patch.dict(
-        flask.current_app.auth_manager.oidc.__dict__,
-        {
-            'authenticate_or_redirect': _token_setter,
-            'user_getfield': _field_getter,
-        },
-    ):
-        yield oidc_client
-
-
-@pytest.mark.skip('flask-oidc is broken against latest itsdangerous')
-class TestOidcLogin:
-    def test_authenticated(self, oidc_auth_client):
-        resp = oidc_auth_client.get('/login', status=302)
-        assert resp.location == '/'
-
-    def test_inactive(self, oidc_auth_client, auth_user):
-        ents.User.edit(auth_user.id, is_enabled=False)
-        resp = oidc_auth_client.get('/login', status=200)
-        assert 'has been disabled' in resp
-
-    def test_not_exists(self, oidc_auth_client):
-        ents.User.delete_cascaded()
-        resp = oidc_auth_client.get('/login', status=200)
-        assert 'No user account matches' in resp
-
-    def test_unauthenticated(self, oidc_client):
-        resp = oidc_client.get('/login', status=302)
-        assert 'oauth2/v1/authorize?' in resp.location
-
-
-@pytest.mark.skip('flask-oidc is broken against latest itsdangerous')
-class TestOidcLogout:
-    def test_unauthenticated(self, oidc_client):
-        resp = oidc_client.get('/logout', status=302)
-        assert resp.location == '/login'
-
-    def test_bad_token(self, oidc_auth_client):
-        resp = oidc_auth_client.get('/logout', status=302)
-        assert resp.location == '/login?next=%2Flogout'
-
-    def test_success(self, oidc_auth_client, auth_user):
-        with mock.patch.object(
-            flask.current_app.auth_manager.oidc,
-            'credentials_store',
-            {auth_user.username: 'bar'},
-        ), mock.patch(
-            'oauth2client.client.OAuth2Credentials.from_json',
-            lambda _: BlankObject(token_response={'id_token': 'foo'})
-        ):
-            resp = oidc_auth_client.get('/logout', status=302)
-            assert '/oauth2/v1/logout?id_token_hint=foo&post_logout_redirect_uri' \
-                in resp.location
-
-    def test_success_redirect(self, oidc_auth_client, auth_user):
-        with mock.patch.dict(
-            flask.current_app.config,
-            {'KEGAUTH_OIDC_LOGOUT_REDIRECT': 'http://foo'}
-        ):
-            resp = oidc_auth_client.get('/logout', status=302)
-            assert '/foo' in resp.location
