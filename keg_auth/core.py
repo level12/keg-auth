@@ -5,7 +5,7 @@ import jinja2
 import sqlalchemy as sa
 from blazeutils import tolist
 from keg.db import db
-from keg.signals import db_init_post
+from keg.signals import db_init_post, init_complete
 from webgrid.renderers import render_html_attributes
 
 import keg_auth.cli
@@ -91,6 +91,8 @@ class AuthManager(object):
         self.init_jinja(app)
         self.init_loaders(app)
         self.init_permissions(app)
+
+        self.fix_testing_teardown(app)
 
     def init_config(self, app):
         """Provide app config defaults for crypto, mail, logins, etc."""
@@ -389,6 +391,21 @@ class AuthManager(object):
         # ensure the user object has a fresh token
         user.token_generate()
         self.mail_manager.send_new_user(user)
+
+    def fix_testing_teardown(self, app):
+        """ Needed until https://github.com/level12/keg/issues/90 is fixed & released. """
+        if not app.config.get('TESTING', False):
+            return
+
+        version = tuple(map(lambda x: int(x), flask_login.__version__.split('.')))
+
+        if version < (0, 6, 2):
+            return
+
+        @app.teardown_request
+        def cleanup_user_cache(error):
+            if '_login_user' in flask.g:
+                del flask.g._login_user
 
 
 # ensure that any manager-attached menus are reset for auth requirements on login/logout

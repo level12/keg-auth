@@ -1,6 +1,5 @@
 from unittest import mock
 
-from blazeutils.datastructures import BlankObject
 import flask
 import freezegun
 import arrow
