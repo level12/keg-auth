@@ -16,7 +16,7 @@ jobs:
 
             - run:
                 name: install tox
-                command: pip install tox
+                command: pip install "tox<4.0.0"
 
             - run:
                 name: version checks
