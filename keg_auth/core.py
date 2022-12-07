@@ -5,7 +5,7 @@ import jinja2
 import sqlalchemy as sa
 from blazeutils import tolist
 from keg.db import db
-from keg.signals import db_init_post, init_complete
+from keg.signals import db_init_post
 from webgrid.renderers import render_html_attributes
 
 import keg_auth.cli

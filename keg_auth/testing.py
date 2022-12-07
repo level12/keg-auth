@@ -144,7 +144,7 @@ class AuthAttemptTests(object):
             assert_attempt_count(1, 1)
             assert_attempt_count(0, 0, is_during_lockout=True)
             for i in range(0, limit - 2):
-                attempt_time = first_attempt_time + timedelta(seconds=i+1)
+                attempt_time = first_attempt_time + timedelta(seconds=i + 1)
                 do_test(attempt_time, invalid_flashes)
                 assert_attempt_count(i + 2, i + 2)
                 assert_attempt_count(0, 0, is_during_lockout=True)
@@ -301,7 +301,7 @@ class AuthAttemptTests(object):
 
             for i in range(0, limit):
                 email = randchars() + '@foo.com'
-                attempt_time = first_attempt_time + timedelta(seconds=i+1)
+                attempt_time = first_attempt_time + timedelta(seconds=i + 1)
                 do_test(email, attempt_time, invalid_flashes(email))
 
             assert_attempt_count(limit, limit)
@@ -380,7 +380,7 @@ class AuthAttemptTests(object):
             assert_attempt_count(1, 1)
             assert_attempt_count(0, 0, is_during_lockout=True)
             for i in range(0, limit - 2):
-                attempt_time = first_attempt_time + timedelta(seconds=i+1)
+                attempt_time = first_attempt_time + timedelta(seconds=i + 1)
                 do_test(attempt_time, invalid_flashes)
                 assert_attempt_count(i + 2, i + 2)
                 assert_attempt_count(0, 0, is_during_lockout=True)

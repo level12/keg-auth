@@ -387,7 +387,8 @@ class TestUser(object):
         assert user.disabled_utc is None
 
     def test_re_enabling_user_does_not_clear_disabled_utc_if_changed(self):
-        user = ents.User.testing_create(disabled_utc=arrow.utcnow().shift(days=-1), is_enabled=False)
+        user = ents.User.testing_create(
+            disabled_utc=arrow.utcnow().shift(days=-1), is_enabled=False)
         ents.User.edit(user.id, is_enabled=True, disabled_utc=arrow.utcnow())
         db.session.expire(user)
         assert user.disabled_utc

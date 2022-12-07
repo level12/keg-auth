@@ -1,4 +1,3 @@
-import warnings
 from datetime import timedelta
 from urllib.parse import urljoin, urlparse
 
