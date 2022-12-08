@@ -288,6 +288,17 @@ class TestUser(FormBase):
 
             self.assert_valid(form_cls=form_cls, obj=usr, username='foobar')
 
+    def test_fields_excluded(self):
+        form_cls = forms.user_form(
+            {'KEGAUTH_EMAIL_OPS_ENABLED': True},
+            allow_superuser=False,
+            endpoint='auth.user:edit',
+            # exclude the default fields, to make sure we don't get field order errors
+            fields=[],
+        )
+        form = form_cls()
+        [field for field in form]
+
 
 @mock.patch.dict(current_app.config, WTF_CSRF_ENABLED=False)
 class TestGroup(FormBase):

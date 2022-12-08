@@ -193,8 +193,9 @@ def user_form(config=None, allow_superuser=False, endpoint='',
         return date
 
     class User(PermissionsMixin, BundlesMixin, GroupsMixin, ModelForm):
-        disabled_utc = DateField('Disable Date', [validators.Optional()],
-                                 filters=[filter_disabled_utc], render_kw={'type': 'date'})
+        if 'disabled_utc' in _fields:
+            disabled_utc = DateField('Disable Date', [validators.Optional()],
+                                     filters=[filter_disabled_utc], render_kw={'type': 'date'})
 
         class Meta:
             model = user_cls
