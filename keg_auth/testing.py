@@ -13,6 +13,7 @@ from blazeutils.containers import LazyDict
 from keg import current_app
 
 from keg_auth.libs.authenticators import AttemptLimitMixin
+from keg_auth.model.types import AttemptType
 
 has_attempt_skip_reason = 'no attempt model registered in entity registry'
 
@@ -598,6 +599,45 @@ class AuthAttemptTests(object):
         self.do_login(self.client, user.email, 'pass', 302)
 
         assert self.attempt_ent.query.one().source_ip == m_get_remote_addr.return_value
+
+    def test_csrf_failure_logged(self):
+        if not has_attempt_model():
+            pytest.skip(has_attempt_skip_reason)
+        resp = self.client.get(self.login_url)
+        resp.form['login_id'] = 'foo@bar.baz'
+        resp.form['password'] = 'notmypassword'
+        resp.form['csrf_token'] = 'foo'
+        resp.form.submit(status=400)
+
+        result = self.attempt_ent.query.one()
+        assert result.attempt_type == AttemptType.login
+        assert not result.success
+        assert result.user_input == 'foo@bar.baz'
+
+    def test_password_form_validation_failure_logged(self):
+        if not has_attempt_model():
+            pytest.skip(has_attempt_skip_reason)
+        resp = self.client.get(self.login_url)
+        resp.form['login_id'] = 'myinputisnotanemail'
+        resp.form['password'] = 'notmypassword'
+        resp.form.submit(status=200)
+
+        result = self.attempt_ent.query.one()
+        assert result.attempt_type == AttemptType.login
+        assert not result.success
+        assert result.user_input == 'myinputisnotanemail'
+
+    def test_forgot_form_validation_failure_logged(self):
+        if not has_attempt_model():
+            pytest.skip(has_attempt_skip_reason)
+        resp = self.client.get(self.forgot_password_url)
+        resp.form['email'] = 'myinputisnotanemail'
+        resp.form.submit(status=200)
+
+        result = self.attempt_ent.query.one()
+        assert result.attempt_type == AttemptType.forgot
+        assert not result.success
+        assert result.user_input == 'myinputisnotanemail'
 
     def test_get_request_remote_addr(self):
         if not has_attempt_model():

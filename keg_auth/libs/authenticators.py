@@ -19,6 +19,11 @@ from keg_auth.model import get_username_key, get_username
 from keg_auth.model.entity_registry import RegistryError
 
 try:
+    import flask_wtf
+except ImportError:
+    pass  # pragma: no cover
+
+try:
     import flask_jwt_extended
 except ImportError:
     pass  # pragma: no cover
@@ -41,6 +46,10 @@ class UserInactive(Exception):
 class UserInvalidAuth(Exception):
     def __init__(self, user):
         self.user = user
+
+
+class AttemptBlocked(Exception):
+    pass
 
 
 class RequestLoader(object):
@@ -99,6 +108,7 @@ class ViewResponder(object):
         `template_name` is passed to `flask.render_template` by default
     """
     template_name = None
+    _csrf_custom_handling = False
 
     def __init__(self, parent):
         self.template_args = {}
@@ -110,7 +120,40 @@ class ViewResponder(object):
     def render(self):
         return flask.render_template(self.template_name, **self.template_args)
 
+    def handle_csrf(self):
+        """ For some views that are rate-limited, we want to log all attempts, including
+        those that would fail CSRF validation. Because of this, we need to circumvent
+        flask-csrf's default before-request hook. The auth manager will work to exempt
+        any of our auth endpoints whose class is marked with _csrf_custom_handling.
+
+        If CSRF fails, ensure the attempt is logged, and then raise the error.
+
+        If CSRF succeeds, the ensuing view responder methods should do any appropriate
+        logging.
+        """
+        app = flask.current_app
+
+        if (
+            'csrf' not in app.extensions
+            or not app.config['WTF_CSRF_ENABLED']
+            or not app.config['WTF_CSRF_CHECK_DEFAULT']
+            or flask.request.method not in app.config['WTF_CSRF_METHODS']
+        ):
+            return
+
+        try:
+            app.extensions['csrf'].protect()
+        except flask_wtf.csrf.CSRFError:
+            self.on_csrf_error()
+            raise
+
+    def on_csrf_error(self):
+        pass
+
     def __call__(self, *args, **kwargs):
+        if self._csrf_custom_handling:
+            self.handle_csrf()
+
         method_name = flask.request.method.lower()
         method_obj = getattr(self, method_name, None)
         if not method_obj:
@@ -251,6 +294,25 @@ class AttemptLimitMixin(object):
         except RegistryError:
             raise Exception('Rate limiting is enabled, but the attempt entity is not registered')
         return True
+
+    def check_blocking(self, user_input, success=False):
+        """Generic blocking method that will create an attempt log, and notify the calling
+        method (via exception) if the attempt is blocked.
+
+        Returns the attempt log if not blocked. If ``success`` is left False (default), The
+        calling method will be responsible to set the attempt log's success flag as needed.
+        """
+        attempt_log = None
+        if self.should_limit_attempts():
+            if self.is_attempt_blocked(user_input):
+                # If we are rate-limiting this attempt, we don't want to proceed with validation.
+                # Validating may still allow brute forcing by measuring response time.
+                attempt_log = self.log_attempt(user_input, success=False, is_during_lockout=True)
+                self.on_attempt_blocked()
+                raise AttemptBlocked
+            else:
+                attempt_log = self.log_attempt(user_input, success=success)
+        return attempt_log
 
     @property
     def should_filter_ip(self):
@@ -424,13 +486,12 @@ class ResetPasswordViewResponder(AttemptLimitMixin, PasswordSetterResponderBase)
     on_success_endpoint = 'after-reset'
 
     def on_form_valid(self, form):
-        if self.should_limit_attempts():
-            if self.is_attempt_blocked(get_username(self.user)):
-                self.log_attempt(get_username(self.user), success=False, is_during_lockout=True)
-                self.on_attempt_blocked()
-                return
-
-            self.log_attempt(get_username(self.user), success=True)
+        try:
+            self.check_blocking(get_username(self.user), success=True)
+        except AttemptBlocked:
+            # If we are rate-limiting this attempt, we don't want to proceed with validation.
+            # Validating may still allow brute forcing by measuring response time.
+            return
 
         new_password = form.password.data
         self.user.change_password(self.token, new_password)
@@ -479,25 +540,39 @@ class PasswordFormViewResponder(AttemptLimitMixin, LoginResponderMixin,
     template_name = 'keg_auth/login.html'
     page_title = _('Log In')
     flash_invalid_password = _('Invalid password.'), 'error'
+    _csrf_custom_handling = True
 
     @property
     def form_cls(self):
         return forms.login_form()
 
+    def on_form_error(self, form):
+        super().on_form_error(form)
+        username = form.login_id.data
+        try:
+            # ensure we log this even though the form didn't validate
+            self.check_blocking(username)
+        except AttemptBlocked:
+            pass
+
+    def on_csrf_error(self):
+        username = flask.request.form.get('login_id', '')
+        try:
+            # ensure we log this even though the form didn't validate
+            self.check_blocking(username)
+        except AttemptBlocked:
+            pass
+
     def on_form_valid(self, form):
         username = form.login_id.data
-        attempt = None
-        if self.should_limit_attempts():
-            if self.is_attempt_blocked(username):
-                # If we are rate-limiting this attempt, we don't want to proceed with validation.
-                # Validating may still allow brute forcing by measuring response time. Skipping it
-                # may help mitigate DoS attacks on the login page as password hashing is typically
-                # an expensive operation
-                attempt = self.log_attempt(username, success=False, is_during_lockout=True)
-                self.on_attempt_blocked()
-                return
-            else:
-                attempt = self.log_attempt(username, success=False)
+        try:
+            attempt = self.check_blocking(username)
+        except AttemptBlocked:
+            # If we are rate-limiting this attempt, we don't want to proceed with validation.
+            # Validating may still allow brute forcing by measuring response time. Skipping it
+            # may help mitigate DoS attacks on the login page as password hashing is typically
+            # an expensive operation
+            return
 
         try:
             # We want to know if the login attempt was successful so we'll try
@@ -636,6 +711,7 @@ class ForgotPasswordViewResponder(AttemptLimitMixin, UserResponderMixin, FormRes
     page_title = _('Initiate Password Reset')
     template_name = 'keg_auth/forgot-password.html'
     flash_success = _('Please check your email for the link to change your password.'), 'success'
+    _csrf_custom_handling = True
 
     def __call__(self, *args, **kwargs):
         if not flask.current_app.auth_manager.mail_manager:
@@ -643,17 +719,28 @@ class ForgotPasswordViewResponder(AttemptLimitMixin, UserResponderMixin, FormRes
 
         return super(ForgotPasswordViewResponder, self).__call__(*args, **kwargs)
 
+    def on_csrf_error(self):
+        try:
+            # ensure we log this even though the form didn't validate
+            self.check_blocking(flask.request.form.get('email', ''))
+        except AttemptBlocked:
+            pass
+
+    def on_form_error(self, form):
+        super().on_form_error(form)
+        try:
+            # ensure we log this even though the form didn't validate
+            self.check_blocking(form.email.data)
+        except AttemptBlocked:
+            pass
+
     def on_form_valid(self, form):
-        attempt = None
-        if self.should_limit_attempts():
-            if self.is_attempt_blocked(form.email.data):
-                # If we are rate-limiting this attempt, we don't want to proceed with validation.
-                # Validating may still allow brute forcing by measuring response time.
-                attempt = self.log_attempt(form.email.data, success=False, is_during_lockout=True)
-                self.on_attempt_blocked()
-                return
-            else:
-                attempt = self.log_attempt(form.email.data, success=False)
+        try:
+            attempt = self.check_blocking(form.email.data)
+        except AttemptBlocked:
+            # If we are rate-limiting this attempt, we don't want to proceed with validation.
+            # Validating may still allow brute forcing by measuring response time.
+            return
 
         try:
             user = self.parent.verify_user(login_id=form.email.data, allow_unverified=True)

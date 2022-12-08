@@ -5,7 +5,7 @@ import jinja2
 import sqlalchemy as sa
 from blazeutils import tolist
 from keg.db import db
-from keg.signals import db_init_post
+from keg.signals import db_init_post, init_complete
 from webgrid.renderers import render_html_attributes
 
 import keg_auth.cli
@@ -81,6 +81,7 @@ class AuthManager(object):
         self.permissions = tolist(permissions or [])
         self._model_initialized = False
         self._loaders_initialized = False
+        self._signal_handlers = []
 
     def init_app(self, app):
         """Inits KegAuth as a flask extension on the given app."""
@@ -91,6 +92,7 @@ class AuthManager(object):
         self.init_jinja(app)
         self.init_loaders(app)
         self.init_permissions(app)
+        self.init_custom_csrf(app)
 
         self.fix_testing_teardown(app)
 
@@ -286,6 +288,32 @@ class AuthManager(object):
         except sa.exc.ProgrammingError as exc:
             if 'permissions' not in str(exc):
                 raise
+
+    def init_custom_csrf(self, app):
+        @init_complete.connect
+        def handle_custom_csrf(app):
+            if 'csrf' not in app.extensions:
+                return
+            for endpoint_key in self.endpoints.keys():
+                endpoint = self.endpoint(endpoint_key)
+                view_obj = app.view_functions.get(endpoint)
+                if (
+                    not hasattr(view_obj, 'view_class')
+                    or not hasattr(view_obj.view_class, 'auth_manager_key')
+                    or not hasattr(view_obj.view_class, 'responder_key')
+                ):
+                    # only support auth-responded class views for this right now
+                    continue
+                dest = f"{view_obj.__module__}.{view_obj.__name__}"
+                authenticator_cls = getattr(self, f'{view_obj.view_class.auth_manager_key}_cls')
+                responder_cls = authenticator_cls.responder_cls.get(
+                    view_obj.view_class.responder_key
+                )
+                if getattr(responder_cls, '_csrf_custom_handling', False):
+                    app.extensions['csrf'].exempt(dest)
+
+        # persist a reference to this method for the signal to call
+        self._signal_handlers.append(handle_custom_csrf)
 
     def validate_permission_set(self, permissions):
         defined_tokens = set(
