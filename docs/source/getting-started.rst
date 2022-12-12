@@ -43,9 +43,13 @@ Configuration
        to an OPTIONS request. Then, auth will apply as expected on the ensuing GET/POST/PUT/etc.
 
 - ``KEGAUTH_LOGOUT_CLEAR_SESSION``: Flag to clear flask session on logout. Default True
-
+- ``KEGAUTH_CRUD_INCLUDE_TITLE``: Control whether form/grid CRUD templates render an h1 tag
+- ``KEGAUTH_TEMPLATE_TITLE_VAR``: Template var to set for use in a base template's head -> title tag
+- ``KEGAUTH_REDIRECT_LOGIN_TARGET``: If using the redirect authenticator (like for OAuth), set this to the target
+- ``KEGAUTH_OAUTH_PROFILES``: Set of OAuth config, see section below
 -  Email settings
 
+    -  ``KEGAUTH_EMAIL_OPS_ENABLED``: Defaults to True if mail manager is given, controls all email ops
     -  ``KEGAUTH_EMAIL_SITE_NAME = 'Keg Application'``: Used in email body if mail is enabled
     -  ``KEGAUTH_EMAIL_SITE_ABBR = 'Keg App'``: Used in email subject if mail is enabled
 
@@ -376,7 +380,8 @@ Templates
 
 Templates are provided for the auth views, as well as base crud templates.
 
-Base templates are referenced from settings. The first of these defined is used:
+Base templates use keg-elements' form-view and grid-view parent templates. The app template to
+extend is  referenced from settings. The first of these defined is used:
 
     -  `BASE_TEMPLATE`
     -  `KEG_BASE_TEMPLATE`
@@ -384,11 +389,6 @@ Base templates are referenced from settings. The first of these defined is used:
 Keg-Auth will assume that a variable is used in the master template to determine the contents
 of a title block. That variable name defaults to ``page_title``, but may be customized
 via ``KEGAUTH_TEMPLATE_TITLE_VAR``.
-
-Form selects are rendered with select2 in templates extending ``keg_auth/form-base.html``.
-``keg_auth/select2-scripts.html`` and ``keg_auth/select2-styles.html`` can be included
-in templates to render select2s without extending form-base. Apps can opt out of select2
-rendering with ``KEG_USE_SELECT2`` config.
 
 
 .. _gs-views:

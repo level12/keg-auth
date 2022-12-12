@@ -6,6 +6,7 @@ Welcome to Keg-Auth's documentation!
    :caption: Documentation:
 
    getting-started.rst
+   upgrade.rst
    core.rst
    model/index.rst
    testing.rst
