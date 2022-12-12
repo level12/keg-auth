@@ -69,9 +69,9 @@ class TestAuthManager(object):
     def test_permissions_synced_to_db(self):
         # create a permission that will get destroyed by sync, and ensure no integrity errors
         permission_to_delete = ents.Permission.add(token='snoopy')
-        ents.Group.testing_create(permissions=[permission_to_delete])
-        ents.Bundle.testing_create(permissions=[permission_to_delete])
-        ents.User.testing_create(permissions=[permission_to_delete])
+        ents.Group.fake(permissions=[permission_to_delete])
+        ents.Bundle.fake(permissions=[permission_to_delete])
+        ents.User.fake(permissions=[permission_to_delete])
 
         # token should not be duplicated during sync, but description should be set
         ents.Permission.add(token='bar')
@@ -109,7 +109,7 @@ class TestAuthManager(object):
         assert isinstance(manager.get_request_loader('jwt'), JwtRequestLoader)
 
     def test_resend_verification(self):
-        user = ents.User.testing_create(
+        user = ents.User.fake(
             email='foo1@bar.com'
         )
         with mail_ext.record_messages() as outbox:

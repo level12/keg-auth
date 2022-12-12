@@ -5,6 +5,7 @@ from keg import config
 class DefaultProfile(object):
     SECRET_KEY = randchars()
 
+    KEG_BASE_TEMPLATE = 'base-page.html'
     KEGAUTH_TEMPLATE_TITLE_VAR = 'title'
 
     # These three just get rid of warnings on the console.

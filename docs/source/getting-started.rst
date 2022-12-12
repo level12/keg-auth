@@ -311,7 +311,7 @@ by an instance-level ``check_auth`` method, that will not be used by the navigat
    login/logout
 -  ``keg_auth/navigation.html`` template has a helper ``render_menu`` to render a given menu as a ul
 
-    -  ``{% import "keg_auth/navigation.html" as navigation %}``
+    -  ``{% import "keg-auth/navigation.html" as navigation %}``
     -  ``render_menu(auth_manager.menus['main'])``
     -  ``render_menu(auth_manager.menus['main'], expand_to_current=True)``
 
@@ -379,7 +379,7 @@ Templates are provided for the auth views, as well as base crud templates.
 Base templates are referenced from settings. The first of these defined is used:
 
     -  `BASE_TEMPLATE`
-    -  `KEGAUTH_BASE_TEMPLATE`
+    -  `KEG_BASE_TEMPLATE`
 
 Keg-Auth will assume that a variable is used in the master template to determine the contents
 of a title block. That variable name defaults to ``page_title``, but may be customized
@@ -388,7 +388,7 @@ via ``KEGAUTH_TEMPLATE_TITLE_VAR``.
 Form selects are rendered with select2 in templates extending ``keg_auth/form-base.html``.
 ``keg_auth/select2-scripts.html`` and ``keg_auth/select2-styles.html`` can be included
 in templates to render select2s without extending form-base. Apps can opt out of select2
-rendering with ``KEGAUTH_USE_SELECT2`` config.
+rendering with ``KEG_USE_SELECT2`` config.
 
 
 .. _gs-views:
@@ -526,7 +526,7 @@ logged-in user during testing:
                 Demonstrate logging in at the client level.  The login will apply to all requests made
                 by this client.
             """
-            user = ents.User.testing_create()
+            user = ents.User.fake()
             client = AuthTestApp(flask.current_app, user=user)
             resp = client.get('/secret2', status=200)
             assert resp.text == 'secret2'
@@ -535,7 +535,7 @@ logged-in user during testing:
             """
                 Demonstrate logging in at the request level.  The login will only apply to one request.
             """
-            user = ents.User.testing_create(permissions=('permission1', 'permission2'))
+            user = ents.User.fake(permissions=('permission1', 'permission2'))
             client = AuthTestApp(flask.current_app)
 
             resp = client.get('/secret-page', status=200, user=user)

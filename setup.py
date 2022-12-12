@@ -36,12 +36,12 @@ setup(
         'markdown-it-py',
 
         'Flask-Login>0.4.1',
-        'Keg>=0.8.6',
-        'KegElements>=0.6.0',
+        'Keg>=0.10.2',
+        'KegElements>=0.8.0',
         'inflect',
         'passlib',
         'shortuuid',
-        'webgrid>=0.4.0',
+        'webgrid>=0.4.13',
     ],
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,

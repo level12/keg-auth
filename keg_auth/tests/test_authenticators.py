@@ -19,34 +19,34 @@ class TestKegAuthenticator:
             authenticator.verify_user(login_id='nobodybythisnamehere')
 
     def test_user_not_active(self):
-        user = User.testing_create(is_enabled=False)
+        user = User.fake(is_enabled=False)
         with pytest.raises(auth.UserInactive) as e_info:
             authenticator = auth.KegAuthenticator(app=flask.current_app)
             authenticator.verify_user(login_id=user.email)
         assert e_info.value.user is user
 
     def test_user_bad_password(self):
-        user = User.testing_create()
+        user = User.fake()
         with pytest.raises(auth.UserInvalidAuth) as e_info:
             authenticator = auth.KegAuthenticator(app=flask.current_app)
             authenticator.verify_user(login_id=user.email, password='cannotpossiblybethis')
         assert e_info.value.user is user
 
     def test_user_verified(self):
-        user = User.testing_create()
+        user = User.fake()
         authenticator = auth.KegAuthenticator(app=flask.current_app)
         found_user = authenticator.verify_user(login_id=user.email, password=user._plaintext_pass)
         assert user is found_user
 
     def test_user_excluded(self):
-        user = User.testing_create()
+        user = User.fake()
         authenticator = auth.KegAuthenticator(app=flask.current_app)
         authenticator.domain_exclusions = [get_domain_from_email(user.email)]
         with pytest.raises(auth.UserNotFound):
             authenticator.verify_user(login_id=user.email, password=user._plaintext_pass)
 
     def test_unverified_user(self):
-        user = User.testing_create()
+        user = User.fake()
         user.is_verified = False
         authenticator = auth.KegAuthenticator(app=flask.current_app)
         with pytest.raises(auth.UserInactive) as e_info:
@@ -61,7 +61,7 @@ class TestKegAuthenticator:
         from keg import db
         from sqlalchemy import text
 
-        user = User.testing_create(email='abc@foo.bar')
+        user = User.fake(email='abc@foo.bar')
 
         # Downstream in the process of creating a user, the email will be set to all lowercase
         # So we need to manually set it to capital letters to test the fix
@@ -122,7 +122,7 @@ class TestOAuthAuthenticator:
 
     @mock.patch.dict('flask.current_app.config', {'KEGAUTH_OAUTH_PROFILES': [oauth_profile()]})
     def test_user_not_active(self):
-        user = User.testing_create(is_enabled=False, email='usernotfound@mycompany.biz')
+        user = User.fake(is_enabled=False, email='usernotfound@mycompany.biz')
         with pytest.raises(auth.UserInactive) as e_info:
             authenticator = auth.OAuthAuthenticator(app=flask.current_app)
             authenticator.verify_user(profile_name='google', login_id=user.email)
@@ -130,14 +130,14 @@ class TestOAuthAuthenticator:
 
     @mock.patch.dict('flask.current_app.config', {'KEGAUTH_OAUTH_PROFILES': [oauth_profile()]})
     def test_user_verified(self):
-        user = User.testing_create(email='userverified@mycompany.biz')
+        user = User.fake(email='userverified@mycompany.biz')
         authenticator = auth.OAuthAuthenticator(app=flask.current_app)
         found_user = authenticator.verify_user(profile_name='google', login_id=user.email)
         assert user is found_user
 
     @mock.patch.dict('flask.current_app.config', {'KEGAUTH_OAUTH_PROFILES': [oauth_profile()]})
     def test_user_unverified(self):
-        user = User.testing_create(email='userunverified@mycompany.biz')
+        user = User.fake(email='userunverified@mycompany.biz')
         user.is_verified = False
         authenticator = auth.OAuthAuthenticator(app=flask.current_app)
         found_user = authenticator.verify_user(profile_name='google', login_id=user.email)
@@ -146,13 +146,13 @@ class TestOAuthAuthenticator:
 
     @mock.patch.dict('flask.current_app.config', {'KEGAUTH_OAUTH_PROFILES': [oauth_profile()]})
     def test_domain_exclusion(self):
-        user = User.testing_create(email='userverified@someothercompany.co')
+        user = User.fake(email='userverified@someothercompany.co')
         authenticator = auth.OAuthAuthenticator(app=flask.current_app)
         with pytest.raises(auth.UserNotFound):
             authenticator.verify_user(profile_name='google', login_id=user.email)
 
     def test_bad_profile(self):
-        user = User.testing_create()
+        user = User.fake()
         authenticator = auth.OAuthAuthenticator(app=flask.current_app)
         with pytest.raises(Exception, match='.*foo is not configured'):
             authenticator.verify_user(profile_name='foo', login_id=user.email)
@@ -177,7 +177,7 @@ class TestLdapAuthenticator:
     def test_user_not_active(self, mocked_ldap):
         # internal flag should have no effect on LDAP auth
         mocked_ldap.return_value.simple_bind_s.return_value = (ldap.RES_BIND, )
-        user = User.testing_create(is_enabled=False)
+        user = User.fake(is_enabled=False)
         authenticator = auth.LdapAuthenticator(app=flask.current_app)
         assert authenticator.verify_user(login_id=user.email)
 
@@ -185,7 +185,7 @@ class TestLdapAuthenticator:
     def test_no_server_url_set(self, mocked_ldap):
         del flask.current_app.config['KEGAUTH_LDAP_SERVER_URL']
 
-        user = User.testing_create()
+        user = User.fake()
         authenticator = auth.LdapAuthenticator(app=flask.current_app)
         with pytest.raises(Exception) as e_info:
             authenticator.verify_password(user, None)
@@ -195,7 +195,7 @@ class TestLdapAuthenticator:
     def test_no_dn_format_set(self, mocked_ldap):
         del flask.current_app.config['KEGAUTH_LDAP_DN_FORMAT']
 
-        user = User.testing_create()
+        user = User.fake()
         authenticator = auth.LdapAuthenticator(app=flask.current_app)
         with pytest.raises(Exception) as e_info:
             authenticator.verify_password(user, None)
@@ -205,7 +205,7 @@ class TestLdapAuthenticator:
     def test_unsuccessful_authentication(self, mocked_ldap):
         mocked_ldap.return_value.simple_bind_s.side_effect = ldap.INVALID_CREDENTIALS()
 
-        user = User.testing_create()
+        user = User.fake()
         authenticator = auth.LdapAuthenticator(app=flask.current_app)
         success = authenticator.verify_password(user, 'foo')
 
@@ -216,7 +216,7 @@ class TestLdapAuthenticator:
     def test_invalid_dn_syntax(self, mocked_ldap):
         mocked_ldap.return_value.simple_bind_s.side_effect = ldap.INVALID_DN_SYNTAX()
 
-        user = User.testing_create()
+        user = User.fake()
         authenticator = auth.LdapAuthenticator(app=flask.current_app)
         success = authenticator.verify_password(user, 'foo')
 
@@ -227,7 +227,7 @@ class TestLdapAuthenticator:
     def test_unsuccessful_authentication_wrong_result(self, mocked_ldap):
         mocked_ldap.return_value.simple_bind_s.return_value = (0, )
 
-        user = User.testing_create()
+        user = User.fake()
         authenticator = auth.LdapAuthenticator(app=flask.current_app)
         success = authenticator.verify_password(user, 'foo')
 
@@ -238,7 +238,7 @@ class TestLdapAuthenticator:
     def test_successful_authentication(self, mocked_ldap):
         mocked_ldap.return_value.simple_bind_s.return_value = (ldap.RES_BIND, )
 
-        user = User.testing_create()
+        user = User.fake()
         authenticator = auth.LdapAuthenticator(app=flask.current_app)
         success = authenticator.verify_password(user, 'foo')
 
@@ -254,7 +254,7 @@ class TestLdapAuthenticator:
             (ldap.RES_BIND,)
         )
 
-        user = User.testing_create()
+        user = User.fake()
         authenticator = auth.LdapAuthenticator(app=flask.current_app)
         success = authenticator.verify_password(user, 'foo')
 
@@ -269,7 +269,7 @@ class TestLdapAuthenticator:
     def test_debug_override(self, mocked_ldap):
         flask.current_app.config['KEGAUTH_LDAP_TEST_MODE'] = True
 
-        user = User.testing_create()
+        user = User.fake()
         authenticator = auth.LdapAuthenticator(app=flask.current_app)
         success = authenticator.verify_password(user, 'foo')
 
@@ -279,7 +279,7 @@ class TestLdapAuthenticator:
 
 class TestJwtRequestLoader:
     @pytest.mark.parametrize('is_authenticated', [
-        User.testing_create, lambda: None
+        User.fake, lambda: None
     ])
     @mock.patch('keg_auth.libs.authenticators.flask_jwt_extended.verify_jwt_in_request',
                 autospec=True, spec_set=True)
@@ -326,7 +326,7 @@ class TestJwtRequestLoader:
                 assert jwt_auth.get_authenticated_user() is None
 
     def test_user_not_found(self):
-        user = User.testing_create()
+        user = User.fake()
         jwt_auth = auth.JwtRequestLoader(flask.current_app)
         token = jwt_auth.create_access_token(user)
         User.delete_cascaded()
@@ -339,7 +339,7 @@ class TestJwtRequestLoader:
                 assert jwt_auth.get_authenticated_user() is None
 
     def test_user_not_active(self):
-        user = User.testing_create(is_enabled=False)
+        user = User.fake(is_enabled=False)
         jwt_auth = auth.JwtRequestLoader(flask.current_app)
         token = jwt_auth.create_access_token(user)
         with mock.patch.dict(
@@ -351,7 +351,7 @@ class TestJwtRequestLoader:
                 assert jwt_auth.get_authenticated_user() is None
 
     def test_user_verified(self):
-        user = User.testing_create()
+        user = User.fake()
         jwt_auth = auth.JwtRequestLoader(flask.current_app)
         token = jwt_auth.create_access_token(user)
         with mock.patch.dict(
@@ -363,7 +363,7 @@ class TestJwtRequestLoader:
                 assert jwt_auth.get_authenticated_user() is user
 
     def test_create_access_token(self):
-        user = User.testing_create()
+        user = User.fake()
         jwt_auth = auth.JwtRequestLoader(flask.current_app)
         token = jwt_auth.create_access_token(user)
         assert flask_jwt_extended.decode_token(token)['sub'] == user.session_key
@@ -375,7 +375,7 @@ class TestPasswordPolicy:
         UserNoEmail.delete_cascaded()
 
     def test_check_length(self):
-        user = User.testing_create()
+        user = User.fake()
         with pytest.raises(auth.PasswordPolicyError,
                            match='Password must be at least 8 characters long'):
             auth.PasswordPolicy().check_length('aBcDe1!', user)
@@ -399,7 +399,7 @@ class TestPasswordPolicy:
         '1!' * 4,
     ])
     def test_char_set_validator_failures(self, pw):
-        user = User.testing_create()
+        user = User.fake()
 
         with pytest.raises(
             auth.PasswordPolicyError,
@@ -413,7 +413,7 @@ class TestPasswordPolicy:
         '1' * 8,
     ])
     def test_override_min_char_types_requirement_failures(self, pw):
-        user = User.testing_create()
+        user = User.fake()
 
         class FewerChars(auth.PasswordPolicy):
             required_min_char_types = 2
@@ -433,7 +433,7 @@ class TestPasswordPolicy:
         '\t1!' * 3,
     ])
     def test_override_required_char_types_failures(self, pw):
-        user = User.testing_create()
+        user = User.fake()
 
         class RequireWhitespace(auth.PasswordPolicy):
             required_min_char_types = 4
@@ -449,7 +449,7 @@ class TestPasswordPolicy:
             RequireWhitespace().check_character_set(pw, user)
 
     def test_required_char_types_one_type(self):
-        user = User.testing_create()
+        user = User.fake()
 
         class RequireNumber(auth.PasswordPolicy):
             required_min_char_types = 1
@@ -466,7 +466,7 @@ class TestPasswordPolicy:
         '\t1!a' * 3,
     ])
     def test_override_required_char_types_success(self, pw):
-        user = User.testing_create()
+        user = User.fake()
 
         class RequireWhitespace(auth.PasswordPolicy):
             required_min_char_types = 4
@@ -484,7 +484,7 @@ class TestPasswordPolicy:
         'AAAAAAAA1!',
     ])
     def test_check_char_set_success(self, pw):
-        user = User.testing_create()
+        user = User.fake()
         auth.PasswordPolicy().check_character_set(pw, user)
 
     @pytest.mark.parametrize('pw,email', [
@@ -492,7 +492,7 @@ class TestPasswordPolicy:
         ('BoB123456!', 'bOb@example.com'),
     ])
     def test_check_does_not_contain_username_email_failures(self, pw, email):
-        user = User.testing_create(email=email)
+        user = User.fake(email=email)
         with pytest.raises(auth.PasswordPolicyError, match='Password may not contain username'):
             auth.PasswordPolicy().check_does_not_contain_username(pw, user)
 
@@ -501,7 +501,7 @@ class TestPasswordPolicy:
         ('BoB123456!', 'bOb'),
     ])
     def test_check_does_not_contain_username_no_email_failures(self, pw, username):
-        user = UserNoEmail.testing_create(username=username)
+        user = UserNoEmail.fake(username=username)
         with pytest.raises(auth.PasswordPolicyError, match='Password may not contain username'):
             auth.PasswordPolicy().check_does_not_contain_username(pw, user)
 
@@ -510,7 +510,7 @@ class TestPasswordPolicy:
         ('B0B123456!', 'bOb@example.com'),
     ])
     def test_check_does_not_contain_username_email_success(self, pw, email):
-        user = User.testing_create(email=email)
+        user = User.fake(email=email)
         auth.PasswordPolicy().check_does_not_contain_username(pw, user)
 
     @pytest.mark.parametrize('pw,username', [
@@ -518,5 +518,5 @@ class TestPasswordPolicy:
         ('B0B123456!', 'bOb'),
     ])
     def test_check_does_not_contain_username_no_email_success(self, pw, username):
-        user = UserNoEmail.testing_create(username=username)
+        user = UserNoEmail.fake(username=username)
         auth.PasswordPolicy().check_does_not_contain_username(pw, user)

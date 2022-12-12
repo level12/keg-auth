@@ -426,7 +426,7 @@ class AttemptLimitMixin(object):
 class PasswordSetterResponderBase(FormResponderMixin, ViewResponder):
     """ Base logic for resetting passwords and verifying accounts via token"""
     form_cls = forms.SetPassword
-    template_name = 'keg_auth/set-password.html'
+    template_name = 'keg-auth/set-password.html'
     flash_invalid_token = _(
         'Authentication token was invalid or expired.  Please fill out the'
         ' form below to get a new token.'
@@ -537,7 +537,7 @@ class VerifyAccountViewResponder(PasswordSetterResponderBase):
 class PasswordFormViewResponder(AttemptLimitMixin, LoginResponderMixin,
                                 FormResponderMixin, ViewResponder):
     """ Master responder for username/password-style logins, using a login form"""
-    template_name = 'keg_auth/login.html'
+    template_name = 'keg-auth/login.html'
     page_title = _('Log In')
     flash_invalid_password = _('Invalid password.'), 'error'
     _csrf_custom_handling = True
@@ -672,7 +672,7 @@ class OAuthLoginViewResponder(ViewResponder):
 class OAuthAuthorizeViewResponder(LoginResponderMixin, ViewResponder):
     """ OAuth logins, using a provider via authlib"""
     url = '/oauth-authorize/<name>'
-    template_name = 'keg_auth/flash-messages-only.html'
+    template_name = 'keg-auth/flash-messages-only.html'
 
     def get(self, *args, **kwargs):
         name = kwargs.get('name')
@@ -709,7 +709,7 @@ class ForgotPasswordViewResponder(AttemptLimitMixin, UserResponderMixin, FormRes
     url = '/forgot-password'
     form_cls = forms.ForgotPassword
     page_title = _('Initiate Password Reset')
-    template_name = 'keg_auth/forgot-password.html'
+    template_name = 'keg-auth/forgot-password.html'
     flash_success = _('Please check your email for the link to change your password.'), 'success'
     _csrf_custom_handling = True
 

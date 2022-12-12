@@ -29,7 +29,7 @@ class TestAuthMailManager(object):
         ents.User.delete_cascaded()
 
     def test_reset_password_message(self):
-        user = ents.User.testing_create(email='foo@bar.com')
+        user = ents.User.fake(email='foo@bar.com')
         user.token_generate()
         link_url = flask.current_app.auth_manager.mail_manager.reset_password_url(user)
 
@@ -43,7 +43,7 @@ class TestAuthMailManager(object):
         assert 'href="{}"'.format(link_url) in message.html
 
     def test_send_reset_password(self):
-        user = ents.User.testing_create()
+        user = ents.User.fake()
 
         with mail_ext.record_messages() as outbox:
             flask.current_app.auth_manager.mail_manager.send_reset_password(user)
@@ -52,7 +52,7 @@ class TestAuthMailManager(object):
             assert outbox[0].subject == '[KA Demo] Password Reset Link'
 
     def test_new_user_message(self):
-        user = ents.User.testing_create(email='foo@bar.com')
+        user = ents.User.fake(email='foo@bar.com')
         user.token_generate()
         link_url = flask.current_app.auth_manager.mail_manager.verify_account_url(user)
 
@@ -66,7 +66,7 @@ class TestAuthMailManager(object):
         assert 'href="{}"'.format(link_url) in message.html
 
     def test_send_new_user(self):
-        user = ents.User.testing_create()
+        user = ents.User.fake()
 
         with mail_ext.record_messages() as outbox:
             flask.current_app.auth_manager.mail_manager.send_new_user(user)

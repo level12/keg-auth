@@ -111,7 +111,7 @@ class AuthManager(object):
         site_abbr = app.config.get('SITE_ABBR', site_name)
         app.config.setdefault('KEGAUTH_EMAIL_SITE_ABBR', site_abbr)
 
-        app.config.setdefault('KEGAUTH_BASE_TEMPLATE', 'base-page.html')
+        app.config.setdefault('KEGAUTH_CRUD_INCLUDE_TITLE', True)
         app.config.setdefault('KEGAUTH_TEMPLATE_TITLE_VAR', 'page_title')
         app.config.setdefault('KEGAUTH_TOKEN_EXPIRE_MINS', 60 * 4)
         app.config.setdefault('KEGAUTH_LOGOUT_CLEAR_SESSION', True)
@@ -121,9 +121,6 @@ class AuthManager(object):
         # HTTP methods to ignore during auth checks. This can be useful for excluding
         # methods like OPTIONS during front-end API requests, for CORS compatibility.
         app.config.setdefault('KEGAUTH_HTTP_METHODS_EXCLUDED', [])
-
-        # Use select2 for form selects in templates extending keg_auth/form-base.
-        app.config.setdefault('KEGAUTH_USE_SELECT2', True)
 
         # Set the login target for the redirect authenticator
         app.config.setdefault('KEGAUTH_REDIRECT_LOGIN_TARGET', None)

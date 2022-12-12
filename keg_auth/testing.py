@@ -116,7 +116,7 @@ class AuthAttemptTests(object):
             if create_user:
                 invalid_flashes = self.login_invalid_flashes
                 success_flashes = self.login_success_flashes
-                self.user_ent.testing_create(email=username, password='pass')
+                self.user_ent.fake(email=username, password='pass')
 
             assert self.attempt_ent.query.count() == 0
 
@@ -188,7 +188,7 @@ class AuthAttemptTests(object):
         '''
         if not has_attempt_model():
             pytest.skip(has_attempt_skip_reason)
-        user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
+        user = self.user_ent.fake(email='foo@bar.com', password='pass')
         assert self.attempt_ent.query.count() == 0
 
         def do_test(attempt_count, flashes, password='badpass', submit_status=200):
@@ -209,7 +209,7 @@ class AuthAttemptTests(object):
         '''
         Test that we check for the registered attempt entity when limiting is enabled.
         '''
-        user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
+        user = self.user_ent.fake(email='foo@bar.com', password='pass')
         assert self.attempt_ent.query.count() == 0
 
         with pytest.raises(Exception, match=r'.*attempt entity is not registered.*'):
@@ -232,7 +232,7 @@ class AuthAttemptTests(object):
             'KEGAUTH_LOGIN_ATTEMPT_TIMESPAN': timespan,
             'KEGAUTH_LOGIN_ATTEMPT_LOCKOUT': lockout,
         }):
-            user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
+            user = self.user_ent.fake(email='foo@bar.com', password='pass')
             assert self.attempt_ent.query.count() == 0
 
             # Login and assert matching flashes and status.
@@ -466,7 +466,7 @@ class AuthAttemptTests(object):
                 do_test(attempt_time, self.forgot_invalid_flashes)
 
             # Create a successful forgot to reset the attempt counter.
-            user = self.user_ent.testing_create(email='foo@bar.com')
+            user = self.user_ent.fake(email='foo@bar.com')
             self.do_forgot_test(user.email, forgot_time, self.forgot_success_flashes,
                                 submit_status=302)
             self.user_ent.delete(user.id)
@@ -513,7 +513,7 @@ class AuthAttemptTests(object):
             'KEGAUTH_RESET_ATTEMPT_TIMESPAN': timespan,
             'KEGAUTH_RESET_ATTEMPT_LOCKOUT': lockout,
         }):
-            user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
+            user = self.user_ent.fake(email='foo@bar.com', password='pass')
             assert self.attempt_ent.query.count() == 0
 
             last_attempt_time = arrow.utcnow()
@@ -579,7 +579,7 @@ class AuthAttemptTests(object):
     def test_reset_pw_attempts_not_blocked(self):
         if not has_attempt_model():
             pytest.skip(has_attempt_skip_reason)
-        user = self.user_ent.testing_create()
+        user = self.user_ent.fake()
         assert self.attempt_ent.query.count() == 0
 
         def do_test(reset_time, flashes, submit_status=200):
@@ -595,7 +595,7 @@ class AuthAttemptTests(object):
     def test_logs_attempt_source_ip(self, m_get_remote_addr):
         if not has_attempt_model():
             pytest.skip(has_attempt_skip_reason)
-        user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
+        user = self.user_ent.fake(email='foo@bar.com', password='pass')
         self.do_login(self.client, user.email, 'pass', 302)
 
         assert self.attempt_ent.query.one().source_ip == m_get_remote_addr.return_value
@@ -688,7 +688,7 @@ class AuthTests(AuthAttemptTests):
         assert resp.flashes == [(category, message)]
 
     def test_login_field_success(self):
-        user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
+        user = self.user_ent.fake(email='foo@bar.com', password='pass')
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(self.login_url)
@@ -713,7 +713,7 @@ class AuthTests(AuthAttemptTests):
             )
 
     def test_login_field_success_next_parameter(self):
-        self.user_ent.testing_create(email='foo@bar.com', password='pass')
+        self.user_ent.fake(email='foo@bar.com', password='pass')
 
         next = '/foo'
         client = flask_webtest.TestApp(flask.current_app)
@@ -731,7 +731,7 @@ class AuthTests(AuthAttemptTests):
         assert resp.flashes == [(category, message)]
 
     def test_login_field_success_next_session(self):
-        self.user_ent.testing_create(email='foo@bar.com', password='pass')
+        self.user_ent.fake(email='foo@bar.com', password='pass')
 
         next = '/foo'
         with mock.patch.dict(flask.current_app.config, {'USE_SESSION_FOR_NEXT': True}):
@@ -753,7 +753,7 @@ class AuthTests(AuthAttemptTests):
 
     def test_next_parameter_not_open_redirect(self):
         """ensure following the "next" parameter doesn't allow for an open redirect"""
-        self.user_ent.testing_create(email='foo@bar.com', password='pass')
+        self.user_ent.fake(email='foo@bar.com', password='pass')
 
         # unquoted next parameter
         next = 'http://www.example.com'
@@ -789,7 +789,7 @@ class AuthTests(AuthAttemptTests):
         assert resp.flashes == [(category, message)]
 
     def test_login_invalid_password(self):
-        user = self.user_ent.testing_create(email='foo@bar.com', password='pass')
+        user = self.user_ent.fake(email='foo@bar.com', password='pass')
         if has_attempt_model:
             assert self.attempt_ent.query.count() == 0
 
@@ -829,7 +829,7 @@ class AuthTests(AuthAttemptTests):
         assert resp.flashes == [(category, message.format('foo@bar.com'))]
 
     def test_login_user_unverified(self):
-        self.user_ent.testing_create(email='foo@bar.com', password='pass', is_verified=False)
+        self.user_ent.fake(email='foo@bar.com', password='pass', is_verified=False)
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(self.login_url)
@@ -845,7 +845,7 @@ class AuthTests(AuthAttemptTests):
         assert resp.flashes == [(category, message.format('foo@bar.com'))]
 
     def test_login_user_disabled(self):
-        self.user_ent.testing_create(email='foo@bar.com', password='pass', is_enabled=False)
+        self.user_ent.fake(email='foo@bar.com', password='pass', is_enabled=False)
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(self.login_url)
@@ -861,7 +861,7 @@ class AuthTests(AuthAttemptTests):
         assert resp.flashes == [(category, message.format('foo@bar.com'))]
 
     def test_login_user_disabled_timestamp(self):
-        self.user_ent.testing_create(
+        self.user_ent.fake(
             email='foo@bar.com',
             password='pass',
             disabled_utc=arrow.utcnow().shift(days=-10)
@@ -881,7 +881,7 @@ class AuthTests(AuthAttemptTests):
         assert resp.flashes == [(category, message.format('foo@bar.com'))]
 
     def test_login_protection(self):
-        self.user_ent.testing_create(
+        self.user_ent.fake(
             email='foo@bar.com', password='pass', permissions=self.protected_url_permissions
         )
 
@@ -926,7 +926,7 @@ class AuthTests(AuthAttemptTests):
         assert resp.flashes == [(category, message.format('foo@bar.com'))]
 
     def test_forgot_pw_user_disabled(self):
-        self.user_ent.testing_create(email='foo@bar.com', password='pass', is_enabled=False)
+        self.user_ent.fake(email='foo@bar.com', password='pass', is_enabled=False)
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(self.forgot_password_url)
@@ -941,7 +941,7 @@ class AuthTests(AuthAttemptTests):
         assert resp.flashes == [(category, message.format('foo@bar.com'))]
 
     def test_forgot_pw_success(self):
-        self.user_ent.testing_create(email='foo@bar.com')
+        self.user_ent.fake(email='foo@bar.com')
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get(self.forgot_password_url)
@@ -958,7 +958,7 @@ class AuthTests(AuthAttemptTests):
         assert resp.headers['Location'] == self.login_url
 
     def test_reset_pw_success(self):
-        user = self.user_ent.testing_create()
+        user = self.user_ent.fake()
         if has_attempt_model:
             assert self.attempt_ent.query.count() == 0
         token = user.token_generate()
@@ -983,7 +983,7 @@ class AuthTests(AuthAttemptTests):
             assert self.attempt_ent.get_by(attempt_type='reset', user_input=user.email)
 
     def test_reset_pw_form_error(self):
-        user = self.user_ent.testing_create()
+        user = self.user_ent.fake()
         token = user.token_generate()
         url = self.reset_password_url.format(user_id=user.id, token=token)
 
@@ -1004,7 +1004,7 @@ class AuthTests(AuthAttemptTests):
         client.get(url, status=404)
 
     def test_reset_pw_bad_token(self):
-        user = self.user_ent.testing_create()
+        user = self.user_ent.fake()
         url = url = self.reset_password_url.format(user_id=user.id, token='abc')
 
         client = flask_webtest.TestApp(flask.current_app)
@@ -1019,7 +1019,7 @@ class AuthTests(AuthAttemptTests):
         assert resp.headers['Location'] == self.forgot_password_url
 
     def test_verify_account_success(self):
-        user = self.user_ent.testing_create(is_verified=False)
+        user = self.user_ent.fake(is_verified=False)
         assert not user.is_verified
 
         user.token_generate()
@@ -1043,7 +1043,7 @@ class AuthTests(AuthAttemptTests):
         assert user.is_verified
 
     def test_verify_account_form_error(self):
-        user = self.user_ent.testing_create()
+        user = self.user_ent.fake()
         user.token_generate()
         url = flask.current_app.auth_manager.mail_manager.verify_account_url(user)
 
@@ -1065,7 +1065,7 @@ class AuthTests(AuthAttemptTests):
         client.get(url, status=404)
 
     def test_verify_account_bad_token(self):
-        user = self.user_ent.testing_create()
+        user = self.user_ent.fake()
         user._token_plain = 'abc'
         url = flask.current_app.auth_manager.mail_manager.verify_account_url(user)
 
@@ -1081,7 +1081,7 @@ class AuthTests(AuthAttemptTests):
         assert resp.headers['Location'] == self.forgot_password_url
 
     def test_logout(self):
-        user = self.user_ent.testing_create(permissions=self.protected_url_permissions)
+        user = self.user_ent.fake(permissions=self.protected_url_permissions)
         client = flask_webtest.TestApp(flask.current_app)
         with client.session_transaction() as sess:
             sess['_user_id'] = user.session_key
@@ -1100,7 +1100,7 @@ class AuthTests(AuthAttemptTests):
         client.get(self.protected_url, status=302)
 
     def test_list_user(self):
-        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        user = self.user_ent.fake(permissions=['auth-manage'])
         client = AuthTestApp(flask.current_app, user=user)
         resp = client.get('/users?op(username)=eq&v1(username)=' + user.email)
         assert resp.pyquery('.grid-header-add-link a').attr('href').startswith('/users/add')
@@ -1108,8 +1108,8 @@ class AuthTests(AuthAttemptTests):
         assert resp.pyquery('.grid-header-add-link').eq(0).text() == 'Create User'
 
     def test_edit_user(self):
-        user_edit = self.user_ent.testing_create()
-        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        user_edit = self.user_ent.fake()
+        user = self.user_ent.fake(permissions=['auth-manage'])
         client = AuthTestApp(flask.current_app, user=user)
         resp = client.get('/users/{}/edit'.format(user_edit.id))
         assert resp.pyquery('h1').eq(0).text() == 'Edit User'
@@ -1120,8 +1120,8 @@ class AuthTests(AuthAttemptTests):
         assert resp.flashes == [('success', 'Successfully modified User')]
 
     def test_delete_user(self):
-        user_delete_id = self.user_ent.testing_create().id
-        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        user_delete_id = self.user_ent.fake().id
+        user = self.user_ent.fake(permissions=['auth-manage'])
         client = AuthTestApp(flask.current_app, user=user)
         resp = client.get('/users/{}/delete'.format(user_delete_id))
 
@@ -1132,16 +1132,16 @@ class AuthTests(AuthAttemptTests):
         assert not self.user_ent.query.get(user_delete_id)
 
     def test_list_group(self):
-        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        user = self.user_ent.fake(permissions=['auth-manage'])
         client = AuthTestApp(flask.current_app, user=user)
-        group = self.group_ent.testing_create()
+        group = self.group_ent.fake()
         resp = client.get('/groups?op(name)=eq&v1(name)=' + group.name)
         assert resp.pyquery('.grid-header-add-link a').attr('href').startswith('/groups/add')
         assert resp.pyquery('h1').eq(0).text() == 'Groups'
         assert resp.pyquery('.grid-header-add-link').eq(0).text() == 'Create Group'
 
     def test_add_group(self):
-        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        user = self.user_ent.fake(permissions=['auth-manage'])
         client = AuthTestApp(flask.current_app, user=user)
         resp = client.get('/groups/add')
         group_name = randchars()
@@ -1154,9 +1154,9 @@ class AuthTests(AuthAttemptTests):
         assert self.group_ent.get_by(name=group_name)
 
     def test_edit_group(self):
-        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        user = self.user_ent.fake(permissions=['auth-manage'])
         client = AuthTestApp(flask.current_app, user=user)
-        group = self.group_ent.testing_create()
+        group = self.group_ent.fake()
         resp = client.get(f'/groups/{group.id}/edit')
         resp = resp.form.submit()
         assert resp.status_code == 302
@@ -1164,8 +1164,8 @@ class AuthTests(AuthAttemptTests):
         assert resp.flashes == [('success', 'Successfully modified Group')]
 
     def test_delete_group(self):
-        group_delete_id = self.group_ent.testing_create().id
-        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        group_delete_id = self.group_ent.fake().id
+        user = self.user_ent.fake(permissions=['auth-manage'])
         client = AuthTestApp(flask.current_app, user=user)
         resp = client.get(f'/groups/{group_delete_id}/delete')
 
@@ -1176,16 +1176,16 @@ class AuthTests(AuthAttemptTests):
         assert not self.group_ent.query.get(group_delete_id)
 
     def test_list_bundle(self):
-        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        user = self.user_ent.fake(permissions=['auth-manage'])
         client = AuthTestApp(flask.current_app, user=user)
-        bundle = self.bundle_ent.testing_create()
+        bundle = self.bundle_ent.fake()
         resp = client.get('/bundles?op(name)=eq&v1(name)=' + bundle.name)
         assert resp.pyquery('.grid-header-add-link a').attr('href').startswith('/bundles/add')
         assert resp.pyquery('h1').eq(0).text() == 'Bundles'
         assert resp.pyquery('.grid-header-add-link').eq(0).text() == 'Create Bundle'
 
     def test_add_bundle(self):
-        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        user = self.user_ent.fake(permissions=['auth-manage'])
         client = AuthTestApp(flask.current_app, user=user)
         resp = client.get('/bundles/add')
         bundle_name = randchars()
@@ -1198,9 +1198,9 @@ class AuthTests(AuthAttemptTests):
         assert self.bundle_ent.get_by(name=bundle_name)
 
     def test_edit_bundle(self):
-        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        user = self.user_ent.fake(permissions=['auth-manage'])
         client = AuthTestApp(flask.current_app, user=user)
-        bundle = self.bundle_ent.testing_create()
+        bundle = self.bundle_ent.fake()
         resp = client.get(f'/bundles/{bundle.id}/edit')
         resp = resp.form.submit()
         assert resp.status_code == 302
@@ -1208,8 +1208,8 @@ class AuthTests(AuthAttemptTests):
         assert resp.flashes == [('success', 'Successfully modified Bundle')]
 
     def test_delete_bundle(self):
-        bundle_delete_id = self.bundle_ent.testing_create().id
-        user = self.user_ent.testing_create(permissions=['auth-manage'])
+        bundle_delete_id = self.bundle_ent.fake().id
+        user = self.user_ent.fake(permissions=['auth-manage'])
         client = AuthTestApp(flask.current_app, user=user)
         resp = client.get(f'/bundles/{bundle_delete_id}/delete')
 
@@ -1241,7 +1241,7 @@ def with_crypto_context(field, context=None):
     .. NOTE:
 
     In most situations we don't want a real crypto scheme to run in the tests, it is
-    slow on entities like Users which have a password. ``User.testing_create`` will generate a value
+    slow on entities like Users which have a password. ``User.fake`` will generate a value
     for that instance and then hash which takes a bunch of time. However, when testing certain
     schemes, it is useful to execute the real behavior instead of the ``plaintext`` behaviour.
 
@@ -1253,7 +1253,7 @@ def with_crypto_context(field, context=None):
 
         @with_crypto_context(ents.User.password, context=bcrypt_context)
         def test_with_real_context():
-            user = ents.User.testing_create(password='abc')
+            user = ents.User.fake(password='abc')
             assert bcrypt.checkpw('abc', user.password.hash)
 
     """
@@ -1278,7 +1278,7 @@ class AuthTestApp(flask_webtest.TestApp):
 
     Pass in a user instance to "log in" the session:
 
-        user = User.testing_create(permissions=['auth-manage', 'do-something'])
+        user = User.fake(permissions=['auth-manage', 'do-something'])
         test_app = AuthTestApp(flask.current_app, user=user)
 
     When running integration tests, following the view sequence to log a user in can
@@ -1354,9 +1354,9 @@ class ViewTestBase:
 
     @classmethod
     def create_user(cls):
-        """ Creates a User record for tests. By default, simply calls ``testing_create`` with
+        """ Creates a User record for tests. By default, simply calls ``fake`` with
             permissions."""
-        return cls.user_ent.testing_create(permissions=cls.permissions)
+        return cls.user_ent.fake(permissions=cls.permissions)
 
     @classmethod
     def setup_user(cls):

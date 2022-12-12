@@ -92,7 +92,7 @@ class TestForgotPassword(FormBase):
 class TestSetPassword(FormBase):
     def setup_method(self, _):
         ents.User.delete_cascaded()
-        self.user = ents.User.testing_create()
+        self.user = ents.User.fake()
 
     def ok_data(self, **kwargs):
         data = {
@@ -172,9 +172,9 @@ class TestUser(FormBase):
         ents.Group.delete_cascaded()
         ents.Bundle.delete_cascaded()
 
-        cls.perms = [ents.Permission.testing_create() for _ in range(3)]
-        cls.groups = [ents.Group.testing_create() for _ in range(3)]
-        cls.bundles = [ents.Bundle.testing_create() for _ in range(3)]
+        cls.perms = [ents.Permission.fake() for _ in range(3)]
+        cls.groups = [ents.Group.fake() for _ in range(3)]
+        cls.bundles = [ents.Bundle.fake() for _ in range(3)]
 
     def setup_method(self):
         ents.User.delete_cascaded()
@@ -219,7 +219,7 @@ class TestUser(FormBase):
         assert 'send_welcome' in form._fields
 
     def test_send_welcome_absent(self):
-        user = ents.User.testing_create()
+        user = ents.User.fake()
         form = self.make_form(obj=user)
         assert not form.send_welcome
         assert 'send_welcome' not in form._fields
@@ -255,7 +255,7 @@ class TestUser(FormBase):
             ['example.com']
         ):
             self.assert_valid()
-            usr = ents.User.testing_create(email='foo@example.com')
+            usr = ents.User.fake(email='foo@example.com')
             self.assert_valid(obj=usr)
             self.assert_valid(obj=usr, email='bar@example.com')
             form = self.assert_not_valid(obj=usr, email='bar@otherdomain.biz')
@@ -264,7 +264,7 @@ class TestUser(FormBase):
         self.assert_valid(obj=usr, email='bar@otherdomain.biz')
 
     def test_unique(self):
-        usr = ents.User.testing_create(email='foo@example.com')
+        usr = ents.User.fake(email='foo@example.com')
 
         form = self.assert_not_valid()
         error = PyQuery(form.email.errors[1])
@@ -278,7 +278,7 @@ class TestUser(FormBase):
         with mock.patch('keg_auth_ta.extensions.auth_entity_registry._user_cls', ents.UserNoEmail):
             form_cls = forms.user_form({'KEGAUTH_EMAIL_OPS_ENABLED': True},
                                        allow_superuser=False, endpoint='auth.user:edit')
-            usr = ents.UserNoEmail.testing_create(username='foobar')
+            usr = ents.UserNoEmail.fake(username='foobar')
 
             form = self.assert_not_valid(form_cls=form_cls, username='foobar')
             error = PyQuery(form.username.errors[1])
@@ -309,8 +309,8 @@ class TestGroup(FormBase):
         ents.Permission.delete_cascaded()
         ents.Bundle.delete_cascaded()
 
-        cls.perms = [ents.Permission.testing_create() for _ in range(3)]
-        cls.bundles = [ents.Bundle.testing_create() for _ in range(3)]
+        cls.perms = [ents.Permission.fake() for _ in range(3)]
+        cls.bundles = [ents.Bundle.fake() for _ in range(3)]
 
     def ok_data(self, **kwargs):
         data = {
@@ -335,7 +335,7 @@ class TestGroup(FormBase):
         assert form.get_selected_bundles() == []
 
     def test_unique(self):
-        obj = ents.Group.testing_create(name='some-group')
+        obj = ents.Group.fake(name='some-group')
 
         form = self.assert_not_valid(name='some-group')
         error = PyQuery(form.name.errors[0])
@@ -352,7 +352,7 @@ class TestBundle(FormBase):
     def setup_class(cls):
         ents.Permission.delete_cascaded()
 
-        cls.perms = [ents.Permission.testing_create() for _ in range(3)]
+        cls.perms = [ents.Permission.fake() for _ in range(3)]
 
     def ok_data(self, **kwargs):
         data = {
@@ -374,7 +374,7 @@ class TestBundle(FormBase):
         assert form.get_selected_permissions() == []
 
     def test_unique(self):
-        obj = ents.Bundle.testing_create(name='some-bundle')
+        obj = ents.Bundle.fake(name='some-bundle')
 
         form = self.assert_not_valid(name='some-bundle')
         error = PyQuery(form.name.errors[0])

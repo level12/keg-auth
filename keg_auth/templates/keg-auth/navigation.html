@@ -1,0 +1,48 @@
+{% macro render_link_text(node) %}
+{% if node.icon_class %}<i class="{{ node.icon_class }}"></i>{% endif %}{{ node.label | trim }}
+{% endmacro %}
+
+{% macro render_node(node, expand_to_current) -%}
+    {# render a node (and its children, if appropriate) #}
+    {% set NODE_LEAF = 1 %}
+    {% set has_classes = node.has_current_route or node.class_ %}
+
+    {% if node.node_type == NODE_LEAF %}
+    <li{% if has_classes %} class="
+        {%- if node.has_current_route %}nav-current {% endif %}
+        {%- if node.class_ %}{{ node.class_ }}{% endif %}"{% endif %}>
+        <a href="{{ node.route.url }}">{{ render_link_text(node) }}</a>
+    </li>
+    {% elif node.sub_nodes %}
+    <li>{{ render_group(node, expand_to_current) }}</li>
+    {% else %}
+    <li><a class="menu-header">{{ render_link_text(node) }}</a></li>
+    {% endif %}
+{%- endmacro %}
+
+{% macro render_group(node, expand_to_current) %}
+    <a class="menu-header group-header {{- (' ' + node.class_) if node.class_ }}"
+        data-toggle="collapse" href="#navgroup-{{ node.nav_group }}"
+        {% if expand_to_current and node.has_current_route %}aria-expanded="true"{% endif %}>
+        {{ render_link_text(node) }}
+        <b class="caret"></b>
+    </a>
+    <div class="collapse {% if expand_to_current and node.has_current_route %}in{% endif %}"
+         id="navgroup-{{ node.nav_group }}">
+        <ul>
+            {% for sub_node in node.permitted_sub_nodes %}
+            {{ render_node(sub_node, expand_to_current) }}
+            {% endfor %}
+        </ul>
+    </div>
+{% endmacro %}
+
+{% macro render_menu(node, expand_to_current=False) -%}
+    {% for sub_node in node.permitted_sub_nodes %}
+        {{ render_node(sub_node, expand_to_current) }}
+    {% endfor %}
+{%- endmacro %}
+
+{% if auth_manager is defined %}
+{{ render_menu(auth_manager.menus['main']) }}
+{% endif %}

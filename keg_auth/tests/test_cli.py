@@ -101,7 +101,7 @@ class TestCLI(CLIBase):
         assert not m_send.call_count
 
     def test_set_password(self):
-        ents.User.testing_create(email='test@level12.com')
+        ents.User.fake(email='test@level12.com')
         input_ = 'Hello123!\nHello123!'
         result = self.invoke('auth', 'set-password', 'test@level12.com', input=input_)
         assert result.stdout == 'Password: \nRepeat for confirmation: \n'
@@ -109,7 +109,7 @@ class TestCLI(CLIBase):
         assert ents.User.get_by(email='test@level12.com').password == 'Hello123!'
 
     def test_set_invalid_password(self):
-        ents.User.testing_create(email='test@level12.com')
+        ents.User.fake(email='test@level12.com')
         input_ = 'Hello\nHello123!\nHello123!'
         result = self.invoke('auth', 'set-password', 'test@level12.com', input=input_)
         assert result.stdout == (
@@ -139,7 +139,7 @@ class TestCLI(CLIBase):
         for i in range(0, 3):
             for attempt_type in ['login', 'reset']:
                 for username in ['foo@test.com', 'bar@test.com']:
-                    ents.Attempt.testing_create(
+                    ents.Attempt.fake(
                         user_input=username,
                         attempt_type=attempt_type,
                         datetime_utc=arrow.utcnow().shift(days=-i)

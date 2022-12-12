@@ -29,8 +29,8 @@ class AuthMailManager(object):
 
     Pass the mail extension in the constructor.
     """
-    reset_password_templates = ('mail/reset-password.j2', 'keg_auth/reset-password-mail.j2')
-    new_user_templates = ('mail/new-user.j2', 'keg_auth/new-user-mail.j2')
+    reset_password_templates = ('mail/reset-password.j2', 'keg-auth/reset-password-mail.j2')
+    new_user_templates = ('mail/new-user.j2', 'keg-auth/new-user-mail.j2')
 
     def __init__(self, mail_ext):
         self.mail_ext = mail_ext

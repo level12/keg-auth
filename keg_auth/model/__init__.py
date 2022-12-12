@@ -124,7 +124,7 @@ class UserMixin(object):
         return self.username
 
     @classmethod
-    def testing_create(cls, **kwargs):
+    def fake(cls, **kwargs):
         kwargs['password'] = kwargs.get('password') or randchars()
 
         if 'permissions' in kwargs:
@@ -139,12 +139,12 @@ class UserMixin(object):
             )
 
             kwargs['permissions'] = [
-                perm_cls.testing_create(token=perm)
+                perm_cls.fake(token=perm)
                 if not isinstance(perm, perm_cls) else perm
                 for perm in tolist(kwargs['permissions'])
             ]
 
-        user = super(UserMixin, cls).testing_create(**kwargs)
+        user = super(UserMixin, cls).fake(**kwargs)
         user._plaintext_pass = kwargs['password']
         return user
 
@@ -446,12 +446,12 @@ class UserEmailMixin(object):
         return sa_sql.case([(expr, sa.true())], else_=sa.false())
 
     @classmethod
-    def testing_create(cls, **kwargs):
+    def fake(cls, **kwargs):
         # Most tests will want an active user by default, which is the opposite of what we want in
         # production, so swap that logic.
         kwargs.setdefault('is_verified', True)
 
-        user = super(UserEmailMixin, cls).testing_create(**kwargs)
+        user = super(UserEmailMixin, cls).fake(**kwargs)
         return user
 
     @might_commit
@@ -476,11 +476,11 @@ class PermissionMixin(object):
         return cls.get_by(token=token)
 
     @classmethod
-    def testing_create(cls, **kwargs):
+    def fake(cls, **kwargs):
         matching = None
         if 'token' in kwargs:
             matching = cls.get_by_token(kwargs['token'])
-        return matching or super(PermissionMixin, cls).testing_create(**kwargs)
+        return matching or super(PermissionMixin, cls).fake(**kwargs)
 
 
 class BundleMixin(object):

@@ -36,8 +36,8 @@ class CrudView(keg.web.BaseView):
     grid_cls = None
     form_cls = None
     orm_cls = None
-    form_template = 'keg_auth/crud-addedit.html'
-    grid_template = 'keg_auth/crud-list.html'
+    form_template = 'keg-auth/crud-addedit.html'
+    grid_template = 'keg-auth/crud-list.html'
     object_name = None
     _inflect = inflect.engine()
     permissions = {
@@ -639,7 +639,7 @@ class Bundle(CrudView):
 class Permission(keg.web.BaseView):
     """Default Permission view. Uses auth-manage permission."""
     url = '/permissions'
-    grid_template = 'keg_auth/crud-list.html'
+    grid_template = 'keg-auth/crud-list.html'
 
     @property
     def grid_cls(self):

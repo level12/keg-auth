@@ -1,0 +1,16 @@
+{% if is_read_only %}
+    {% import 'keg-elements/forms/horizontal-static.html' as horizontal %}
+{% else %}
+    {% import 'keg-elements/forms/horizontal-b4.html' as horizontal %}
+{% endif %}
+{% extends 'keg-elements/form-view.html' %}
+
+{% block page_content_title %}
+{% if config.get('KEGAUTH_CRUD_INCLUDE_TITLE') %}
+<h1>{{ page_heading }}</h1>
+{% endif %}
+{% endblock %}
+
+{% block form %}
+{{ horizontal.form(form, action_text=action_button_text, cancel_url=cancel_url) }}
+{% endblock %}

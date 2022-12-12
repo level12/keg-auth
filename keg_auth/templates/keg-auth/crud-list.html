@@ -1,0 +1,39 @@
+{% extends 'keg-elements/grid-view.html' %}
+
+{%- if _ is not defined -%}
+    {% from 'keg-auth/i18n.j2' import gettext as _ %}
+{%- endif -%}
+
+{% block page_content_title %}
+{% if config.get('KEGAUTH_CRUD_INCLUDE_TITLE') %}
+<h1>{{ page_heading }}</h1>
+{% endif %}
+{% endblock %}
+
+{% block pre_grid %}
+    {% block add_button %}
+        {% if add_url %}
+            <div class="grid-header-add-link">
+                <a href="{{ add_url }}">
+                    <span class="fas fa-plus-circle"></span>
+                    {{ _('Create %(name)s') | format(name=object_name) }}
+                </a>
+            </div>
+        {% endif %}
+    {% endblock %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script type="text/javascript">
+    var els = document.getElementsByClassName('confirm-delete');
+
+    for (var idx = 0; idx < els.length; idx++) {
+        els[idx].addEventListener('click', function (event) {
+            if (!confirm('Are you sure you want to delete this item?')) {
+                event.preventDefault();
+            }
+        });
+    }
+</script>
+{% endblock %}
