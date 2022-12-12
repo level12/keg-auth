@@ -1308,26 +1308,6 @@ class TestViewTestBase:
             Foo.setup_class()
 
 
-class TestFormSelect2(ViewTestBase):
-    permissions = 'auth-manage'
-    script = ('<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/'
-              '4.0.10/js/select2.min.js"></script>')
-    style = ('<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/'
-             '4.0.10/css/select2.min.css" rel="stylesheet" />')
-
-    @mock.patch.dict(flask.current_app.config, {'KEGAUTH_USE_SELECT2': True})
-    def test_renders_select2_links(self):
-        resp = self.client.get('/users/add')
-        assert self.script in resp
-        assert self.style in resp
-
-    @mock.patch.dict(flask.current_app.config, {'KEGAUTH_USE_SELECT2': False})
-    def test_select2_not_used(self):
-        resp = self.client.get('/users/add')
-        assert self.script not in resp
-        assert self.style not in resp
-
-
 @pytest.fixture
 def auth_user():
     user = ents.User.fake()
