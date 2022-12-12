@@ -66,7 +66,7 @@ class TestViews(object):
 
     def test_auth_base_view(self):
         ents.User.fake(email='foo@bar.com', password='pass',
-                                 permissions=[self.perm1, self.perm2])
+                       permissions=[self.perm1, self.perm2])
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get('/secret2', status=302)
@@ -83,7 +83,7 @@ class TestViews(object):
 
     def test_rendered_navigation(self):
         ents.User.fake(email='foo@bar.com', password='pass',
-                                 permissions=[self.perm_auth])
+                       permissions=[self.perm_auth])
 
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get('/')
@@ -1002,7 +1002,7 @@ class TestGroupCrud(ViewTestBase):
 
     def test_edit(self):
         group_edit = ents.Group.fake(bundles=[ents.Bundle.fake()],
-                                               permissions=[ents.Permission.fake()])
+                                     permissions=[ents.Permission.fake()])
 
         resp = self.client.get('/groups/{}/edit'.format(group_edit.id))
         assert resp.form['name'].value == group_edit.name
