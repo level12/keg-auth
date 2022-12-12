@@ -1,6 +1,28 @@
 Changelog
 =========
 
+0.6.0 released 2022-12-12
+-------------------------
+
+- update documentation of breaking changes (1ebb337_)
+- **BC break** support keg-elements 0.8.0 (6d4b251_)
+- log attempts when form validation fails, and when csrf doesn't validate (60edacb_)
+- resolve field order error when disabled_utc missing from user form fields (0e2ae74_)
+- document known data migration issue (23ec6fe_)
+- pin python-ldap to version in package index (0b1d2b7_)
+- apply workaround to support testing with flask-login 0.6.2 (d1446a9_)
+- drop deprecated OIDC code and any remaining python 2 references (10b1144_)
+
+.. _1ebb337: https://github.com/level12/keg-auth/commit/1ebb337
+.. _6d4b251: https://github.com/level12/keg-auth/commit/6d4b251
+.. _60edacb: https://github.com/level12/keg-auth/commit/60edacb
+.. _0e2ae74: https://github.com/level12/keg-auth/commit/0e2ae74
+.. _23ec6fe: https://github.com/level12/keg-auth/commit/23ec6fe
+.. _0b1d2b7: https://github.com/level12/keg-auth/commit/0b1d2b7
+.. _d1446a9: https://github.com/level12/keg-auth/commit/d1446a9
+.. _10b1144: https://github.com/level12/keg-auth/commit/10b1144
+
+
 0.5.7 released 2022-08-12
 -------------------------
 
