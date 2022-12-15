@@ -1,6 +1,16 @@
 Changelog
 =========
 
+0.6.1 released 2022-12-15
+-------------------------
+
+- support multiple db sessions when running auth tests (a5cab4a_)
+- fixed upgrade notes in documentation (b537bba_)
+
+.. _a5cab4a: https://github.com/level12/keg-auth/commit/a5cab4a
+.. _b537bba: https://github.com/level12/keg-auth/commit/b537bba
+
+
 0.6.0 released 2022-12-12
 -------------------------
 
