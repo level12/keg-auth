@@ -11,6 +11,7 @@ import wrapt
 from blazeutils import randchars
 from blazeutils.containers import LazyDict
 from keg import current_app
+from keg.db import db
 
 from keg_auth.libs.authenticators import AttemptLimitMixin
 from keg_auth.model.types import AttemptType
@@ -486,6 +487,7 @@ class AuthAttemptTests(object):
             'keg_auth.libs.authenticators.arrow.utcnow',
             return_value=reset_time,
         ):
+            db.session.expire(user)
             token = user.token_generate()
             url = self.reset_password_url.format(user_id=user.id, token=token)
             resp = self.client.get(url, status=200)
@@ -1040,7 +1042,7 @@ class AuthTests(AuthAttemptTests):
 
         assert resp.headers['Location'] == self.login_url
 
-        assert user.is_verified
+        assert self.user_ent.query.filter_by(id=user.id, is_verified=True).count() == 1
 
     def test_verify_account_form_error(self):
         user = self.user_ent.fake()
