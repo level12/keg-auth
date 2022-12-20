@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.6.2 released 2022-12-20
+-------------------------
+
+- trap the unknown hash error to prevent invalid password data from causing app errors refs #160 (5f2b721_)
+
+.. _5f2b721: https://github.com/level12/keg-auth/commit/5f2b721
+
+
 0.6.1 released 2022-12-15
 -------------------------
 
