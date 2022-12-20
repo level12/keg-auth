@@ -4,6 +4,7 @@ from urllib.parse import urljoin, urlparse
 import arrow
 import flask
 import flask_login
+import passlib
 import sqlalchemy as sa
 import string
 import typing
@@ -935,7 +936,10 @@ class KegAuthenticator(PasswordAuthenticatorMixin, LoginAuthenticator):
         return user
 
     def verify_password(self, user, password):
-        return user.password == password
+        try:
+            return user.password == password
+        except passlib.exc.UnknownHashError:
+            return False
 
 
 class OAuthAuthenticator(LoginAuthenticator):

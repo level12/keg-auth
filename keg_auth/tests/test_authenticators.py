@@ -5,6 +5,7 @@ import flask
 import flask_jwt_extended
 import jwt
 import ldap
+import passlib
 import pytest
 
 from keg_auth.libs import authenticators as auth, get_domain_from_email
@@ -31,6 +32,18 @@ class TestKegAuthenticator:
             authenticator = auth.KegAuthenticator(app=flask.current_app)
             authenticator.verify_user(login_id=user.email, password='cannotpossiblybethis')
         assert e_info.value.user is user
+
+    def test_user_unknown_hash(self):
+        # Tough to test the real-world case here, because to run the test suite more quickly,
+        # we use plaintext passwords. The hash error only comes into play with something more
+        # interesting for passlib to use, but there does not seem to be good or clean way to
+        # mock that in later.
+        # So, we'll mock the comparator.
+        user = User.fake()
+        authenticator = auth.KegAuthenticator(app=flask.current_app)
+        with mock.patch.object(user.password, '__eq__', autospec=True, spec_set=True) as m_eq:
+            m_eq.side_effect = passlib.exc.UnknownHashError
+            assert not authenticator.verify_password(user, 'nomatchinghash')
 
     def test_user_verified(self):
         user = User.fake()
