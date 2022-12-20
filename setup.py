@@ -58,7 +58,7 @@ setup(
             'freezegun',
             'mock',
             'psycopg2-binary',
-            'python-ldap==3.4.2',
+            'python-ldap==3.4.3',
             'pyquery',
             'pytest',
             'pytest-cov',
