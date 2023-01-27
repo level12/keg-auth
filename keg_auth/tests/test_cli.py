@@ -58,7 +58,7 @@ class TestCLI(CLIBase):
         assert 'User created.\nEmail sent with verification URL.' in result.output
         assert m_send.call_count
 
-        user = ents.User.query.get(user_id)
+        user = ents.User.get(user_id)
         assert user.token_verify(token)
 
     @mock.patch('keg.current_app.auth_manager.mail_manager.send_new_user',
@@ -70,7 +70,7 @@ class TestCLI(CLIBase):
         output_parts = result.output.split('/')
         user_id = output_parts[-2]
 
-        user = ents.User.query.get(user_id)
+        user = ents.User.get(user_id)
         assert user.email == 'bob@example.com'
         assert user.name == 'Bob Smith'
 
@@ -79,7 +79,7 @@ class TestCLI(CLIBase):
         output_parts = result.output.split('/')
         user_id = output_parts[-2]
 
-        user = ents.User.query.get(user_id)
+        user = ents.User.get(user_id)
         assert user.email == 'joe@example.com'
         assert user.name == 'Joe Smith'
 

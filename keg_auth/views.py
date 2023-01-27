@@ -196,7 +196,7 @@ class CrudView(keg.web.BaseView):
         )
 
     def fetch_orm_obj(self, obj_id):
-        return self.orm_cls.query.get(obj_id)
+        return self.orm_cls.get(obj_id)
 
     def init_object(self, obj_id, action=None):
         """Load record from ORM for edit/delete cases.

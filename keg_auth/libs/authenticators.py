@@ -451,7 +451,7 @@ class PasswordSetterResponderBase(FormResponderMixin, ViewResponder):
 
     def user_loader(self, user_id):
         user_ent = flask.current_app.auth_manager.entity_registry.user_cls
-        self.user = user_ent.query.get(user_id)
+        self.user = user_ent.get(user_id)
         if not self.user:
             flask.abort(404)
 

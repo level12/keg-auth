@@ -1131,7 +1131,7 @@ class AuthTests(AuthAttemptTests):
         assert resp.location.endswith('/users')
         assert resp.flashes == [('success', 'Successfully removed User')]
 
-        assert not self.user_ent.query.get(user_delete_id)
+        assert not self.user_ent.get(user_delete_id)
 
     def test_list_group(self):
         user = self.user_ent.fake(permissions=['auth-manage'])
@@ -1175,7 +1175,7 @@ class AuthTests(AuthAttemptTests):
         assert resp.location.endswith('/groups')
         assert resp.flashes == [('success', 'Successfully removed Group')]
 
-        assert not self.group_ent.query.get(group_delete_id)
+        assert not self.group_ent.get(group_delete_id)
 
     def test_list_bundle(self):
         user = self.user_ent.fake(permissions=['auth-manage'])
@@ -1219,7 +1219,7 @@ class AuthTests(AuthAttemptTests):
         assert resp.location.endswith('/bundles')
         assert resp.flashes == [('success', 'Successfully removed Bundle')]
 
-        assert not self.bundle_ent.query.get(bundle_delete_id)
+        assert not self.bundle_ent.get(bundle_delete_id)
 
 
 @wrapt.decorator

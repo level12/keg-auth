@@ -876,7 +876,7 @@ class TestUserCrud(ViewTestBase):
         assert resp.location.endswith('/users')
         assert resp.flashes == [('success', 'Successfully removed User')]
 
-        assert not self.user_ent.query.get(user_delete_id)
+        assert not self.user_ent.get(user_delete_id)
 
     def test_delete_disallowed_by_action_init(self):
         user_delete_id = ents.User.fake().id
@@ -927,7 +927,7 @@ class TestUserCrud(ViewTestBase):
         assert resp.flashes == [('warning',
                                  'Unable to delete User. It may be referenced by other items.')]
 
-        assert self.user_ent.query.get(user_delete_id)
+        assert self.user_ent.get(user_delete_id)
 
     def test_list(self):
         resp = self.client.get('/users?op(username)=eq&v1(username)=' + self.current_user.email)
@@ -1073,7 +1073,7 @@ class TestGroupCrud(ViewTestBase):
         assert resp.location.endswith('/groups')
         assert resp.flashes == [('success', 'Successfully removed Group')]
 
-        assert not ents.Group.query.get(group_delete_id)
+        assert not ents.Group.get(group_delete_id)
 
     @mock.patch('keg_elements.db.mixins.db.session.delete', autospec=True, spec_set=True)
     def test_delete_failed(self, m_delete):
@@ -1087,7 +1087,7 @@ class TestGroupCrud(ViewTestBase):
         assert resp.flashes == [('warning',
                                  'Unable to delete Group. It may be referenced by other items.')]
 
-        assert ents.Group.query.get(group_delete_id)
+        assert ents.Group.get(group_delete_id)
 
     def test_list(self):
         ents.Group.fake()
@@ -1200,7 +1200,7 @@ class TestBundleCrud(ViewTestBase):
         assert resp.location.endswith('/bundles')
         assert resp.flashes == [('success', 'Successfully removed Bundle')]
 
-        assert not ents.Bundle.query.get(bundle_delete_id)
+        assert not ents.Bundle.get(bundle_delete_id)
 
     @mock.patch('keg_elements.db.mixins.db.session.delete', autospec=True, spec_set=True)
     def test_delete_failed(self, m_delete):
@@ -1214,7 +1214,7 @@ class TestBundleCrud(ViewTestBase):
         assert resp.flashes == [('warning',
                                  'Unable to delete Bundle. It may be referenced by other items.')]
 
-        assert ents.Bundle.query.get(bundle_delete_id)
+        assert ents.Bundle.get(bundle_delete_id)
 
     def test_list(self):
         obj = ents.Bundle.fake()

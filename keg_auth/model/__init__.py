@@ -97,7 +97,7 @@ class UserMixin(object):
     def is_active(cls):
         expr = sa_sql.and_(~cls.is_disabled_by_date, cls.is_enabled == sa.true())
         # need to wrap the expression in a case to work with MSSQL
-        return sa_sql.case([(expr, sa.true())], else_=sa.false())
+        return sa_sql.case((expr, sa.true()), else_=sa.false())
 
     @hybrid_property
     def is_disabled_by_date(self):
@@ -109,7 +109,7 @@ class UserMixin(object):
             cls.disabled_utc.isnot(None),
             cls.disabled_utc <= arrow.utcnow(),
         )
-        return sa_sql.case([(is_disabled_expr, sa.true())], else_=sa.false())
+        return sa_sql.case((is_disabled_expr, sa.true()), else_=sa.false())
 
     def get_id(self):
         # Flask-Login requires that this return a string value for the session
@@ -443,7 +443,7 @@ class UserEmailMixin(object):
             cls.is_enabled == sa.true(),
         )
         # need to wrap the expression in a case to work with MSSQL
-        return sa_sql.case([(expr, sa.true())], else_=sa.false())
+        return sa_sql.case((expr, sa.true()), else_=sa.false())
 
     @classmethod
     def fake(cls, **kwargs):

@@ -78,7 +78,7 @@ class TestKegAuthenticator:
 
         # Downstream in the process of creating a user, the email will be set to all lowercase
         # So we need to manually set it to capital letters to test the fix
-        with db.db.engine.connect() as connection:
+        with db.db.engine.begin() as connection:
             connection.execute(
                 text("UPDATE users SET email = 'ABC@Foo.Bar' WHERE email = 'abc@foo.bar'")
             )
