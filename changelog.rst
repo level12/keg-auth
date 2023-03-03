@@ -1,6 +1,16 @@
 Changelog
 =========
 
+0.7.0 released 2023-03-03
+-------------------------
+
+- support SQLAlchemy 2.0 (88a6173_)
+- support keg testing app context changes (d0ec64f_)
+
+.. _88a6173: https://github.com/level12/keg-auth/commit/88a6173
+.. _d0ec64f: https://github.com/level12/keg-auth/commit/d0ec64f
+
+
 0.6.2 released 2022-12-20
 -------------------------
 
