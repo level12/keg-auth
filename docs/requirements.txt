@@ -1,4 +1,4 @@
 --extra-index-url https://package-index.level12.net
 
 sphinx
--e .[test]
+-e .[tests]

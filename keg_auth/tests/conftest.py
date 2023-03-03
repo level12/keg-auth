@@ -1,5 +1,6 @@
 import warnings
 
+from keg.testing import ContextManager
 import pytest
 
 from keg_auth_ta.app import KegAuthTestApp
@@ -16,3 +17,9 @@ warnings.filterwarnings(
 
 def pytest_configure(config):
     KegAuthTestApp.testing_prep()
+
+
+@pytest.fixture(scope='class', autouse=True)
+def auto_app_context():
+    with ContextManager.get_for(KegAuthTestApp).app.app_context():
+        yield

@@ -36,8 +36,8 @@ setup(
         'markdown-it-py',
 
         'Flask-Login>0.4.1',
-        'Keg>=0.10.2',
-        'KegElements>=0.8.0',
+        'Keg>=0.11.0',
+        'KegElements>=0.9.0',
         'inflect',
         'passlib',
         'shortuuid',
@@ -48,7 +48,7 @@ setup(
     # for example:
     # $ pip install -e .[dev,test]
     extras_require={
-        'test': [
+        'tests': [
             'email_validator',
             'flake8',
             'flask-bootstrap',
