@@ -1,44 +1,17 @@
 from blazeutils.strings import randchars
 import pytest
 from flask import current_app
+from keg_elements.testing import FormBase
 from mock import mock
 from pyquery import PyQuery
-from werkzeug.datastructures import MultiDict
 
 from keg_auth import forms
 import keg_auth_ta.model.entities as ents
 from keg_auth.libs.authenticators import PasswordPolicy
 
 
-class FormBase(object):
-    form_cls = None
-
-    def ok_data(self, **kwargs):
-        return kwargs
-
-    def make_form(self, **kwargs):
-        form_cls = kwargs.pop('form_cls', None) or self.form_cls
-        obj = kwargs.pop('obj', None)
-        data = MultiDict(self.ok_data(**kwargs))
-        return form_cls(data, obj=obj)
-
-    def assert_valid(self, **kwargs):
-        form = self.make_form(**kwargs)
-        assert form.validate()
-        return form
-
-    def assert_not_valid(self, **kwargs):
-        form = self.make_form(**kwargs)
-        assert not form.validate()
-        return form
-
-    def test_ok(self):
-        self.assert_valid()
-
-
-@mock.patch.dict(current_app.config, WTF_CSRF_ENABLED=False)
 class TestLogin(FormBase):
-    form_cls = forms.login_form()
+    form_cls_factory = staticmethod(forms.login_form)
 
     def ok_data(self, **kwargs):
         data = {
@@ -49,13 +22,13 @@ class TestLogin(FormBase):
         return data
 
     def test_required(self):
-        form = self.assert_not_valid(login_id='', password='')
+        form = self.assert_invalid(login_id='', password='')
         msg = ['This field is required.']
         assert form.login_id.errors == msg
         assert form.password.errors == msg
 
     def test_valid_email(self):
-        form = self.assert_not_valid(login_id='foo')
+        form = self.assert_invalid(login_id='foo')
         assert form.login_id.errors == ['Invalid email address.']
         assert form.login_id.label.text == 'Email'
 
@@ -66,7 +39,6 @@ class TestLogin(FormBase):
             assert form.login_id.label.text == 'User ID'
 
 
-@mock.patch.dict(current_app.config, WTF_CSRF_ENABLED=False)
 class TestForgotPassword(FormBase):
     form_cls = forms.ForgotPassword
 
@@ -78,18 +50,21 @@ class TestForgotPassword(FormBase):
         return data
 
     def test_required(self):
-        form = self.assert_not_valid(email='')
+        form = self.assert_invalid(email='')
         msg = ['This field is required.']
         assert form.email.errors == msg
 
     def test_valid_email(self):
-        form = self.assert_not_valid(email='foo')
+        form = self.assert_invalid(email='foo')
         assert form.email.errors == ['Invalid email address.']
 
 
-@mock.patch.dict(current_app.config, WTF_CSRF_ENABLED=False)
-@mock.patch.object(current_app.auth_manager, 'password_policy_cls', new=PasswordPolicy)
 class TestSetPassword(FormBase):
+    @pytest.fixture(scope='function', autouse=True)
+    def policy_class(self):
+        with mock.patch.object(current_app.auth_manager, 'password_policy_cls', new=PasswordPolicy):
+            yield
+
     def setup_method(self, _):
         ents.User.delete_cascaded()
         self.user = ents.User.fake()
@@ -107,15 +82,15 @@ class TestSetPassword(FormBase):
         return forms.SetPassword(*args, **kwargs)
 
     def test_required(self):
-        form = self.assert_not_valid(password='')
+        form = self.assert_invalid(password='')
         assert form.password.errors == ['This field is required.']
 
     def test_valid_confirm(self):
-        form = self.assert_not_valid(confirm='password1234')
+        form = self.assert_invalid(confirm='password1234')
         assert form.password.errors == ['Passwords must match']
 
     def test_length_validator(self):
-        form = self.assert_not_valid(password='aBcDe1!', confirm='aBcDe1!')
+        form = self.assert_invalid(password='aBcDe1!', confirm='aBcDe1!')
         assert form.password.errors == ['Password must be at least 8 characters long']
 
         self.assert_valid(password='aBcDeF1!', confirm='aBcDeF1!')
@@ -129,7 +104,7 @@ class TestSetPassword(FormBase):
         '1!' * 5,
     ])
     def test_char_set_validator_failures(self, pw):
-        form = self.assert_not_valid(password=pw, confirm=pw)
+        form = self.assert_invalid(password=pw, confirm=pw)
         assert form.password.errors == [
             'Password must include at least 3 of lowercase letter, uppercase letter, number and/or symbol'  # noqa: E501
         ]
@@ -149,7 +124,7 @@ class TestSetPassword(FormBase):
     ])
     def test_username_validator_failures(self, pw, email):
         self.user.email = email
-        form = self.assert_not_valid(password=pw, confirm=pw)
+        form = self.assert_invalid(password=pw, confirm=pw)
         assert form.password.errors == ['Password may not contain username']
 
     @pytest.mark.parametrize('pw,email', [
@@ -161,10 +136,12 @@ class TestSetPassword(FormBase):
         self.assert_valid(password=pw, confirm=pw)
 
 
-@mock.patch.dict(current_app.config, WTF_CSRF_ENABLED=False)
 class TestUser(FormBase):
-    form_cls = forms.user_form({'KEGAUTH_EMAIL_OPS_ENABLED': True},
-                               allow_superuser=False, endpoint='auth.user:edit')
+    form_cls_factory = lambda self: forms.user_form(
+        {'KEGAUTH_EMAIL_OPS_ENABLED': True},
+        allow_superuser=False,
+        endpoint='auth.user:edit'
+    )
 
     @classmethod
     def setup_class(cls):
@@ -192,15 +169,15 @@ class TestUser(FormBase):
         return data
 
     def test_required(self):
-        form = self.assert_not_valid(email='')
+        form = self.assert_invalid(email='')
         assert form.email.errors == ['This field is required.']
 
     def test_valid_email(self):
-        form = self.assert_not_valid(email='foo')
+        form = self.assert_invalid(email='foo')
         assert form.email.errors == ['Invalid email address.']
 
     def test_superuser_available(self):
-        form = self.make_form()
+        form = self.create_form()
         assert not hasattr(form, 'is_superuser')
 
         form = forms.user_form({'KEGAUTH_EMAIL_OPS_ENABLED': True},
@@ -214,13 +191,13 @@ class TestUser(FormBase):
             assert hasattr(form_cls, 'username')
 
     def test_send_welcome_present(self):
-        form = self.make_form()
+        form = self.create_form()
         assert form.send_welcome
         assert 'send_welcome' in form._fields
 
     def test_send_welcome_absent(self):
         user = ents.User.fake()
-        form = self.make_form(obj=user)
+        form = self.create_form(obj=user)
         assert not form.send_welcome
         assert 'send_welcome' not in form._fields
 
@@ -233,7 +210,7 @@ class TestUser(FormBase):
             assert hasattr(form_cls, 'reset_password')
             assert hasattr(form_cls, 'confirm')
 
-            form = self.assert_not_valid(form_cls=form_cls, reset_password='xyz', confirm='abc')
+            form = self.assert_invalid(form_cls=form_cls, reset_password='xyz', confirm='abc')
             assert form.reset_password.errors == ['Passwords must match']
             self.assert_valid(form_cls=form_cls, username='foobar', reset_password='xyz',
                               confirm='xyz')
@@ -258,7 +235,7 @@ class TestUser(FormBase):
             usr = ents.User.fake(email='foo@example.com')
             self.assert_valid(obj=usr)
             self.assert_valid(obj=usr, email='bar@example.com')
-            form = self.assert_not_valid(obj=usr, email='bar@otherdomain.biz')
+            form = self.assert_invalid(obj=usr, email='bar@otherdomain.biz')
             assert form.email.errors == ['Cannot change user domain.']
 
         self.assert_valid(obj=usr, email='bar@otherdomain.biz')
@@ -266,7 +243,7 @@ class TestUser(FormBase):
     def test_unique(self):
         usr = ents.User.fake(email='foo@example.com')
 
-        form = self.assert_not_valid()
+        form = self.assert_invalid()
         error = PyQuery(form.email.errors[1])
         assert 'This value must be unique' in error.text()
         assert error('a').attr('href').endswith('/users/{}/edit'.format(usr.id))
@@ -280,7 +257,7 @@ class TestUser(FormBase):
                                        allow_superuser=False, endpoint='auth.user:edit')
             usr = ents.UserNoEmail.fake(username='foobar')
 
-            form = self.assert_not_valid(form_cls=form_cls, username='foobar')
+            form = self.assert_invalid(form_cls=form_cls, username='foobar')
             error = PyQuery(form.username.errors[1])
             assert 'This value must be unique' in error.text()
             assert error('a').attr('href').endswith('/users/{}/edit'.format(usr.id))
@@ -296,13 +273,14 @@ class TestUser(FormBase):
             # exclude the default fields, to make sure we don't get field order errors
             fields=[],
         )
-        form = form_cls()
+        form = self.create_form(form_cls=form_cls)
         [field for field in form]
 
 
-@mock.patch.dict(current_app.config, WTF_CSRF_ENABLED=False)
 class TestGroup(FormBase):
-    form_cls = forms.group_form(endpoint='auth.group:edit')
+    form_cls_factory = lambda self: forms.group_form(
+        endpoint='auth.group:edit'
+    )
 
     @classmethod
     def setup_class(cls):
@@ -322,7 +300,7 @@ class TestGroup(FormBase):
         return data
 
     def test_required(self):
-        form = self.assert_not_valid(name='')
+        form = self.assert_invalid(name='')
         assert form.name.errors == ['This field is required.']
 
     def test_multi_select(self):
@@ -337,16 +315,17 @@ class TestGroup(FormBase):
     def test_unique(self):
         obj = ents.Group.fake(name='some-group')
 
-        form = self.assert_not_valid(name='some-group')
+        form = self.assert_invalid(name='some-group')
         error = PyQuery(form.name.errors[0])
         assert 'Already exists.' in error.text()
 
         self.assert_valid(obj=obj)
 
 
-@mock.patch.dict(current_app.config, WTF_CSRF_ENABLED=False)
 class TestBundle(FormBase):
-    form_cls = forms.bundle_form(endpoint='auth.bundle:edit')
+    form_cls_factory = lambda self: forms.bundle_form(
+        endpoint='auth.bundle:edit'
+    )
 
     @classmethod
     def setup_class(cls):
@@ -363,7 +342,7 @@ class TestBundle(FormBase):
         return data
 
     def test_required(self):
-        form = self.assert_not_valid(name='')
+        form = self.assert_invalid(name='')
         assert form.name.errors == ['This field is required.']
 
     def test_multi_select(self):
@@ -376,7 +355,7 @@ class TestBundle(FormBase):
     def test_unique(self):
         obj = ents.Bundle.fake(name='some-bundle')
 
-        form = self.assert_not_valid(name='some-bundle')
+        form = self.assert_invalid(name='some-bundle')
         error = PyQuery(form.name.errors[0])
         assert 'Already exists.' in error.text()
 

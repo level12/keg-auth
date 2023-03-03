@@ -9,7 +9,8 @@ import pytest
 import sqlalchemy as sa
 from webgrid.extensions import RequestArgsLoader, RequestFormLoader
 from werkzeug.datastructures import MultiDict
-from keg_auth_ta.app import mail_ext
+from keg.testing import ContextManager
+from keg_auth_ta.app import KegAuthTestApp, mail_ext
 from keg_auth.libs.authenticators import OAuthAuthenticator, RedirectAuthenticator
 from keg_auth.libs.decorators import requires_user
 from keg_auth.testing import AuthTests, AuthTestApp, ViewTestBase
@@ -20,6 +21,12 @@ import flask_login
 from .utils import listen_to
 
 from keg_auth import get_current_user
+
+
+@pytest.fixture(scope='function')
+def app_context():
+    with ContextManager.get_for(KegAuthTestApp).app.app_context():
+        yield
 
 
 class TestAuthIntegration(AuthTests):
@@ -179,6 +186,7 @@ class TestViews(object):
     @freezegun.freeze_time("2018-10-01 15:00:00")
     def test_login_user_sets_last_login_and_invalidates_token(self):
         u = ents.User.fake(email='foo@bar.com', password='pass', last_login_utc=None)
+        user_id = u.id
         token = u.token_generate()
         client = flask_webtest.TestApp(flask.current_app)
         resp = client.get('/login', status=200)
@@ -187,7 +195,14 @@ class TestViews(object):
         resp.form['password'] = 'pass'
         with listen_to(flask_login.user_logged_in) as listener:
             resp = resp.form.submit()
-        listener.assert_heard_one(flask.current_app, user=u)
+        assert len(listener.heard) == 1
+
+        # Can't just assert against the listener args, because the user instance is
+        # from another app context
+        db.session.remove()
+        db.session.add(listener.heard[0][1]['user'])
+        assert listener.heard[0][0][0].__class__.__name__ == flask.current_app.__class__.__name__
+        assert listener.heard[0][1]['user'].id == user_id
 
         assert resp.status_code == 302, resp.html
         db.session.remove()
@@ -294,8 +309,11 @@ class TestViews(object):
         resp.form['email'] = 'foo@bar.com'
         resp = resp.form.submit(status=302)
 
-        # email should be sent
-        m_send_reset_password.assert_called_once_with(user)
+        # Email should be sent. Can't just assert called with the user instance,
+        # because the client is in a different app context, so has a different
+        # session and user instance.
+        m_send_reset_password.assert_called_once()
+        assert m_send_reset_password.call_args[0][0].id == user.id
 
     @mock.patch('flask.current_app.auth_manager.mail_manager', None)
     def test_forget_pw_actions_mail_disabled(self):
@@ -1255,7 +1273,7 @@ class TestGetCurrentUser:
             flask_login.login_user(user)
             assert get_current_user().id == user.id
 
-    def test_request_loader_user_returned(self):
+    def test_request_loader_user_returned(self, app_context):
         with flask.current_app.test_request_context():
             user = ents.User.fake()
             jwt_auth = flask.current_app.auth_manager.get_request_loader('jwt')
@@ -1325,7 +1343,7 @@ def redirect_authenticator():
 
 
 class TestRedirectAuthenticator(ViewTestBase):
-    @mock.patch.dict(flask.current_app.config, {'KEGAUTH_REDIRECT_LOGIN_TARGET': '/l2'})
+    @mock.patch.dict('flask.current_app.config', {'KEGAUTH_REDIRECT_LOGIN_TARGET': '/l2'})
     def test_login(self, redirect_authenticator):
         resp = self.client.get('/login', status=302)
         assert resp.location.endswith('/l2')
@@ -1334,7 +1352,7 @@ class TestRedirectAuthenticator(ViewTestBase):
         with pytest.raises(Exception, match='KEGAUTH_REDIRECT_LOGIN_TARGET not set.*'):
             self.client.get('/login')
 
-    @mock.patch.dict(flask.current_app.config, {'KEGAUTH_REDIRECT_LOGIN_TARGET': 'https://l2'})
+    @mock.patch.dict('flask.current_app.config', {'KEGAUTH_REDIRECT_LOGIN_TARGET': 'https://l2'})
     def test_login_target_absolute(self, redirect_authenticator):
         with pytest.raises(Exception, match='KEGAUTH_REDIRECT_LOGIN_TARGET not set.*'):
             self.client.get('/login')
@@ -1352,7 +1370,7 @@ class TestRedirectAuthenticator(ViewTestBase):
 @pytest.fixture
 def oauth_client():
     with mock.patch.dict(
-        flask.current_app.config,
+        'flask.current_app.config',
         {'KEGAUTH_OAUTH_PROFILES': [oauth_profile()]}
     ):
         authenticator = OAuthAuthenticator(flask.current_app)
