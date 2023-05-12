@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.7.1 released 2023-05-12
+-------------------------
+
+- allow request loaders to be specified directly to requires decorators (cd42358_)
+
+.. _cd42358: https://github.com/level12/keg-auth/commit/cd42358
+
+
 0.7.0 released 2023-03-03
 -------------------------
 
