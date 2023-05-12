@@ -22,11 +22,14 @@ class RequiresUser(object):
         - @requires_user()
         - @requires_user(on_authentication_failure=lambda: flask.abort(400))
         - @requires_user(http_methods_excluded=['OPTIONS'])
+        - @requires_user(request_loaders=[JwtRequestLoader])
     """
-    def __init__(self, on_authentication_failure=None, http_methods_excluded=None):
+    def __init__(self, on_authentication_failure=None, http_methods_excluded=None,
+                 request_loaders=None):
         # defaults for these handlers are provided, but may be overridden here
         self._on_authentication_failure = on_authentication_failure
         self.http_methods_excluded = http_methods_excluded
+        self.request_loaders = request_loaders
 
     def __call__(self, class_or_function):
         # decorator may be applied to a class or a function, but the effect is different
@@ -127,7 +130,15 @@ class RequiresUser(object):
 
         # no user in session right now, so we need to run request loaders to see if any match
         user = None
-        for loader in flask.current_app.auth_manager.request_loaders.values():
+        all_loaders = (
+            (self.request_loaders or [])
+            + list(flask.current_app.auth_manager.request_loaders.values())
+        )
+
+        for loader in all_loaders:
+            if inspect.isclass(loader):
+                loader = loader(flask.current_app)
+
             user = loader.get_authenticated_user()
             if user:
                 break
@@ -156,10 +167,11 @@ class RequiresPermissions(RequiresUser):
         - @requires_permissions('token1', on_authorization_failure=lambda: flask.abort(404))
     """
     def __init__(self, condition, on_authentication_failure=None, on_authorization_failure=None,
-                 http_methods_excluded=None):
+                 http_methods_excluded=None, request_loaders=None):
         super(RequiresPermissions, self).__init__(
             on_authentication_failure=on_authentication_failure,
             http_methods_excluded=http_methods_excluded,
+            request_loaders=request_loaders,
         )
         self.condition = condition
         self._on_authorization_failure = on_authorization_failure
