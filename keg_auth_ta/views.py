@@ -6,8 +6,10 @@ import keg.web
 
 from keg_auth import make_blueprint, requires_permissions, requires_user, has_any, has_all
 from keg_auth.forms import user_form
+from keg_auth.libs.authenticators import RequestLoader
 from keg_auth.views import User as UserBase
 from keg_auth_ta.extensions import csrf, auth_manager
+from keg_auth_ta.model import entities as ents
 
 log = logging.getLogger(__name__)
 
@@ -257,3 +259,21 @@ def custom_auth_failure():
 @requires_permissions('permission1', on_authorization_failure=lambda: flask.abort(400))
 def custom_perm_failure():
     return 'custom-perm-failure'
+
+
+class CustomRequestLoader(RequestLoader):
+    def get_authenticated_user(self):
+        if 'letmein' in flask.request.endpoint:
+            return ents.User.query.first()
+
+
+@private_bp.route('/custom-loader-denied')
+@requires_user(request_loaders=[CustomRequestLoader])
+def custom_loader_denied():
+    return 'fail'
+
+
+@private_bp.route('/custom-loader-letmein')
+@requires_user(request_loaders=[CustomRequestLoader])
+def custom_loader_letmein():
+    return 'ok'

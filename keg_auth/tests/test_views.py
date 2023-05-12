@@ -574,6 +574,15 @@ class TestRequestLoaders(object):
         resp = client.get('/jwt-required', status=200)
         assert resp.text == 'jwt-required'
 
+    def test_per_endpoint_loader(self):
+        ents.User.fake()
+
+        client = flask_webtest.TestApp(flask.current_app)
+        resp = client.get('/custom-loader-denied', status=302)
+        assert resp.location.startswith('/login')
+        resp = client.get('/custom-loader-letmein')
+        assert resp.text == 'ok'
+
 
 class TestUserCrud(ViewTestBase):
     permissions = 'auth-manage'
