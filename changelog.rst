@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.7.2 released 2023-05-22
+-------------------------
+
+- handle multiple potential session cookies resulting from werkzeug 2.3 and flask 2.3 changes (8b4680e_)
+
+.. _8b4680e: https://github.com/level12/keg-auth/commit/8b4680e
+
+
 0.7.1 released 2023-05-12
 -------------------------
 
