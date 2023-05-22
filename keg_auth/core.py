@@ -437,6 +437,32 @@ def clear_session(app, user):
         flask.session.clear()
 
 
+def fix_session_cookies(app, **extra):
+    cookie_values = flask.request.cookies.getlist(
+        app.config.get('SESSION_COOKIE_NAME')
+    )
+    server_name = app.config.get('SERVER_NAME')
+    if len(cookie_values) > 1 and server_name:
+        # werkzeug update has breaking session, since it matches both
+        # and doesn't remove the old value...
+
+        # chop off the port which is usually not supported by browsers
+        cookie_domain = server_name.rsplit(':', 1)[0].lstrip('.')
+        if flask.helpers.is_ip(cookie_domain):
+            return
+
+        cookie_domain = '.' + cookie_domain
+
+        # old werkzeug before 2.3 put a leading dot, new does not. Delete
+        # the old cookie.
+        resp = flask.redirect(flask.request.url)
+        resp.delete_cookie(app.config.get('SESSION_COOKIE_NAME'), domain=cookie_domain)
+
+        # redirect to the same page, so the proper cookie value gets loaded
+        flask.abort(resp)
+
+
 flask_login.signals.user_logged_in.connect(on_login)
 flask_login.signals.user_logged_out.connect(refresh_session_menus)
 flask_login.signals.user_logged_out.connect(clear_session)
+flask.request_started.connect(fix_session_cookies)
