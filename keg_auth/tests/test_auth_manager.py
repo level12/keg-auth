@@ -2,8 +2,8 @@ from unittest import mock
 
 import flask
 from keg_auth.core import AuthManager
-from keg_auth.libs.authenticators import KegAuthenticator, JwtRequestLoader
-from keg_auth.tests.utils import oauth_profile
+from keg_auth.libs.authenticators import JwtRequestLoader, KegAuthenticator, OAuthAuthenticator
+from keg_auth.tests.utils import CustomOAuthAuthenticator, oauth_profile
 
 from keg_auth_ta.app import mail_ext
 from keg_auth_ta.extensions import auth_entity_registry
@@ -28,7 +28,16 @@ class TestAuthManager(object):
             {'KEGAUTH_OAUTH_PROFILES': [oauth_profile()]},
         ):
             manager.init_loaders(flask.current_app)
-        assert manager.oauth_authenticator
+        assert isinstance(manager.oauth_authenticator, OAuthAuthenticator)
+
+    def test_init_loaders_with_custom_oauth(self):
+        manager = AuthManager(oauth_authenticator=CustomOAuthAuthenticator)
+        with mock.patch.dict(
+            flask.current_app.config,
+            {'KEGAUTH_OAUTH_PROFILES': [oauth_profile()]},
+        ):
+            manager.init_loaders(flask.current_app)
+        assert isinstance(manager.oauth_authenticator, CustomOAuthAuthenticator)
 
     def test_create_user(self):
         with mail_ext.record_messages() as outbox:

@@ -197,7 +197,7 @@ class AuthManager(object):
         self.login_authenticator = self.login_authenticator_cls(app)
 
         if app.config.get('KEGAUTH_OAUTH_PROFILES'):
-            self.oauth_authenticator = OAuthAuthenticator(app)
+            self.oauth_authenticator = self.oauth_authenticator_cls(app)
 
         for loader_cls in self.request_loader_cls:
             self.request_loaders[loader_cls.get_identifier()] = loader_cls(app)

@@ -1,5 +1,7 @@
 from contextlib import contextmanager
 
+from keg_auth.libs.authenticators import OAuthAuthenticator
+
 
 @contextmanager
 def listen_to(signal):
@@ -61,3 +63,7 @@ def oauth_profile(**kwargs):
     }
     base.update(**kwargs)
     return base
+
+
+class CustomOAuthAuthenticator(OAuthAuthenticator):
+    pass
