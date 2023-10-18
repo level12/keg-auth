@@ -280,7 +280,7 @@ class AuthManager(object):
             # syncing permissions during testing was causing some db session issues.
             if not app.testing:
                 sync_permissions(app)
-        except sa.exc.ProgrammingError as exc:
+        except (sa.exc.ProgrammingError, sa.exc.OperationalError) as exc:
             if 'permissions' not in str(exc):
                 raise
 
