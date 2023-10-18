@@ -1,6 +1,16 @@
 Changelog
 =========
 
+0.7.3 released 2023-10-17
+-------------------------
+
+- use oauth authenticator class passed to auth manager (b6feae6_)
+- trap permissions error emitted by sqlite db on sync (ba0d3b2_)
+
+.. _b6feae6: https://github.com/level12/keg-auth/commit/b6feae6
+.. _ba0d3b2: https://github.com/level12/keg-auth/commit/ba0d3b2
+
+
 0.7.2 released 2023-05-22
 -------------------------
 
