@@ -1,6 +1,5 @@
 import base64
 import hashlib
-import string
 import time
 from authlib import jose
 import arrow
@@ -39,12 +38,8 @@ class TestUserTokenMixin(object):
         assert not bcrypt.checkpw(original_token, uwt.token.hash)
 
     def test_generate_auth_token(self):
-        assert len(ents.UserWithToken.generate_raw_auth_token(length=1)) == 1
+        assert len(ents.UserWithToken.generate_raw_auth_token(length=10)) == 10
         assert len(ents.UserWithToken.generate_raw_auth_token()) == 32
-        assert len(ents.UserWithToken.generate_raw_auth_token(entropy='secure')) == 32
-        assert len(ents.UserWithToken.generate_raw_auth_token(length=None, entropy='secure')) == 11
-        assert (string.ascii_uppercase not in
-                ents.UserWithToken.generate_raw_auth_token(charset='hex'))
 
     @pytest.mark.parametrize('raw,test,result', [
         ('123', '123', True),

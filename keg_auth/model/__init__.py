@@ -7,8 +7,6 @@ import time
 import arrow
 import flask
 import keg_elements.db.utils as dbutils
-import passlib.hash
-import passlib.pwd
 import shortuuid
 import sqlalchemy as sa
 import sqlalchemy.orm as sa_orm
@@ -28,6 +26,7 @@ from sqlalchemy_utils import (
 )
 
 from keg_auth.model.types import AttemptType
+from keg_auth.model.utils import generate_password
 
 force_auto_coercion()
 
@@ -358,14 +357,14 @@ class UserTokenMixin(object):
     token = sa.Column(KAPasswordType(onload=_create_cryptcontext_kwargs))
 
     @classmethod
-    def generate_raw_auth_token(cls, length=32, entropy=None, charset='ascii_50'):
+    def generate_raw_auth_token(cls, length=32):
         """Return a raw authentication token
 
         NOTE(nZac): You should not store this directly in the database. When using this mixin,
         simply setting this value to ``self.token = generate_raw_auth_token`` is enough (though,
         there is a helper method for that ``reset_auth_token``).
         """
-        return passlib.pwd.genword(length=length, entropy=entropy, charset=charset)
+        return generate_password(length)
 
     @classmethod
     def get_user_for_api_token(cls, api_token):

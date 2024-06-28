@@ -378,8 +378,8 @@ class AuthManager(object):
         :param _commit: option for persisting record to database. Default True.
         """
         mail_enabled = user_kwargs.pop('mail_enabled', True)
-        from passlib.pwd import genword
-        user_kwargs.setdefault('password', genword(entropy='secure'))
+        from keg_auth.model.utils import generate_password
+        user_kwargs.setdefault('password', generate_password())
         user_class = self.entity_registry.user_cls
         user = user_class(**user_kwargs)
         db.session.add(user)

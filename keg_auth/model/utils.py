@@ -1,3 +1,7 @@
+import itertools
+import string
+import random
+
 from keg_auth.extensions import lazy_gettext as _
 
 
@@ -68,3 +72,22 @@ def has_permissions(condition, user):
 
 has_all = AllCondition
 has_any = AnyCondition
+
+
+def generate_password(length=12):
+    if length < 10:
+        raise Exception('length must be at least 10')
+
+    charsets = (
+        list(string.ascii_lowercase),
+        list(string.ascii_uppercase),
+        list(string.digits),
+        list('!#$%&*+-/?@^_|~'),
+    )
+    [random.shuffle(charset) for charset in charsets]
+    num_uppercase = int((length - 4) / 3)
+    num_lowercase = length - 4 - num_uppercase
+    lengths = (num_lowercase, num_uppercase, 2, 2)
+    result = list(itertools.chain(*[charsets[i][:lengths[i]] for i in range(len(charsets))]))
+    random.shuffle(result)
+    return ''.join(result)
