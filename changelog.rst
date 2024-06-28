@@ -1,6 +1,16 @@
 Changelog
 =========
 
+0.8.0 released 2024-06-28
+-------------------------
+
+- support python 3.12 (66a3706_)
+- move passlib.pwd usage to utils methods due to deprecation warnings (6bc20ab_)
+
+.. _66a3706: https://github.com/level12/keg-auth/commit/66a3706
+.. _6bc20ab: https://github.com/level12/keg-auth/commit/6bc20ab
+
+
 0.7.3 released 2023-10-17
 -------------------------
 
