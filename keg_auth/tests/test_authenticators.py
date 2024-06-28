@@ -4,7 +4,10 @@ from unittest import mock
 import flask
 import flask_jwt_extended
 import jwt
-import ldap
+try:
+    import ldap
+except ImportError:
+    ldap = None
 import passlib
 import pytest
 
@@ -171,6 +174,7 @@ class TestOAuthAuthenticator:
             authenticator.verify_user(profile_name='foo', login_id=user.email)
 
 
+@pytest.mark.skipif(not ldap, reason='requires LDAP library')
 class TestLdapAuthenticator:
     def setup_method(self):
         flask.current_app.config['KEGAUTH_LDAP_SERVER_URL'] = 'abc123'

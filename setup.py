@@ -65,6 +65,9 @@ setup(
             'requests',
             'tox',
             'xlsxwriter',
+            # PINNED for https://github.com/kvesteri/wtforms-components/issues/73 (needs release)
+            # related: https://github.com/python-validators/validators/issues/300 (closed)
+            'validators==0.20.0',
         ],
         'i18n': [
             'morphi',
