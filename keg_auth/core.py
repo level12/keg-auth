@@ -1,3 +1,5 @@
+import socket
+
 import arrow
 import flask
 import flask_login
@@ -437,10 +439,36 @@ def clear_session(app, user):
         flask.session.clear()
 
 
-def fix_session_cookies(app, **extra):
-    cookie_values = flask.request.cookies.getlist(
+def is_ip(value: str) -> bool:
+    """Determine if the given string is an IP address.
+
+    :param value: value to check
+    :type value: str
+
+    :return: True if string is an IP address
+    :rtype: bool
+
+    NOTE: This function was removed from Flask in 2.4
+    """
+    for family in (socket.AF_INET, socket.AF_INET6):
+        try:
+            socket.inet_pton(family, value)
+        except OSError:
+            pass
+        else:
+            return True
+
+    return False
+
+
+def get_cookie_values(app):
+    return flask.request.cookies.getlist(
         app.config.get('SESSION_COOKIE_NAME')
     )
+
+
+def fix_session_cookies(app, **extra):
+    cookie_values = get_cookie_values(app)
     server_name = app.config.get('SERVER_NAME')
     if len(cookie_values) > 1 and server_name:
         # werkzeug update has breaking session, since it matches both
@@ -448,7 +476,7 @@ def fix_session_cookies(app, **extra):
 
         # chop off the port which is usually not supported by browsers
         cookie_domain = server_name.rsplit(':', 1)[0].lstrip('.')
-        if flask.helpers.is_ip(cookie_domain):
+        if is_ip(cookie_domain):
             return
 
         cookie_domain = '.' + cookie_domain
