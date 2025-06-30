@@ -338,7 +338,7 @@ class AuthManager(object):
     def user_by_id(self, user_id):
         """Fetch a user record via ID."""
         user_class = self.entity_registry.user_cls
-        return user_class.get_by(id=user_id)
+        return user_class.get_by(id=sa.cast(user_id, self.entity_registry.user_cls.id.type))
 
     def test_request_loader(self, request):
         """ Load a user from a request when testing. This gives a nice API for test clients to

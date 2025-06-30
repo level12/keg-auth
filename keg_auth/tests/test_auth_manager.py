@@ -129,3 +129,7 @@ class TestAuthManager(object):
         assert len(outbox) == 1
         assert outbox[0].subject == '[KA Demo] User Welcome & Verification'
         assert '/verify-account/{}/{}'.format(user.id, user._token_plain) in outbox[0].body
+
+    def test_user_by_id(self):
+        user = ents.User.fake()
+        assert self.am.user_by_id(str(user.id)) == user
