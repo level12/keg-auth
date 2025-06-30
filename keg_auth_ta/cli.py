@@ -19,10 +19,14 @@ def auth_cli_extensions(app):
 
     @app.cli.command('verify-translations', help='Verifies all strings marked for translation')
     def verify_translations():
+        import os
         from pathlib import Path
         from morphi.messages.validation import check_translations
 
-        root_path = Path(__file__).resolve().parent.parent
+        if 'TOX_WORK_DIR' in os.environ:
+            root_path = Path(os.environ['TOX_WORK_DIR']).parent
+        else:
+            root_path = Path(__file__).resolve().parent.parent
         check_translations(
             root_path,
             'keg_auth',

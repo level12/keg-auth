@@ -1,7 +1,7 @@
 {
     "": {
         "language": "es",
-        "plural-forms": "nplurals=2; plural=(n != 1)"
+        "plural-forms": "nplurals=2; plural=(n != 1);"
     },
     "Account verified & password set.  Please use the new password to login below.": "Cuenta verificada y contrase\u00f1a establecida. Utilice la nueva contrase\u00f1a para iniciar sesi\u00f3n a continuaci\u00f3n.",
     "Argument mismatch occurred: method=%s, missing=%s, extra_keys=%s, extra_pos=%s.  Arguments available: %s": "Se produjo una discrepancia de argumento: m\u00e9todo=%s, falta=%s, extra_keys=%s, extra_pos=%s. Argumentos disponibles: %s",
@@ -10,6 +10,7 @@
     "Authentication token was invalid or expired.  Please fill out the form below to get a new token.": "El token de autenticaci\u00f3n no es v\u00e1lido o ha caducado. Complete el formulario a continuaci\u00f3n para obtener un nuevo token.",
     "Bundle": "Manojo",
     "Bundles": "Manojos",
+    "Cannot change user domain.": "No se puede cambiar el dominio del usuario.",
     "Change Password": "Cambia la Contrase\u00f1a",
     "Complete Password Reset": "Restablecer Contrase\u00f1a Completa",
     "Confirm Password": "Confirmar Contrase\u00f1a",
