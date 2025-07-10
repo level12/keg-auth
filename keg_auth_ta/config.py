@@ -1,5 +1,10 @@
+import os
+
 from blazeutils.strings import randchars
 from keg import config
+
+
+POSTGRES_DRIVER = os.environ.get('POSTGRES_DRIVER', '+psycopg')
 
 
 class DefaultProfile(object):
@@ -27,7 +32,7 @@ class TestProfile(object):
 
     # These settings reflect what is needed in CI & when using docker compose.
     # Use keg_auth_ta-config.py to override if needed.
-    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres@localhost/kegauth_tests'
+    SQLALCHEMY_DATABASE_URI = f'postgresql{POSTGRES_DRIVER}://postgres@localhost/kegauth_tests'
 
 
 class TestProfileUserArgs(config.TestProfile, TestProfile):

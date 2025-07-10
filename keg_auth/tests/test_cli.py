@@ -15,7 +15,7 @@ class TestCLI(CLIBase):
         ents.Attempt.delete_cascaded()
 
     def test_help_options(self):
-        result = self.invoke('auth')
+        result = self.invoke('auth', exit_code=2)
         assert 'create-user' in result.output
 
     @mock.patch('keg.current_app.auth_manager.create_user_cli', autospec=True, spec_set=True)

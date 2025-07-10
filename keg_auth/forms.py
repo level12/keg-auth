@@ -5,6 +5,7 @@ import flask
 import keg
 from keg_elements.forms import Form, ModelForm, FieldMeta, MultiCheckboxField
 from keg_elements.forms.validators import ValidateUnique
+import sqlalchemy as sa
 from sqlalchemy.sql.functions import coalesce
 from sqlalchemy_utils import EmailType
 from wtforms.fields import (
@@ -89,6 +90,7 @@ def get_group_options():
 def entities_from_ids(cls, ids):
     if not ids:
         return []
+    ids = [sa.func.cast(id_, cls.id.type) for id_ in ids]
     return cls.query.filter(cls.id.in_(ids)).all()
 
 

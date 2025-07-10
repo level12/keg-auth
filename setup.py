@@ -57,7 +57,8 @@ setup(
             'flask-webtest',
             'freezegun',
             'mock',
-            'psycopg2-binary',
+            'psycopg',
+            'psycopg-binary',
             'python-ldap==3.4.3',
             'pyquery',
             'pytest',
@@ -65,9 +66,7 @@ setup(
             'requests',
             'tox',
             'xlsxwriter',
-            # PINNED for https://github.com/kvesteri/wtforms-components/issues/73 (needs release)
-            # related: https://github.com/python-validators/validators/issues/300 (closed)
-            'validators==0.20.0',
+            'validators',
         ],
         'i18n': [
             'morphi',
