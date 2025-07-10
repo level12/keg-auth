@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.8.1 released 2025-07-10
+-------------------------
+
+- resolve type comparison for fetching user by ID (bfff353_)
+
+.. _bfff353: https://github.com/level12/keg-auth/commit/bfff353
+
+
 0.8.0 released 2024-06-28
 -------------------------
 
