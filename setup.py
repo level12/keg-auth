@@ -39,7 +39,6 @@ setup(
         'Keg>=0.11.0',
         'KegElements>=0.9.0',
         'inflect',
-        'passlib',
         'shortuuid',
         'webgrid>=0.4.13',
     ],

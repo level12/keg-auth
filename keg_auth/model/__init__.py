@@ -16,15 +16,14 @@ from blazeutils import tolist
 from blazeutils.strings import randchars
 from keg.db import db
 from keg_elements.db.mixins import might_commit, might_flush
-from sqlalchemy.dialects import mssql
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy_utils import (
     ArrowType,
     EmailType,
-    PasswordType,
     force_auto_coercion,
 )
 
+from keg_auth.model.passwords import KAPasswordType, UnknownHashError
 from keg_auth.model.types import AttemptType
 from keg_auth.model.utils import generate_password
 
@@ -35,8 +34,10 @@ def registry():
     return flask.current_app.auth_manager.entity_registry
 
 
-def _create_cryptcontext_kwargs(**column_kwargs):
-    config = flask.current_app.config['PASSLIB_CRYPTCONTEXT_KWARGS']
+def _create_password_context_kwargs(**column_kwargs):
+    config = flask.current_app.config.get('KEGAUTH_PASSWORD_CONTEXT_KWARGS')
+    if config is None:
+        config = flask.current_app.config['PASSLIB_CRYPTCONTEXT_KWARGS']
     retval = {}
     retval.update(config)
     retval.update(column_kwargs)
@@ -51,13 +52,6 @@ class InvalidToken(Exception):
     pass
 
 
-class KAPasswordType(PasswordType):
-    def load_dialect_impl(self, dialect):
-        if dialect.name == 'mssql':
-            return mssql.VARCHAR(self.length)
-        return super(KAPasswordType, self).load_dialect_impl(dialect)
-
-
 class UserMixin(object):
     """Generic mixin for user entities."""
     # These two attributes are needed by Flask-Login.
@@ -66,7 +60,7 @@ class UserMixin(object):
 
     is_enabled = sa.Column(sa.Boolean, nullable=False, default=True)
     is_superuser = sa.Column(sa.Boolean, nullable=False, default=False)
-    password = sa.Column(KAPasswordType(onload=_create_cryptcontext_kwargs))
+    password = sa.Column(KAPasswordType(onload=_create_password_context_kwargs))
 
     username = sa.Column(sa.Unicode(512), nullable=False, unique=True)
 
@@ -354,7 +348,7 @@ class UserMixin(object):
 
 class UserTokenMixin(object):
     """Mixin for users who will be authenticated by tokens."""
-    token = sa.Column(KAPasswordType(onload=_create_cryptcontext_kwargs))
+    token = sa.Column(KAPasswordType(onload=_create_password_context_kwargs))
 
     @classmethod
     def generate_raw_auth_token(cls, length=32):
@@ -384,10 +378,13 @@ class UserTokenMixin(object):
             return
 
         user = cls.query.filter_by(email=real_email).one_or_none()
-        if user is None or not user.token.context.verify(raw_token, user.token.hash):
+        try:
+            if user is None or not user.token.context.verify(raw_token, user.token.hash):
+                return
+        except UnknownHashError:
             return
-        else:
-            return user
+
+        return user
 
     def reset_auth_token(self, **kwargs):
         """Reset the authentication token for this user
@@ -401,7 +398,10 @@ class UserTokenMixin(object):
         if not token or not self.token:
             return False
 
-        return self.token.context.verify(token, self.token.hash)
+        try:
+            return self.token.context.verify(token, self.token.hash)
+        except UnknownHashError:
+            return False
 
     def generate_api_token(self, token=None):
         raw_token = token or self.reset_auth_token()

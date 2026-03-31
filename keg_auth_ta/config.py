@@ -26,7 +26,7 @@ class DefaultProfile(object):
 
 class TestProfile(object):
     # Make tests faster
-    PASSLIB_CRYPTCONTEXT_KWARGS = dict(schemes=['plaintext'])
+    KEGAUTH_PASSWORD_CONTEXT_KWARGS = dict(schemes=['plaintext'])
 
     MAIL_DEFAULT_SENDER = 'sender@example.com'
 
