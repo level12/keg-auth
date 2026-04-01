@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.9.0 released 2026-04-01
+-------------------------
+
+- eliminate passlib dependency. Requires config change to KEGAUTH_PASSWORD_CONTEXT_KWARGS if PASSLIB_CRYPTCONTEXT_KWARGS is being used (78f5abf_)
+
+.. _78f5abf: https://github.com/level12/keg-auth/commit/78f5abf
+
+
 0.8.1 released 2025-07-10
 -------------------------
 

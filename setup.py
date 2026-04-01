@@ -12,7 +12,7 @@ with open(version_fpath) as fo:
     exec(fo.read(), version_globals)
 
 setup(
-    name='Keg-Auth',
+    name='keg-auth',
     version=version_globals['VERSION'],
     description='Authentication plugin for Keg',
     long_description='\n\n'.join((README, CHANGELOG)),
