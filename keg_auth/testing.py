@@ -5,7 +5,6 @@ from urllib.parse import quote
 import arrow
 import flask
 import flask_webtest
-import passlib
 import pytest
 import wrapt
 from blazeutils import randchars
@@ -14,6 +13,7 @@ from keg import current_app
 from keg.db import db
 
 from keg_auth.libs.authenticators import AttemptLimitMixin
+from keg_auth.model.passwords import PasswordContext
 from keg_auth.model.types import AttemptType
 
 has_attempt_skip_reason = 'no attempt model registered in entity registry'
@@ -1235,9 +1235,9 @@ def user_request(wrapped, instance, args, kwargs):
 def with_crypto_context(field, context=None):
     """Wrap a test to use a real cryptographic context for a :class:`KAPasswordType`
 
-    Temporarily assign a :class:`passlib.context.CryptoContext` to a particular entity column.
+    Temporarily assign a password context to a particular entity column.
 
-    :param context (optional): :class:`passlib.context.CryptoContext` to use for this test. The
+    :param context (optional): password context to use for this test. The
         default value is `keg_auth.core.DEFAULT_CRYPTO_SCHEMES`.
 
     .. NOTE:
@@ -1251,7 +1251,7 @@ def with_crypto_context(field, context=None):
 
         import bcrypt
 
-        bcrypt_context = passlib.context.CryptContext(scheme=['bcrypt'])
+        bcrypt_context = PasswordContext(schemes=['bcrypt'])
 
         @with_crypto_context(ents.User.password, context=bcrypt_context)
         def test_with_real_context():
@@ -1264,13 +1264,13 @@ def with_crypto_context(field, context=None):
     @wrapt.decorator
     def wrapper(wrapped, instance, args, kwargs):
         prev_context = field.type.context
-        field.type.context = (
-            context or passlib.context.CryptContext(schemes=keg_auth.core.DEFAULT_CRYPTO_SCHEMES)
-        )
-
-        wrapped(*args, **kwargs)
-
-        field.type.context = prev_context
+        try:
+            field.type.context = (
+                context or PasswordContext(schemes=keg_auth.core.DEFAULT_CRYPTO_SCHEMES)
+            )
+            return wrapped(*args, **kwargs)
+        finally:
+            field.type.context = prev_context
 
     return wrapper
 

@@ -4,7 +4,6 @@ from urllib.parse import urljoin, urlparse
 import arrow
 import flask
 import flask_login
-import passlib
 import sqlalchemy as sa
 import string
 import typing
@@ -17,6 +16,7 @@ from keg_auth import forms
 from keg_auth.extensions import flash, lazy_gettext as _
 from keg_auth.libs import get_domain_from_email
 from keg_auth.model import get_username_key, get_username
+from keg_auth.model.passwords import UnknownHashError
 from keg_auth.model.entity_registry import RegistryError
 
 try:
@@ -938,7 +938,7 @@ class KegAuthenticator(PasswordAuthenticatorMixin, LoginAuthenticator):
     def verify_password(self, user, password):
         try:
             return user.password == password
-        except passlib.exc.UnknownHashError:
+        except UnknownHashError:
             return False
 
 

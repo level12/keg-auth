@@ -8,10 +8,10 @@ try:
     import ldap
 except ImportError:
     ldap = None
-import passlib
 import pytest
 
 from keg_auth.libs import authenticators as auth, get_domain_from_email
+from keg_auth.model.passwords import UnknownHashError
 from keg_auth.tests.utils import oauth_profile
 from keg_auth_ta.model.entities import User, UserNoEmail
 
@@ -37,15 +37,12 @@ class TestKegAuthenticator:
         assert e_info.value.user is user
 
     def test_user_unknown_hash(self):
-        # Tough to test the real-world case here, because to run the test suite more quickly,
-        # we use plaintext passwords. The hash error only comes into play with something more
-        # interesting for passlib to use, but there does not seem to be good or clean way to
-        # mock that in later.
-        # So, we'll mock the comparator.
+        # Most tests use plaintext hashing for speed, so mock the comparator to exercise the
+        # unknown-hash path.
         user = User.fake()
         authenticator = auth.KegAuthenticator(app=flask.current_app)
         with mock.patch.object(user.password, '__eq__', autospec=True, spec_set=True) as m_eq:
-            m_eq.side_effect = passlib.exc.UnknownHashError
+            m_eq.side_effect = UnknownHashError
             assert not authenticator.verify_password(user, 'nomatchinghash')
 
     def test_user_verified(self):

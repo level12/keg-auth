@@ -11,9 +11,35 @@ import sqlalchemy as sa
 import bcrypt
 
 from keg_auth.model import InvalidToken, entity_registry, utils
+from keg_auth.model.passwords import PasswordContext
 from keg_auth_ta.model import entities as ents
 from keg_auth.testing import with_crypto_context
 import mock
+
+
+legacy_pbkdf2_context = PasswordContext(schemes=['pbkdf2_sha256'])
+
+
+def test_password_context_legacy_bcrypt_long_secret_no_upgrade():
+    context = PasswordContext(schemes=['bcrypt', 'pbkdf2_sha256'])
+    raw_password = 'a' * 100
+    legacy_hash = bcrypt.hashpw(raw_password[:72].encode(), bcrypt.gensalt()).decode()
+
+    valid, new_hash = context.verify_and_update(raw_password, legacy_hash)
+
+    assert valid
+    assert new_hash is None
+
+
+def test_password_context_legacy_pbkdf2_is_upgraded():
+    context = PasswordContext(schemes=['bcrypt', 'pbkdf2_sha256'])
+    raw_password = 'abc123'
+    legacy_hash = legacy_pbkdf2_context.hash(raw_password)
+
+    valid, new_hash = context.verify_and_update(raw_password, legacy_hash)
+
+    assert valid
+    assert new_hash.startswith('$2')
 
 
 class TestUserTokenMixin(object):
@@ -55,6 +81,15 @@ class TestUserTokenMixin(object):
         uwt = ents.UserWithToken.fake(token=raw)
         assert uwt.verify_token(test) is result
 
+    @with_crypto_context(ents.UserWithToken.token)
+    def test_verify_token_legacy_pbkdf2(self):
+        raw_token = '1234'
+        uwt = ents.UserWithToken.fake(token=raw_token)
+        uwt.token.hash = legacy_pbkdf2_context.hash(raw_token).encode()
+
+        assert uwt.verify_token(raw_token)
+        assert uwt.token.hash.decode().startswith('$pbkdf2-sha256$')
+
     def test_generate_api_token(self):
         u1 = ents.UserWithToken.fake()
         raw_token = u1.generate_api_token()
@@ -62,7 +97,8 @@ class TestUserTokenMixin(object):
         raw_email, token = raw_token.split('.')
         real_email = base64.urlsafe_b64decode(raw_email.encode()).decode()
 
-        assert (real_email, token) == (u1.email, u1.token.hash.decode())
+        assert real_email == u1.email
+        assert u1.verify_token(token)
 
     def test_get_user_for_api_token_happy_path(self):
         u1 = ents.UserWithToken.fake(email='test@test.com', token='1234')
