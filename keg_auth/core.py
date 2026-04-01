@@ -97,12 +97,17 @@ class AuthManager(object):
     def init_config(self, app):
         """Provide app config defaults for crypto, mail, logins, etc."""
         _cc_kwargs = dict(schemes=DEFAULT_CRYPTO_SCHEMES, deprecated='auto')
-        legacy_kwargs = app.config.get('PASSLIB_CRYPTCONTEXT_KWARGS')
-        app.config.setdefault('KEGAUTH_PASSWORD_CONTEXT_KWARGS', legacy_kwargs or _cc_kwargs)
-        app.config.setdefault(
-            'PASSLIB_CRYPTCONTEXT_KWARGS',
-            app.config['KEGAUTH_PASSWORD_CONTEXT_KWARGS'],
-        )
+        legacy_cc_kwargs = app.config.get('PASSLIB_CRYPTCONTEXT_KWARGS')
+        config_cc_kwargs = app.config.get('KEGAUTH_PASSWORD_CONTEXT_KWARGS')
+
+        if legacy_cc_kwargs and not config_cc_kwargs:
+            raise Exception(
+                'Use KEGAUTH_PASSWORD_CONTEXT_KWARGS to configure schemes used '
+                'for hashing passwords. PASSLIB_CRYPTCONTEXT_KWARGS is no longer '
+                'supported in keg-auth.'
+            )
+
+        app.config.setdefault('KEGAUTH_PASSWORD_CONTEXT_KWARGS', _cc_kwargs)
 
         # config flag controls email ops such as sending verification emails, etc.
         # Note: model mixin must be in place for email

@@ -36,8 +36,6 @@ def registry():
 
 def _create_password_context_kwargs(**column_kwargs):
     config = flask.current_app.config.get('KEGAUTH_PASSWORD_CONTEXT_KWARGS')
-    if config is None:
-        config = flask.current_app.config['PASSLIB_CRYPTCONTEXT_KWARGS']
     retval = {}
     retval.update(config)
     retval.update(column_kwargs)
