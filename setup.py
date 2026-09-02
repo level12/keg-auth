@@ -31,8 +31,8 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        'authlib',
         'bcrypt',
+        'joserfc>=1.6.8',
         'markdown-it-py',
 
         'Flask-Login>0.4.1',
@@ -48,6 +48,7 @@ setup(
     # $ pip install -e .[dev,test]
     extras_require={
         'tests': [
+            'authlib',
             'email_validator',
             'flake8',
             'flask-bootstrap',
@@ -81,6 +82,7 @@ setup(
             'Flask-Mail',
         ],
         'oauth': [
+            'authlib',
             'requests',
         ],
     }
