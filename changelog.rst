@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.9.1 released 2026-09-02
+-------------------------
+
+- shift from authlib.jose to joserfc for jwt (bc6a414_)
+
+.. _bc6a414: https://github.com/level12/keg-auth/commit/bc6a414
+
+
 0.9.0 released 2026-04-01
 -------------------------
 
