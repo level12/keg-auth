@@ -4,7 +4,7 @@ import flask
 import flask_login
 import freezegun
 import arrow
-from keg_auth.core import update_last_login
+from keg_auth.core import fix_session_cookies, update_last_login
 from keg_auth_ta.model import entities as ents
 
 
@@ -34,3 +34,14 @@ class TestSessionClear:
             assert 'foo' in list(flask.session)
             flask_login.logout_user()
             assert len(list(flask.session)) == 1
+
+
+def test_fix_session_cookies():
+    with flask.current_app.test_request_context():
+        with mock.patch(
+            'keg_auth.core.get_cookie_values', autospec=True, spec_set=True
+        ) as m_cookies:
+            with mock.patch('flask.abort', autospec=True, spec_set=True) as m_abort:
+                m_cookies.return_value = ['FoObAr', 'BarFOo']
+                fix_session_cookies(flask.current_app)
+                m_abort.assert_called_once()
