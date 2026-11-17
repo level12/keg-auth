@@ -65,6 +65,7 @@
     "Too many password reset attempts.": "Demasiados intentos de restablecimiento de contrase\u00f1a.",
     "Too many records to export as {}": "Demasiados registros para exportar como {}",
     "Unable to delete {name}. It may be referenced by other items.": "No se puede eliminar {name}. Puede ser referenciado por otros art\u00edculos.",
+    "Unable to delete {name}. The request was invalid or expired. Please try again.": "No se puede eliminar {name}. La solicitud no es v\u00e1lida o ha caducado. Int\u00e9ntelo de nuevo.",
     "User": "Usuario",
     "User ID": "Identidad de usuario",
     "User created.": "Creado por el usuario.",

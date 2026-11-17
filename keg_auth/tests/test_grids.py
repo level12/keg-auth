@@ -1,4 +1,5 @@
 from mock import patch
+import flask
 import pytest
 
 from blazeutils.strings import randchars
@@ -22,6 +23,7 @@ class TestActionColumnLinkClasses(object):
             default_view_link_class = randchars(20)
             default_edit_link_class = randchars(20)
             default_delete_link_class = randchars(20)
+            default_delete_form_class = randchars(20)
 
         class Grid(BaseGrid):
             action_column_cls = MyActionColumn
@@ -29,6 +31,7 @@ class TestActionColumnLinkClasses(object):
         view_class = MyActionColumn.default_view_link_class
         edit_class = MyActionColumn.default_edit_link_class
         delete_class = MyActionColumn.default_delete_link_class
+        delete_form_class = MyActionColumn.default_delete_form_class
 
         with patch.object(Grid, 'action_column_cls') as m_ac_init:
             grid_fun('edit_endpoint', None, 'delete_endpoint', None, grid_cls=Grid)
@@ -42,11 +45,14 @@ class TestActionColumnLinkClasses(object):
             assert col.view_link_class_for(None) == view_class
             assert col.edit_link_class_for(None) == edit_class
             assert col.delete_link_class_for(None) == delete_class
+            assert col.delete_form_class_for(None) == delete_form_class
             col.view_endpoint = 'view_endpoint'
             patch_extract_data = patch('keg_auth.grids.ActionColumn.extract_data')
             patch_grid = patch.object(col, 'grid')
             patch_url_for = patch('flask.url_for', return_value='/url')
-            with patch_extract_data, patch_grid, patch_url_for:
+            # the delete form renders a CSRF token, which requires a request context
+            request_ctx = flask.current_app.test_request_context()
+            with patch_extract_data, patch_grid, patch_url_for, request_ctx:
                 result = col.extract_and_format_data(None)
-                for cls in [view_class, edit_class, delete_class]:
+                for cls in [view_class, edit_class, delete_class, delete_form_class]:
                     assert cls in result

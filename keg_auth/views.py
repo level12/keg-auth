@@ -8,6 +8,7 @@ from keg.db import db
 from flask_wtf.csrf import validate_csrf
 from keg_auth import forms, grids, requires_permissions
 from keg_auth.extensions import lazy_gettext as _, flash
+from keg_elements.forms import Form
 
 try:
     from speaklater import is_lazy_string
@@ -78,7 +79,7 @@ class CrudView(keg.web.BaseView):
         cls.map_method_route(
             'delete',
             '{}/<int:objid>/delete'.format(cls.calc_url(use_blueprint=False)),
-            ('GET', )
+            ('POST', )
         )
         cls.map_method_route('list', '{}'.format(cls.calc_url(use_blueprint=False)),
                              ('GET', 'POST'))
@@ -235,12 +236,16 @@ class CrudView(keg.web.BaseView):
         return requires_permissions(self.permissions['edit'])(action)()
 
     def delete(self, objid):
-        """View method for delete. Enforce permissions, load the record, run ORM delete.
+        """View method for delete. Enforce permissions, check CSRF, load the record, run ORM delete.
 
+        If CSRF fails, return result of `on_delete_invalid`.
         If delete succeeds, return result of `on_delete_success`.
         If delete fails, return result of `on_delete_failure`.
         """
         def action():
+            if not Form().validate():  # CSRF
+                return self.on_delete_invalid()
+
             self.init_object(objid, 'delete')
 
             try:
@@ -282,6 +287,16 @@ class CrudView(keg.web.BaseView):
                 name=self.object_name
             ),
             'warning'
+        )
+        return flask.redirect(self.list_url_with_session)
+
+    def on_delete_invalid(self):
+        """Flash a message for an invalid delete request (e.g. CSRF failure), and redirect
+        to list view."""
+        flash(
+            _('Unable to delete {name}. The request was invalid or expired. Please try again.')
+            .format(name=self.object_name),
+            'error'
         )
         return flask.redirect(self.list_url_with_session)
 
