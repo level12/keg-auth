@@ -24,16 +24,10 @@ import keg_auth
 project = 'Keg-Auth'
 copyright = f'{dt.date.today().year} Level 12'
 
-
-tag = ''
 master_doc = 'index'
 
-html_context = {
-    'prerelease': bool(tag),  # True if tag is not the empty string
-}
-
 # The full version, including alpha/beta/rc tags.
-release = keg_auth.__version__ + tag
+release = keg_auth.__version__
 
 
 # -- General configuration ---------------------------------------------------

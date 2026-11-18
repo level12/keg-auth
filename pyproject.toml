@@ -1,14 +1,21 @@
 [build-system]
-requires = ['hatchling']
+requires = [
+    'hatchling',
+]
 build-backend = 'hatchling.build'
+
 
 [project]
 name = 'keg-auth'
 description = 'Authentication plugin for Keg'
-authors = [{name = 'Level 12 Developers', email = 'devteam@level12.io'}]
+authors = [
+    {name = 'Level 12 Developers', email = 'devteam@level12.io'},
+]
 requires-python = '>=3.12'
 dynamic = ['version']
-readme = 'readme.rst'
+readme = 'readme.md'
+license = 'BSD-3-Clause'
+license-files = ['license.txt']
 classifiers = [
     'Development Status :: 4 - Beta',
     'Intended Audience :: Developers',
@@ -31,30 +38,14 @@ dependencies = [
     'webgrid>=0.4.13',
 ]
 
+
 [project.urls]
-Homepage = "https://github.com/level12/keg-auth"
-Documentation = "https://keg-auth.readthedocs.io/"
+Homepage = 'https://github.com/level12/keg-auth'
+Repository = 'https://github.com/level12/keg-auth'
+Documentation = 'https://keg-auth.readthedocs.io/'
+
 
 [project.optional-dependencies]
-tests = [
-    'authlib',
-    'email_validator',
-    'flask-bootstrap',
-    'flask-jwt-extended>=4.0.0',
-    'flask-mail',
-    'flask-webtest',
-    'freezegun',
-    'mock',
-    'psycopg',
-    'psycopg-binary',
-    'python-ldap',
-    'pyquery',
-    'pytest',
-    'pytest-cov',
-    'requests',
-    'xlsxwriter',
-    'validators',
-]
 i18n = [
     'morphi>=0.3.2',
     'setuptools',
@@ -73,19 +64,7 @@ oauth = [
     'authlib',
     'requests',
 ]
-
-[dependency-groups]
-dev = [
-    {include-group = 'pytest'},
-    {include-group = 'prek'},
-    {include-group = 'audit'},
-    {include-group = 'build'},
-    {include-group = 'docs'},
-    {include-group = 'nox'},
-    'click',
-    'ruff==0.16.2',
-]
-pytest = [
+tests = [
     'authlib',
     'email_validator',
     'flask-bootstrap',
@@ -93,7 +72,6 @@ pytest = [
     'flask-mail',
     'flask-webtest',
     'freezegun',
-    'mock',
     'psycopg',
     'psycopg-binary',
     'python-ldap',
@@ -104,13 +82,61 @@ pytest = [
     'xlsxwriter',
     'validators',
 ]
-psycopg2 = ['psycopg2-binary']
-i18n = ['morphi>=0.3.2', 'webgrid[i18n]', 'setuptools']
-prek = ['prek']
-audit = ['pip-audit']
-build = ['build', 'twine']
-docs = [{include-group = 'pytest'}, 'sphinx']
-nox = ['nox']
+
+
+[dependency-groups]
+dev = [
+    {include-group = "pytest"},
+    {include-group = "prek"},
+    {include-group = "audit"},
+    {include-group = "build"},
+    {include-group = "docs"},
+    {include-group = "nox"},
+    'click',
+    'ruff==0.16.2',
+]
+# Used by nox
+pytest = [
+    'authlib',
+    'email_validator',
+    'flask-bootstrap',
+    'flask-jwt-extended>=4.0.0',
+    'flask-mail',
+    'flask-webtest',
+    'freezegun',
+    'psycopg',
+    'psycopg-binary',
+    'python-ldap',
+    'pyquery',
+    'pytest',
+    'pytest-cov',
+    'requests',
+    'xlsxwriter',
+    'validators',
+]
+# Used by nox
+prek = [
+    'prek',
+]
+# Used by nox
+audit = [
+    'pip-audit',
+]
+# Used by nox
+build = [
+    'build',
+    'twine',
+]
+# Used by nox
+docs = [
+    {include-group = "pytest"},
+    'sphinx',
+]
+# Used by CI
+nox = [
+    'nox',
+]
+
 
 [tool.babel.extract_messages]
 input_dirs = ['src/keg_auth']

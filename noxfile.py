@@ -4,18 +4,10 @@ from pathlib import Path
 import nox
 
 
-package_path = Path(__file__).parent.resolve()
+package_path = Path(__file__).parent
+is_circleci = 'CIRCLECI' in environ
+
 nox.options.default_venv_backend = 'uv'
-nox.options.sessions = [
-    'pytest',
-    'pytest_stable',
-    'pytest_psycopg2',
-    'i18n',
-    'build',
-    'docs',
-    'prek',
-    'audit',
-]
 
 
 @nox.session(python=['3.12', '3.13', '3.14'])
@@ -26,28 +18,18 @@ def pytest(session: nox.Session):
 
 @nox.session(python=['3.12', '3.13', '3.14'])
 def pytest_stable(session: nox.Session):
-    session.install('-r', 'stable-requirements.txt', '.')
+    requirements = [
+        requirement
+        for requirement in Path('stable-requirements.txt').read_text().splitlines()
+        if requirement
+    ]
+    session.install('.', *requirements)
     pytest_run(session)
 
 
-@nox.session(python='3.14')
-def pytest_psycopg2(session: nox.Session):
-    uv_sync(session, 'pytest', 'psycopg2')
-    session.run(
-        'uv',
-        'pip',
-        'uninstall',
-        '--python',
-        session.virtualenv.location,
-        'psycopg',
-        'psycopg-binary',
-    )
-    pytest_run(session, POSTGRES_DRIVER='+psycopg2')
-
-
-@nox.session(python='3.14')
-def i18n(session: nox.Session):
-    uv_sync(session, 'pytest', 'i18n', project=True)
+@nox.session
+def pytest_i18n(session: nox.Session):
+    uv_sync(session, 'pytest', extra='i18n')
     pytest_run(session)
     session.run('python', '-m', 'keg_auth_ta.app', '--profile=TestProfile', 'verify-translations')
 
@@ -55,33 +37,38 @@ def i18n(session: nox.Session):
 @nox.session
 def prek(session: nox.Session):
     uv_sync(session)
-    session.run('prek', 'run', '--all-files')
+    session.run(
+        'prek',
+        'run',
+        '--all-files',
+    )
 
 
 @nox.session
 def audit(session: nox.Session):
-    uv_sync(session, 'audit', 'pytest', project=True)
-    session.run('pip-audit', '--desc', '--skip-editable', *pip_audit_ignore_args())
+    # Much faster to install the deps first and have pip-audit run against the venv
+    uv_sync(session)
+    session.run(
+        'pip-audit',
+        '--desc',
+        '--skip-editable',
+        *pip_audit_ignore_args(),
+    )
 
 
 @nox.session
 def docs(session: nox.Session):
     uv_sync(session, 'docs', project=True)
-    session.run(
-        'sphinx-build', '-W', '--keep-going', '-b', 'html', 'docs/source', 'docs/build/html'
-    )
+    session.run('make', '-C', 'docs', 'html', external=True)
 
 
 @nox.session
 def build(session: nox.Session):
+    # Install the test group so runtime dependencies are present when validating the wheel import.
     uv_sync(session, 'build', 'pytest')
-    output_dir = Path(
-        environ.get('KEG_AUTH_DIST_DIR', Path(session.create_tmp()) / 'dist')
-    ).resolve()
-    # The default build creates the wheel from the sdist, exercising both distributions.
-    session.run('python', '-m', 'build', '--outdir', str(output_dir))
-    session.run('twine', 'check', *map(str, output_dir.glob('*')))
-    session.run('python', 'tasks/check-dist.py', str(output_dir))
+    output_dir = Path(environ.get('KEG_AUTH_DIST_DIR', Path(session.create_tmp()) / 'dist'))
+    session.run('python', '-m', 'build', '--outdir', output_dir)
+    session.run('twine', 'check', *output_dir.glob('*'))
     (wheel_path,) = output_dir.glob('*.whl')
     session.run(
         'uv',
@@ -91,57 +78,97 @@ def build(session: nox.Session):
         session.virtualenv.location,
         '--reinstall',
         '--no-deps',
-        str(wheel_path),
+        wheel_path,
     )
-    session.chdir(session.create_tmp())
     session.run(
         'python',
-        '-I',
         '-c',
-        'from keg_auth_ta.app import KegAuthTestApp; import keg_auth; print(keg_auth.__file__)',
+        'import keg_auth; print(f"Imported installed wheel from {keg_auth.__file__}")',
     )
 
 
-def pytest_run(session: nox.Session, **env):
+def pytest_run(session: nox.Session, *args, **env):
+    """
+    Using functions for pytest and uv enables more advanced uses cases.  Examples:
+
+    py_all = ['3.12', '3.13', '3.14']
+
+    @session(py=py_all)
+    @parametrize('db', ['pg', 'sqlite'])
+    def pytest(session: Session, db: str):
+        uv_sync(session)
+        pytest_run(session, WEBTEST_DB=db)
+
+
+    @session(py=py_single)
+    def pytest_mssql(session: Session):
+        uv_sync(session, 'pytest', 'mssql')
+        pytest_run(session, WEBTEST_DB='mssql')
+
+
+    @session(py=py_single)
+    def pytest_i18n(session: Session):
+        uv_sync(session, extra='i18n')
+        pytest_run(session, WEBTEST_DB='sqlite')
+
+    """
+    # CircleCI will give additional info in the UI about tests if junit-xml is output.
+    junit_opt = f'--junit-xml={package_path}/ci/test-reports/{session.name}.pytests.xml'
+    junit_args = (junit_opt,) if is_circleci else ()
+
     session.run(
         'pytest',
-        '-ra',
-        '--tb=short',
+        '-rA',
+        '--tb=native',
         '--strict-markers',
         '--cov',
         '--cov-report=xml',
         '--no-cov-on-fail',
-        f'--junit-xml={package_path}/ci/test-reports/{session.name}.xml',
-        str(package_path / 'tests'),
+        *junit_args,
+        package_path / 'tests',
+        *args,
         *session.posargs,
         env=env,
     )
 
 
-def uv_sync(session: nox.Session, *groups, project=False):
+def uv_sync(session: nox.Session, *groups, project=False, extra=None):
+    # If no group given, assume group shares name of session.
     if not groups:
         groups = (session.name,)
+
+    # At least pytest needs the project installed.
     project_args = () if project or session.name.startswith('pytest') else ('--no-install-project',)
+
     group_args = [arg for group in groups for arg in ('--group', group)]
-    session.run(
+    extra_args = ('--extra', extra) if extra else ()
+
+    run_args = (
         'uv',
         'sync',
         '--active',
         '--frozen',
         '--exact',
+        # Use --no-default-groups instead of --only-group as the latter implies
+        # --no-install-project.
         '--no-default-groups',
         *project_args,
         *group_args,
+        *extra_args,
     )
+    session.run(*run_args)
 
 
-def pip_audit_ignore_args():
-    path = package_path / 'pip-audit-ignore.txt'
-    if not path.exists():
-        return []
-    ids = [
-        line.strip()
-        for line in path.read_text().splitlines()
+def pip_audit_ignore_args() -> list | tuple:
+    ignore_fpath = package_path / 'pip-audit-ignore.txt'
+
+    if not ignore_fpath.exists():
+        return ()
+
+    vuln_ids = [
+        line
+        for line in ignore_fpath.read_text().strip().splitlines()
         if line.strip() and not line.startswith('#')
     ]
-    return [arg for vuln_id in ids for arg in ('--ignore-vuln', vuln_id)]
+
+    return [arg for vuln_id in vuln_ids for arg in ('--ignore-vuln', vuln_id)]

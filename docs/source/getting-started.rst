@@ -617,7 +617,7 @@ Helpful links
 Message management
 ^^^^^^^^^^^^^^^^^^
 
-The ``tool.babel`` sections in ``pyproject.toml`` is configured to handle the standard message extraction commands. For ease of development
+The ``tool.babel`` sections in ``pyproject.toml`` are configured to handle the standard message extraction commands. For ease of development
 and ensuring that all marked strings have translations, a Nox session is defined for testing i18n. This will
 run commands to update and compile the catalogs, and specify any strings which need to be added.
 
@@ -626,4 +626,4 @@ The desired workflow here is to run Nox, update strings in the PO files as neces
 
 .. code::
 
-    mise exec -- nox -s i18n
+    mise exec -- nox -s pytest_i18n

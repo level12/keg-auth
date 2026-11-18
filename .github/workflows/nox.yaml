@@ -2,70 +2,71 @@ name: Nox
 
 on:
   push:
-    branches: [master]
+    branches:
+      - master
   pull_request:
   workflow_dispatch:
 
-permissions:
-  contents: read
 
+# Limit this workflow to a single run at a time per-branch to avoid wasting worker resources
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+
 jobs:
+  # JOB
   nox-other:
     runs-on: ubuntu-latest
+
     strategy:
       fail-fast: false
       matrix:
         session: [audit, build, docs, prek]
+
     steps:
       - name: Install LDAP build dependencies
         run: sudo apt-get update && sudo apt-get install -y libldap2-dev libsasl2-dev
+
       - uses: level12/coppy/gh-actions/nox-run@main
         with:
           nox-session: ${{ matrix.session }}
 
+  # JOB
   nox-pytest:
     runs-on: ubuntu-latest
+
+    # Specifying the permissions block sets anything not-specified to `none` so we have have to
+    # re-specify the default read permission to be able to set the write permission.
     permissions:
-      contents: read
-      id-token: write
+      contents: read    # For actions/checkout
+      id-token: write   # For codecov OIDC
+
     strategy:
       fail-fast: false
       matrix:
-        session:
-          - pytest-3.12
-          - pytest-3.13
-          - pytest-3.14
-          - pytest_stable-3.12
-          - pytest_stable-3.13
-          - pytest_stable-3.14
-          - pytest_psycopg2
-          - i18n
+        session: [pytest, pytest_stable, pytest_i18n]
+
     services:
       postgres:
         image: postgres:15-alpine
         env:
           POSTGRES_DB: kegauth_tests
           POSTGRES_HOST_AUTH_METHOD: trust
-        ports: ['5432:5432']
+        ports:
+          - 5432:5432
         options: >-
           --health-cmd "pg_isready -U postgres -d kegauth_tests"
           --health-interval 5s --health-timeout 5s --health-retries 10
+
     steps:
       - name: Install LDAP build dependencies
         run: sudo apt-get update && sudo apt-get install -y libldap2-dev libsasl2-dev
+
       - uses: level12/coppy/gh-actions/nox-run@main
         with:
           nox-session: ${{ matrix.session }}
+
       - uses: codecov/codecov-action@v5
-        if: matrix.session == 'pytest-3.14'
         with:
           use_oidc: true
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results-${{ matrix.session }}
-          path: ci/test-reports/

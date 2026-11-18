@@ -49,7 +49,7 @@ class TestViewMetaInfo:
     def test_decorated_bound_method_meta_permissions(self):
         assert views.Secret2.get.__keg_auth_requires_user__
         assert views.Secret2.get.__keg_auth_requires_permissions__
-        assert views.Secret2.get.__keg_auth_parent_class__ is views.Secret2  # pragma: no cover
+        assert views.Secret2.get.__keg_auth_parent_class__ is views.Secret2
 
     def test_decorated_blueprint(self):
         assert views.protected_bp.__keg_auth_requires_user__
