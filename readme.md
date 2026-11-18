@@ -93,7 +93,7 @@ A `version` task shows and bumps versions:
   mise run version show
 
   # Bump version, tag, and push:
-  mise run version bump micro
+  mise run version bump
 
   # See other options
   mise run version -- --help

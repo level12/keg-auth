@@ -1,6 +1,7 @@
 import flask
 import flask_login
 from flask_wtf.csrf import generate_csrf
+from keg_elements.forms import Form
 from markupsafe import Markup
 import webgrid
 from webgrid import filters
@@ -23,11 +24,14 @@ class ActionColumn(webgrid.Column):
                                 place on the edit link.
     :param delete_link_class_for: is a function that takes a row and returns the HTML class to
                                     place on the delete link.
+    :param delete_form_class_for: is a function that takes a row and returns the HTML class to
+                                    place on the delete form.
     """
 
     default_view_link_class = 'view-link'
     default_edit_link_class = 'edit-link'
-    default_delete_link_class = 'delete-link confirm-delete'
+    default_delete_link_class = 'delete-link'
+    default_delete_form_class = 'delete-form confirm-delete'
 
     def __init__(
         self,
@@ -46,6 +50,7 @@ class ActionColumn(webgrid.Column):
         view_link_class_for=None,
         edit_link_class_for=None,
         delete_link_class_for=None,
+        delete_form_class_for=None,
         **kwargs,
     ):
         def link_class_for_fun(default_link_class):
@@ -60,6 +65,8 @@ class ActionColumn(webgrid.Column):
             edit_link_class_for = link_class_for_fun(self.default_edit_link_class)
         if delete_link_class_for is None:
             delete_link_class_for = link_class_for_fun(self.default_delete_link_class)
+        if delete_form_class_for is None:
+            delete_form_class_for = link_class_for_fun(self.default_delete_form_class)
 
         self.edit_endpoint = edit_endpoint
         self.delete_endpoint = delete_endpoint
@@ -70,6 +77,7 @@ class ActionColumn(webgrid.Column):
         self.view_link_class_for = view_link_class_for
         self.edit_link_class_for = edit_link_class_for
         self.delete_link_class_for = delete_link_class_for
+        self.delete_form_class_for = delete_form_class_for
 
         super().__init__(
             label,
@@ -94,6 +102,7 @@ class ActionColumn(webgrid.Column):
         view_link_class = self.view_link_class_for(record)
         edit_link_class = self.edit_link_class_for(record)
         delete_link_class = self.delete_link_class_for(record)
+        delete_form_class = self.delete_form_class_for(record)
         data = self.extract_data(record)
         return self.format_data(
             data,
@@ -103,6 +112,23 @@ class ActionColumn(webgrid.Column):
             view_link_class,
             edit_link_class,
             delete_link_class,
+            delete_form_class,
+        )
+
+    def render_post_action(self, url, form_class, link_class, label, form_instance):
+        return render_jinja(
+            '<form action="{{ url }}" method="post" class="{{ form_class }}">'
+            '{{ form.hidden_tag() }}'
+            '<button type="submit" {{- attrs|html_attributes }}>&nbsp;</button>'
+            '</form>',
+            url=url,
+            form=form_instance,
+            form_class=form_class,
+            attrs={
+                'aria-label': label,
+                'class': link_class,
+                'title': label,
+            },
         )
 
     def format_data(
@@ -114,6 +140,7 @@ class ActionColumn(webgrid.Column):
         view_link_class,
         edit_link_class,
         delete_link_class,
+        delete_form_class,
     ):
         result = Markup()
         if self.edit_endpoint and show_edit:
@@ -127,14 +154,12 @@ class ActionColumn(webgrid.Column):
                 },
             )
         if self.delete_endpoint and show_delete:
-            result += link_to(
-                Markup('&nbsp;'),
+            result += self.render_post_action(
                 flask.url_for(self.delete_endpoint, objid=value, session_key=self.grid.session_key),
-                **{
-                    'aria-label': _('Delete'),
-                    'class': delete_link_class,
-                    'title': _('Delete'),
-                },
+                delete_form_class,
+                delete_link_class,
+                label=_('Delete'),
+                form_instance=Form(),
             )
         if self.view_endpoint and show_view:
             result += link_to(

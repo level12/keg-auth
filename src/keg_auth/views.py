@@ -5,6 +5,7 @@ from flask_wtf.csrf import validate_csrf
 import inflect
 from keg.db import db
 import keg.web
+from keg_elements.forms import Form
 import sqlalchemy as sa
 
 from keg_auth import forms, grids, requires_permissions
@@ -83,9 +84,7 @@ class CrudView(keg.web.BaseView):
             ('GET', 'POST'),
         )
         cls.map_method_route(
-            'delete',
-            f'{cls.calc_url(use_blueprint=False)}/<int:objid>/delete',
-            ('GET',),
+            'delete', f'{cls.calc_url(use_blueprint=False)}/<int:objid>/delete', ('POST',)
         )
         cls.map_method_route('list', f'{cls.calc_url(use_blueprint=False)}', ('GET', 'POST'))
 
@@ -242,14 +241,22 @@ class CrudView(keg.web.BaseView):
 
         return requires_permissions(self.permissions['edit'])(action)()
 
-    def delete(self, objid):
-        """View method for delete. Enforce permissions, load the record, run ORM delete.
+    @property
+    def delete_form_instance(self):
+        return Form()
 
+    def delete(self, objid):
+        """View method for delete. Enforce permissions, check CSRF, load the record, run ORM delete.
+
+        If CSRF fails, return result of `on_delete_invalid`.
         If delete succeeds, return result of `on_delete_success`.
         If delete fails, return result of `on_delete_failure`.
         """
 
         def action():
+            if not self.delete_form_instance.validate():  # CSRF
+                return self.on_delete_invalid()
+
             self.init_object(objid, 'delete')
 
             try:
@@ -293,6 +300,17 @@ class CrudView(keg.web.BaseView):
                 name=self.object_name,
             ),
             'warning',
+        )
+        return flask.redirect(self.list_url_with_session)
+
+    def on_delete_invalid(self):
+        """Flash a message for an invalid delete request (e.g. CSRF failure), and redirect
+        to list view."""
+        flash(
+            _(
+                'Unable to delete {name}. The request was invalid or expired. Please try again.'
+            ).format(name=self.object_name),
+            'error',
         )
         return flask.redirect(self.list_url_with_session)
 
