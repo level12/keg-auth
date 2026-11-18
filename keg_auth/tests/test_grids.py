@@ -10,6 +10,9 @@ from keg_auth.grids import (
     make_bundle_grid,
 )
 from webgrid import BaseGrid
+from keg_elements.forms import Form
+from wtforms import HiddenField
+from pyquery import PyQuery
 
 
 class TestActionColumnLinkClasses(object):
@@ -56,3 +59,16 @@ class TestActionColumnLinkClasses(object):
                 result = col.extract_and_format_data(None)
                 for cls in [view_class, edit_class, delete_class, delete_form_class]:
                     assert cls in result
+
+                class ActionForm(Form):
+                    item_id = HiddenField(default='42')
+
+                result = PyQuery(col.render_post_action(
+                    '/archive', delete_form_class, delete_class, 'Archive', ActionForm(),
+                ))
+                assert result.attr('action') == '/archive'
+                assert result.attr('method') == 'post'
+                assert result('button').attr('aria-label') == 'Archive'
+                assert result('button').attr('title') == 'Archive'
+                assert result('input[name=item_id]').val() == '42'
+                assert result('input[name=csrf_token]').val()

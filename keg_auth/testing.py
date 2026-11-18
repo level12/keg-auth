@@ -1125,7 +1125,7 @@ class AuthTests(AuthAttemptTests):
         user_delete_id = self.user_ent.fake().id
         user = self.user_ent.fake(permissions=['auth-manage'])
         client = AuthTestApp(flask.current_app, user=user)
-        resp = client.get('/users/{}/delete'.format(user_delete_id))
+        resp = client.post(f'/users/{user_delete_id}/delete')
 
         assert resp.status_code == 302
         assert resp.location.endswith('/users')
@@ -1169,7 +1169,7 @@ class AuthTests(AuthAttemptTests):
         group_delete_id = self.group_ent.fake().id
         user = self.user_ent.fake(permissions=['auth-manage'])
         client = AuthTestApp(flask.current_app, user=user)
-        resp = client.get(f'/groups/{group_delete_id}/delete')
+        resp = client.post(f'/groups/{group_delete_id}/delete')
 
         assert resp.status_code == 302
         assert resp.location.endswith('/groups')
@@ -1213,7 +1213,7 @@ class AuthTests(AuthAttemptTests):
         bundle_delete_id = self.bundle_ent.fake().id
         user = self.user_ent.fake(permissions=['auth-manage'])
         client = AuthTestApp(flask.current_app, user=user)
-        resp = client.get(f'/bundles/{bundle_delete_id}/delete')
+        resp = client.post(f'/bundles/{bundle_delete_id}/delete')
 
         assert resp.status_code == 302
         assert resp.location.endswith('/bundles')
@@ -1301,8 +1301,11 @@ class AuthTestApp(flask_webtest.TestApp):
         return super(AuthTestApp, self).get(*args, **kwargs)
 
     @user_request
-    def post(self, *args, **kwargs):
-        return super(AuthTestApp, self).post(*args, **kwargs)
+    def post(self, url, params=None, *args, pass_csrf=True, **kwargs):
+        if pass_csrf:
+            params = dict(params or {})
+            params['csrf_token'] = self.get('/login').form['csrf_token'].value
+        return super(AuthTestApp, self).post(url, params, *args, **kwargs)
 
     @user_request
     def put(self, *args, **kwargs):

@@ -20,7 +20,11 @@ from keg_auth_ta.model import entities as ents
 import flask_login
 from .utils import listen_to
 
-from keg_auth import get_current_user
+from keg_auth import get_current_user, views
+from keg_elements.forms import Form
+from wtforms import HiddenField
+from wtforms.validators import DataRequired
+
 
 
 @pytest.fixture(scope='function')
@@ -646,13 +650,10 @@ class TestUserCrud(ViewTestBase):
             permissions=[]
         )
         resp = self.client.get('/users')
-        form = resp.forms[1]
-
-        # assert only one verification link because
-        # only one unverified user
-        assert 'user_id' not in resp.forms[0].fields
-        assert len(resp.forms) == 2
-        assert 'user_id' in form.fields
+        forms = [form for form in resp.forms.values() if 'user_id' in form.fields]
+        # Only one user needs verification.
+        assert len(forms) == 1
+        form = forms[0]
         assert form['user_id'].value == str(user_edit.id)
         with mail_ext.record_messages() as outbox:
             resp = form.submit()
@@ -855,55 +856,75 @@ class TestUserCrud(ViewTestBase):
 
     def test_not_found(self):
         self.client.get('/users/999999/edit', status=404)
-        self.client.get('/users/999999/delete', status=404)
+        self.client.post('/users/999999/delete', status=404)
 
-    @pytest.mark.parametrize('action', [
-        'add', 'edit', 'delete', 'list'
+    @pytest.mark.parametrize('restricted_action', ['add', 'edit', 'delete', 'list'])
+    @pytest.mark.parametrize('action,method,url,status', [
+        ('add', 'get', '/users/add', 200),
+        ('edit', 'get', '/users/{id}/edit', 200),
+        ('delete', 'post', '/users/{id}/delete', 302),
+        ('list', 'get', '/users', 200),
     ])
-    def test_alternate_permissions(self, action):
-        # patch in separate permissions for add/edit/view/delete
-        actions = {'add', 'edit', 'delete', 'list'}
+    def test_alternate_permissions(self, restricted_action, action, method, url, status):
         ents.Permission.fake(token='permission1')
-
-        user_edit = ents.User.fake()
-        user_delete = ents.User.fake()
-
-        def url(url_action):
-            if url_action == 'list':
-                return '/users'
-            if url_action == 'edit':
-                return '/users/{}/edit'.format(user_edit.id)
-            if url_action == 'delete':
-                return '/users/{}/delete'.format(user_delete.id)
-            return '/users/add'
+        target = ents.User.fake()
+        url = url.format(id=target.id)
 
         with mock.patch.dict(
-            flask.current_app.view_functions[
-                'auth.user:{}'.format(action)
-            ].view_class.permissions,
-            {action: 'permission1'}
+            views.User.permissions, {restricted_action: 'permission1'}
         ):
             user = ents.User.fake(permissions='auth-manage')
             client = AuthTestApp(flask.current_app, user=user)
-            client.get(url(action), status=403)
-            for url_action in actions.difference({action}):
-                print(url_action, url(url_action))
-                client.get(url(url_action))
+            restricted = action == restricted_action
+            getattr(client, method)(url, status=403 if restricted else status)
 
-            user = ents.User.fake(permissions=('auth-manage', 'permission1'))
-            client = AuthTestApp(flask.current_app, user=user)
-            client.get(url(action))
+            if restricted:
+                user = ents.User.fake(permissions=('auth-manage', 'permission1'))
+                client = AuthTestApp(flask.current_app, user=user)
+                getattr(client, method)(url, status=status)
 
     def test_delete(self):
         user_delete_id = ents.User.fake().id
 
-        resp = self.client.get('/users/{}/delete'.format(user_delete_id))
+        page = self.client.get('/users')
+        form = next(form for form in page.forms.values()
+                    if form.action.split('?')[0].endswith('/users/{}/delete'.format(user_delete_id)))
+        resp = form.submit()
 
         assert resp.status_code == 302
         assert resp.location.endswith('/users')
         assert resp.flashes == [('success', 'Successfully removed User')]
 
         assert not self.user_ent.get(user_delete_id)
+
+    def test_delete_get_disallowed(self):
+        user = ents.User.fake()
+        self.client.get('/users/{}/delete'.format(user.id), status=405)
+        assert self.user_ent.get(user.id)
+
+    def test_delete_invalid_csrf(self):
+        user = ents.User.fake()
+        page = self.client.get('/users')
+        form = next(form for form in page.forms.values()
+                    if form.action.split('?')[0].endswith('/users/{}/delete'.format(user.id)))
+        form['csrf_token'] = 'invalid'
+        form.submit(status=400)
+        assert self.user_ent.get(user.id)
+
+    def test_delete_custom_form_invalid(self):
+        class DeleteForm(Form):
+            confirmation = HiddenField(validators=[DataRequired()])
+
+        user = ents.User.fake()
+        with mock.patch.object(views.User, 'delete_form_instance',
+                               new=property(lambda self: DeleteForm())):
+            resp = self.client.post('/users/{}/delete'.format(user.id))
+        assert resp.status_code == 302
+        assert resp.location.endswith('/users')
+        assert resp.flashes == [
+            ('error', 'Unable to delete User. The request was invalid or expired. Please try again.')
+        ]
+        assert self.user_ent.get(user.id)
 
     def test_delete_disallowed_by_action_init(self):
         user_delete_id = ents.User.fake().id
@@ -915,27 +936,27 @@ class TestUserCrud(ViewTestBase):
         views.User.init_object_delete = init_object_delete
 
         try:
-            self.client.get('/users/{}/delete'.format(user_delete_id), status=403)
+            self.client.post('/users/{}/delete'.format(user_delete_id), status=403)
         finally:
             del views.User.init_object_delete
 
-        self.client.get('/users/{}/delete'.format(user_delete_id), status=302)
+        self.client.post('/users/{}/delete'.format(user_delete_id), status=302)
 
     def test_delete_disallowed_by_permission(self):
         user = ents.User.fake()
         client = AuthTestApp(flask.current_app, user=user)
-        client.get('/users/99999/delete', status=403)
+        client.post('/users/99999/delete', status=403)
 
     def test_delete_with_session_key(self):
         user_delete = ents.User.fake()
 
-        resp = self.client.get('/users/{}/delete?session_key=foo'.format(user_delete.id))
+        resp = self.client.post('/users/{}/delete?session_key=foo'.format(user_delete.id))
 
         assert resp.status_code == 302
         assert resp.location.endswith('/users?session_key=foo')
 
     def test_delete_myself_fails(self):
-        resp = self.client.get('/users/{}/delete'.format(self.current_user.id))
+        resp = self.client.post('/users/{}/delete'.format(self.current_user.id))
 
         assert resp.status_code == 302
         assert resp.location.endswith('/users')
@@ -947,7 +968,7 @@ class TestUserCrud(ViewTestBase):
         m_delete.side_effect = sa.exc.IntegrityError(None, None, None)
         user_delete_id = ents.User.fake().id
 
-        resp = self.client.get('/users/{}/delete'.format(user_delete_id))
+        resp = self.client.post('/users/{}/delete'.format(user_delete_id))
 
         assert resp.status_code == 302
         assert resp.location.endswith('/users')
@@ -1052,49 +1073,40 @@ class TestGroupCrud(ViewTestBase):
 
     def test_not_found(self):
         self.client.get('/groups/999999/edit', status=404)
-        self.client.get('/groups/999999/delete', status=404)
+        self.client.post('/groups/999999/delete', status=404)
 
-    @pytest.mark.parametrize('action', [
-        'add', 'edit', 'delete', 'list'
+    @pytest.mark.parametrize('restricted_action', ['add', 'edit', 'delete', 'list'])
+    @pytest.mark.parametrize('action,method,url,status', [
+        ('add', 'get', '/groups/add', 200),
+        ('edit', 'get', '/groups/{id}/edit', 200),
+        ('delete', 'post', '/groups/{id}/delete', 302),
+        ('list', 'get', '/groups', 200),
     ])
-    def test_alternate_permissions(self, action):
-        # patch in separate permissions for add/edit/view/delete
-        actions = {'add', 'edit', 'delete', 'list'}
+    def test_alternate_permissions(self, restricted_action, action, method, url, status):
         ents.Permission.fake(token='permission1')
-
-        group_edit = ents.Group.fake()
-        group_delete = ents.Group.fake()
-
-        def url(url_action):
-            if url_action == 'list':
-                return '/groups'
-            if url_action == 'edit':
-                return '/groups/{}/edit'.format(group_edit.id)
-            if url_action == 'delete':
-                return '/groups/{}/delete'.format(group_delete.id)
-            return '/groups/add'
+        target = ents.Group.fake()
+        url = url.format(id=target.id)
 
         with mock.patch.dict(
-            flask.current_app.view_functions[
-                'auth.group:{}'.format(action)
-            ].view_class.permissions,
-            {action: 'permission1'}
+            views.Group.permissions, {restricted_action: 'permission1'}
         ):
             user = ents.User.fake(permissions='auth-manage')
             client = AuthTestApp(flask.current_app, user=user)
-            client.get(url(action), status=403)
-            for url_action in actions.difference({action}):
-                print(url_action, url(url_action))
-                client.get(url(url_action))
+            restricted = action == restricted_action
+            getattr(client, method)(url, status=403 if restricted else status)
 
-            user = ents.User.fake(permissions=('auth-manage', 'permission1'))
-            client = AuthTestApp(flask.current_app, user=user)
-            client.get(url(action))
+            if restricted:
+                user = ents.User.fake(permissions=('auth-manage', 'permission1'))
+                client = AuthTestApp(flask.current_app, user=user)
+                getattr(client, method)(url, status=status)
 
     def test_delete(self):
         group_delete_id = ents.Group.fake().id
 
-        resp = self.client.get('/groups/{}/delete'.format(group_delete_id))
+        page = self.client.get('/groups')
+        form = next(form for form in page.forms.values()
+                    if form.action.split('?')[0].endswith('/groups/{}/delete'.format(group_delete_id)))
+        resp = form.submit()
 
         assert resp.status_code == 302
         assert resp.location.endswith('/groups')
@@ -1107,7 +1119,7 @@ class TestGroupCrud(ViewTestBase):
         m_delete.side_effect = sa.exc.IntegrityError(None, None, None)
         group_delete_id = ents.Group.fake().id
 
-        resp = self.client.get('/groups/{}/delete'.format(group_delete_id))
+        resp = self.client.post('/groups/{}/delete'.format(group_delete_id))
 
         assert resp.status_code == 302
         assert resp.location.endswith('/groups')
@@ -1179,49 +1191,40 @@ class TestBundleCrud(ViewTestBase):
 
     def test_not_found(self):
         self.client.get('/bundles/999999/edit', status=404)
-        self.client.get('/bundles/999999/delete', status=404)
+        self.client.post('/bundles/999999/delete', status=404)
 
-    @pytest.mark.parametrize('action', [
-        'add', 'edit', 'delete', 'list'
+    @pytest.mark.parametrize('restricted_action', ['add', 'edit', 'delete', 'list'])
+    @pytest.mark.parametrize('action,method,url,status', [
+        ('add', 'get', '/bundles/add', 200),
+        ('edit', 'get', '/bundles/{id}/edit', 200),
+        ('delete', 'post', '/bundles/{id}/delete', 302),
+        ('list', 'get', '/bundles', 200),
     ])
-    def test_alternate_permissions(self, action):
-        # patch in separate permissions for add/edit/view/delete
-        actions = {'add', 'edit', 'delete', 'list'}
+    def test_alternate_permissions(self, restricted_action, action, method, url, status):
         ents.Permission.fake(token='permission1')
-
-        bundle_edit = ents.Bundle.fake()
-        bundle_delete = ents.Bundle.fake()
-
-        def url(url_action):
-            if url_action == 'list':
-                return '/bundles'
-            if url_action == 'edit':
-                return '/bundles/{}/edit'.format(bundle_edit.id)
-            if url_action == 'delete':
-                return '/bundles/{}/delete'.format(bundle_delete.id)
-            return '/bundles/add'
+        target = ents.Bundle.fake()
+        url = url.format(id=target.id)
 
         with mock.patch.dict(
-            flask.current_app.view_functions[
-                'auth.bundle:{}'.format(action)
-            ].view_class.permissions,
-            {action: 'permission1'}
+            views.Bundle.permissions, {restricted_action: 'permission1'}
         ):
             user = ents.User.fake(permissions='auth-manage')
             client = AuthTestApp(flask.current_app, user=user)
-            client.get(url(action), status=403)
-            for url_action in actions.difference({action}):
-                print(url_action, url(url_action))
-                client.get(url(url_action))
+            restricted = action == restricted_action
+            getattr(client, method)(url, status=403 if restricted else status)
 
-            user = ents.User.fake(permissions=('auth-manage', 'permission1'))
-            client = AuthTestApp(flask.current_app, user=user)
-            client.get(url(action))
+            if restricted:
+                user = ents.User.fake(permissions=('auth-manage', 'permission1'))
+                client = AuthTestApp(flask.current_app, user=user)
+                getattr(client, method)(url, status=status)
 
     def test_delete(self):
         bundle_delete_id = ents.Bundle.fake().id
 
-        resp = self.client.get('/bundles/{}/delete'.format(bundle_delete_id))
+        page = self.client.get('/bundles')
+        form = next(form for form in page.forms.values()
+                    if form.action.split('?')[0].endswith('/bundles/{}/delete'.format(bundle_delete_id)))
+        resp = form.submit()
 
         assert resp.status_code == 302
         assert resp.location.endswith('/bundles')
@@ -1234,7 +1237,7 @@ class TestBundleCrud(ViewTestBase):
         m_delete.side_effect = sa.exc.IntegrityError(None, None, None)
         bundle_delete_id = ents.Bundle.fake().id
 
-        resp = self.client.get('/bundles/{}/delete'.format(bundle_delete_id))
+        resp = self.client.post('/bundles/{}/delete'.format(bundle_delete_id))
 
         assert resp.status_code == 302
         assert resp.location.endswith('/bundles')
