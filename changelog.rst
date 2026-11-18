@@ -1,15 +1,26 @@
 Changelog
 =========
 
-Unreleased
-----------
+0.20261118.1
+--------------------------------
 
-- Modernize packaging and development tooling with Coppy, Hatch, uv, Nox, and GitHub Actions.
-- Support and test Python 3.12 through 3.14; use PostgreSQL 15 for testing.
-- Drop psycopg2 support; test only with psycopg 3.
-- Unpin python-ldap in the tests extra (previously pinned to 3.4.3).
-- Refresh dependencies and preserve optional integrations, translations, and package assets.
-- Add tag-triggered PyPI trusted publishing.
+- **BC break** require CSRF-protected POST requests for CRUD deletes. Update custom delete links
+  and integrations to submit POST forms with a CSRF token (289c371_)
+- **BC break** render grid delete actions as form submit buttons. Update custom CSS and JavaScript
+  targeting delete links; ``confirm-delete`` now belongs to the form. Overrides of
+  ``ActionColumn.format_data`` must accept the new ``delete_form_class`` argument (289c371_)
+- *potential BC break* automatically include CSRF tokens in form POSTs made with ``AuthTestApp``.
+  Use ``pass_csrf=False`` when testing missing tokens (21576c4_)
+- **BC break** require Python 3.12 or newer; support and test Python 3.12 through 3.14 (1b309a4_)
+- **BC break** drop psycopg2 support; test only with psycopg 3 (1b309a4_)
+- modernize packaging and development tooling with Coppy, Hatch, uv, Nox, and GitHub Actions (1b309a4_)
+- use PostgreSQL 15 for testing and unpin python-ldap in the tests extra (1b309a4_)
+- refresh dependencies and preserve optional integrations, translations, and package assets (1b309a4_)
+- add tag-triggered PyPI trusted publishing (1b309a4_)
+
+.. _289c371: https://github.com/level12/keg-auth/commit/289c371
+.. _21576c4: https://github.com/level12/keg-auth/commit/21576c4
+.. _1b309a4: https://github.com/level12/keg-auth/commit/1b309a4
 
 
 0.9.1 released 2026-09-02
