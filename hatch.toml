@@ -1,0 +1,12 @@
+[build]
+dev-mode-dirs = ['src']
+
+[build.targets.wheel]
+packages = ['src/keg_auth', 'src/keg_auth_ta']
+
+[build.targets.sdist]
+exclude = ['/tmp', '/.nox', '/.venv', '/docs/build', '/keg_auth_ta-config.py']
+
+[version]
+source = 'regex'
+path = 'src/keg_auth/version.py'

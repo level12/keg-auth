@@ -1,0 +1,10 @@
+[run]
+branch = True
+source =
+    src/keg_auth
+    tests/keg_auth_tests
+omit =
+    src/keg_auth/version.py
+
+[html]
+directory = tmp/coverage-html

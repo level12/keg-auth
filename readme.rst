@@ -1,10 +1,10 @@
 Keg Auth’s Readme
 ==========================================
 
-.. image:: https://circleci.com/gh/level12/keg-auth.svg?&style=shield&circle-token=b90c5336d179f28df73d404a26924bc373840257
-    :target: https://circleci.com/gh/level12/keg-auth
+.. image:: https://github.com/level12/keg-auth/actions/workflows/nox.yaml/badge.svg
+    :target: https://github.com/level12/keg-auth/actions/workflows/nox.yaml
 
-.. image:: https://codecov.io/github/level12/keg-auth/coverage.svg?branch=master&token=hl15MQRPeF
+.. image:: https://codecov.io/github/level12/keg-auth/coverage.svg?branch=master
     :target: https://codecov.io/github/level12/keg-auth?branch=master
 
 Flask extension in the Keg ecosystem to wrap authentication and authorization functionality. Keg-Auth
@@ -50,14 +50,43 @@ Links
 Development
 -----------
 
-To run this project's tests:
+Development uses Python 3.14, mise, and uv. Tests cover Python 3.12–3.14.
+Install LDAP build prerequisites first (on Ubuntu: ``libldap2-dev libsasl2-dev``).
 
-- Copy keg_auth_ta-config-example.py -> keg_auth_ta-config.py, update as needed
-- Override database addr &/or port with environment vars or docker compose override if needed.
-- `docker-compose up [-d]`
-- `tox ...`
+.. code:: shell
 
-There is a test application defined that can be ran like:
+    mise trust
+    mise bootstrap
+    docker compose up -d
+    mise exec -- nox
 
-- `cd keg_auth_ta`
-- `python app.py ...`
+Compose uses PostgreSQL 15. Set ``KEG_AUTH_DB_IP`` and ``KEG_AUTH_DB_PORT`` for
+both Compose and tests to override its address. For other application settings,
+copy ``keg_auth_ta-config-example.py`` to ``keg_auth_ta-config.py`` and update it.
+
+Run individual checks with ``mise exec -- nox -s pytest-3.14``,
+``mise exec -- nox -s i18n``, ``mise exec -- nox -s docs``, or
+``mise exec -- nox -s build``. The build check verifies wheel and sdist assets and
+imports the installed wheel outside the checkout.
+
+The test application can be run with ``mise exec -- python -m keg_auth_ta.app``.
+
+After intentionally updating dependencies, refresh the stable test snapshot:
+
+.. code:: shell
+
+    uv export --frozen --no-default-groups --group pytest --no-emit-project \
+        --no-hashes --no-header --no-annotate > stable-requirements.txt
+
+Publishing
+----------
+
+GitHub Actions builds and validates distributions, then publishes them to PyPI
+on a ``v*.*.*`` tag. Configure the existing PyPI project's trusted publisher
+with owner ``level12``, repository ``keg-auth``, workflow ``pypi.yaml``, and
+GitHub environment ``pypi`` before the first release.
+
+``mise version show`` displays the version. ``mise version bump micro`` updates
+the version, commits, creates a signed tag, and pushes by default; use
+``--no-push`` to prepare a release locally. Use ``minor`` or ``major`` as needed
+for the project's existing version scheme.

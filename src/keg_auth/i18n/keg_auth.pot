@@ -1,0 +1,382 @@
+# Translations template for PROJECT.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-11-18 14:47-0500\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: src/keg_auth/cli.py:19
+msgid "Password must be a string"
+msgstr ""
+
+#: src/keg_auth/cli.py:31
+#, python-brace-format
+msgid ""
+"Password does not meet the following restrictions:\n"
+"{errs}"
+msgstr ""
+
+#: src/keg_auth/cli.py:85
+msgid "User created."
+msgstr ""
+
+#: src/keg_auth/cli.py:88
+msgid "Email sent with verification URL."
+msgstr ""
+
+#: src/keg_auth/cli.py:90
+#, python-brace-format
+msgid "Verification URL: {url}"
+msgstr ""
+
+#: src/keg_auth/forms.py:30 src/keg_auth/grids.py:200
+msgid "User ID"
+msgstr ""
+
+#: src/keg_auth/forms.py:34 src/keg_auth/forms.py:55
+msgid "Email"
+msgstr ""
+
+#: src/keg_auth/forms.py:42
+msgid "Password"
+msgstr ""
+
+#: src/keg_auth/forms.py:67 src/keg_auth/forms.py:257
+msgid "New Password"
+msgstr ""
+
+#: src/keg_auth/forms.py:70 src/keg_auth/forms.py:260
+msgid "Passwords must match"
+msgstr ""
+
+#: src/keg_auth/forms.py:73 src/keg_auth/forms.py:263
+msgid "Confirm Password"
+msgstr ""
+
+#: src/keg_auth/forms.py:166
+msgid "This field is required."
+msgstr ""
+
+#: src/keg_auth/forms.py:182
+msgid "Cannot change user domain."
+msgstr ""
+
+#: src/keg_auth/grids.py:124 src/keg_auth/grids.py:126
+#: src/keg_auth/views.py:112 src/keg_auth/views.py:198
+msgid "Edit"
+msgstr ""
+
+#: src/keg_auth/grids.py:134 src/keg_auth/grids.py:136
+msgid "Delete"
+msgstr ""
+
+#: src/keg_auth/grids.py:144 src/keg_auth/grids.py:146
+msgid "View"
+msgstr ""
+
+#: src/keg_auth/grids.py:202
+msgid "Verified"
+msgstr ""
+
+#: src/keg_auth/grids.py:203
+msgid "Superuser"
+msgstr ""
+
+#: src/keg_auth/grids.py:210
+msgid "Resend Verification"
+msgstr ""
+
+#: src/keg_auth/grids.py:237 src/keg_auth/grids.py:264
+#: src/keg_auth/grids.py:280
+msgid "Name"
+msgstr ""
+
+#: src/keg_auth/grids.py:281
+msgid "Description"
+msgstr ""
+
+#: src/keg_auth/views.py:109 src/keg_auth/views.py:198
+msgid "Create"
+msgstr ""
+
+#: src/keg_auth/views.py:110 src/keg_auth/views.py:200
+#, python-brace-format
+msgid "Create {name}"
+msgstr ""
+
+#: src/keg_auth/views.py:113
+#, python-brace-format
+msgid "Edit {name}"
+msgstr ""
+
+#: src/keg_auth/views.py:137 src/keg_auth/views.py:200
+msgid "Save Changes"
+msgstr ""
+
+#: src/keg_auth/views.py:280
+#, python-brace-format
+msgid "Successfully {verb} {object}"
+msgstr ""
+
+#: src/keg_auth/views.py:286
+msgid "removed"
+msgstr ""
+
+#: src/keg_auth/views.py:292
+#, python-brace-format
+msgid "Unable to delete {name}. It may be referenced by other items."
+msgstr ""
+
+#: src/keg_auth/views.py:302
+msgid "modified"
+msgstr ""
+
+#: src/keg_auth/views.py:302
+msgid "created"
+msgstr ""
+
+#: src/keg_auth/views.py:308
+msgid "Form errors detected.  Please see below for details."
+msgstr ""
+
+#: src/keg_auth/views.py:326 src/keg_auth/views.py:378
+msgid "list"
+msgstr ""
+
+#: src/keg_auth/views.py:346
+#, python-brace-format
+msgid "Too many records to export as {}"
+msgstr ""
+
+#: src/keg_auth/views.py:521
+msgid "User"
+msgstr ""
+
+#: src/keg_auth/views.py:522
+msgid "Users"
+msgstr ""
+
+#: src/keg_auth/views.py:539
+msgid "Verification email has been sent"
+msgstr ""
+
+#: src/keg_auth/views.py:603
+msgid "Group"
+msgstr ""
+
+#: src/keg_auth/views.py:604
+msgid "Groups"
+msgstr ""
+
+#: src/keg_auth/views.py:637
+msgid "Bundle"
+msgstr ""
+
+#: src/keg_auth/views.py:638
+msgid "Bundles"
+msgstr ""
+
+#: src/keg_auth/views.py:684 src/keg_auth/views.py:688
+msgid "Permissions"
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:178
+#, python-brace-format
+msgid "No user account matches: {}"
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:181
+#, python-brace-format
+msgid ""
+"The user account \"{}\" has an unverified email address.  Please check "
+"your email for a verification link from this website.  Or, use the "
+"\"forgot password\" link to verify the account."
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:189
+#, python-brace-format
+msgid ""
+"The user account \"{}\" has been disabled.  Please contact this site's "
+"administrators for more information."
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:224
+msgid "Login successful."
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:254
+msgid "The form has errors, please see below."
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:442
+msgid ""
+"Authentication token was invalid or expired.  Please fill out the form "
+"below to get a new token."
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:497
+msgid "Complete Password Reset"
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:498
+msgid "Change Password"
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:499
+msgid "Password changed.  Please use the new password to login below."
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:515
+msgid "Too many password reset attempts."
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:550
+msgid "Verify Account & Set Password"
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:551
+msgid "Verify & Set Password"
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:553
+msgid ""
+"Account verified & password set.  Please use the new password to login "
+"below."
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:565
+msgid "Log In"
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:566
+msgid "Invalid password."
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:627
+msgid "Too many failed login attempts."
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:751
+msgid "Initiate Password Reset"
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:753
+msgid "Please check your email for the link to change your password."
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:810
+msgid "Too many failed attempts."
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:868
+msgid "You have been logged out."
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:1094
+msgid "No KEGAUTH_LDAP_SERVER_URL configured!"
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:1098
+msgid "No KEGAUTH_LDAP_DN_FORMAT configured!"
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:1224
+msgid "lowercase letter"
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:1225
+msgid "uppercase letter"
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:1226
+msgid "number"
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:1228
+msgid "symbol"
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:1252
+#, python-brace-format
+msgid "Password must be at least {min_length} characters long"
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:1272
+#, python-brace-format
+msgid "Password must include a {type}"
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:1276
+#, python-brace-format
+msgid "Password must include at least {required} of {first} and/or {last}"
+msgstr ""
+
+#: src/keg_auth/libs/authenticators.py:1298
+msgid "Password may not contain username"
+msgstr ""
+
+#: src/keg_auth/libs/decorators.py:86
+#, python-format
+msgid ""
+"Argument mismatch occurred: method=%s, missing=%s, extra_keys=%s, "
+"extra_pos=%s.  Arguments available: %s"
+msgstr ""
+
+#: src/keg_auth/libs/navigation.py:76
+#, python-brace-format
+msgid "Endpoint {} in navigation is not registered"
+msgstr ""
+
+#: src/keg_auth/libs/navigation.py:180
+msgid "must provide a NavURL or a list of NavItems"
+msgstr ""
+
+#: src/keg_auth/model/entity_registry.py:47
+#, python-brace-format
+msgid "Entity class already registered for {}"
+msgstr ""
+
+#: src/keg_auth/model/entity_registry.py:49
+#: src/keg_auth/model/entity_registry.py:81
+#, python-brace-format
+msgid "Attempting to register unknown type {}"
+msgstr ""
+
+#: src/keg_auth/model/entity_registry.py:51
+msgid "Entity must be a class"
+msgstr ""
+
+#: src/keg_auth/model/entity_registry.py:84
+#, python-brace-format
+msgid "No entity registered for {}"
+msgstr ""
+
+#: src/keg_auth/model/utils.py:16
+msgid "At least one permission or condition is required"
+msgstr ""
+
+#: src/keg_auth/templates/keg-auth/crud-list.html:19
+#, python-format
+msgid "Create %(name)s"
+msgstr ""
+
+#: src/keg_auth/templates/keg-auth/forgot-password.html:9
+msgid "Send Reset Email"
+msgstr ""
+
+#: src/keg_auth/templates/keg-auth/login.html:10
+msgid "I forgot my password"
+msgstr ""
+

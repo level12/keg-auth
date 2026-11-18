@@ -1,0 +1,71 @@
+name: Nox
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  nox-other:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        session: [audit, build, docs, prek]
+    steps:
+      - name: Install LDAP build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libldap2-dev libsasl2-dev
+      - uses: level12/coppy/gh-actions/nox-run@main
+        with:
+          nox-session: ${{ matrix.session }}
+
+  nox-pytest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        session:
+          - pytest-3.12
+          - pytest-3.13
+          - pytest-3.14
+          - pytest_stable-3.12
+          - pytest_stable-3.13
+          - pytest_stable-3.14
+          - pytest_psycopg2
+          - i18n
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: kegauth_tests
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d kegauth_tests"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - name: Install LDAP build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libldap2-dev libsasl2-dev
+      - uses: level12/coppy/gh-actions/nox-run@main
+        with:
+          nox-session: ${{ matrix.session }}
+      - uses: codecov/codecov-action@v5
+        if: matrix.session == 'pytest-3.14'
+        with:
+          use_oidc: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.session }}
+          path: ci/test-reports/
