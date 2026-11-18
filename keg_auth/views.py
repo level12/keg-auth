@@ -235,6 +235,10 @@ class CrudView(keg.web.BaseView):
 
         return requires_permissions(self.permissions['edit'])(action)()
 
+    @property
+    def delete_form_instance(self):
+        return Form()
+
     def delete(self, objid):
         """View method for delete. Enforce permissions, check CSRF, load the record, run ORM delete.
 
@@ -243,7 +247,7 @@ class CrudView(keg.web.BaseView):
         If delete fails, return result of `on_delete_failure`.
         """
         def action():
-            if not Form().validate():  # CSRF
+            if not self.delete_form_instance.validate():  # CSRF
                 return self.on_delete_invalid()
 
             self.init_object(objid, 'delete')

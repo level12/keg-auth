@@ -99,19 +99,19 @@ class ActionColumn(webgrid.Column):
                                 view_link_class, edit_link_class, delete_link_class,
                                 delete_form_class)
 
-    def render_delete_form(self, url, form_class, link_class):
+    def render_post_action(self, url, form_class, link_class, label, form_instance):
         return render_jinja(
             '<form action="{{ url }}" method="post" class="{{ form_class }}">'
             '{{ form.hidden_tag() }}'
             '<button type="submit" {{- attrs|html_attributes }}>&nbsp;</button>'
             '</form>',
             url=url,
-            form=Form(),
+            form=form_instance,
             form_class=form_class,
             attrs={
-                'aria-label': _('Delete'),
+                'aria-label': label,
                 'class': link_class,
-                'title': _('Delete'),
+                'title': label,
             },
         )
 
@@ -129,10 +129,12 @@ class ActionColumn(webgrid.Column):
                 }
             )
         if self.delete_endpoint and show_delete:
-            result += self.render_delete_form(
+            result += self.render_post_action(
                 flask.url_for(self.delete_endpoint, objid=value, session_key=self.grid.session_key),
                 delete_form_class,
                 delete_link_class,
+                label=_('Delete'),
+                form_instance=Form(),
             )
         if self.view_endpoint and show_view:
             result += link_to(
