@@ -1,0 +1,13 @@
+# .coveragerc to control coverage.py
+[run]
+branch = True
+omit =
+    src/keg_auth/version.py
+
+source =
+    src/keg_auth
+    tests/keg_auth_tests
+
+
+[html]
+directory = tmp/coverage-html

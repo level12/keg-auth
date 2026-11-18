@@ -1,6 +1,17 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+- Modernize packaging and development tooling with Coppy, Hatch, uv, Nox, and GitHub Actions.
+- Support and test Python 3.12 through 3.14; use PostgreSQL 15 for testing.
+- Drop psycopg2 support; test only with psycopg 3.
+- Unpin python-ldap in the tests extra (previously pinned to 3.4.3).
+- Refresh dependencies and preserve optional integrations, translations, and package assets.
+- Add tag-triggered PyPI trusted publishing.
+
+
 0.9.1 released 2026-09-02
 -------------------------
 
@@ -97,7 +108,7 @@ Changelog
 - log attempts when form validation fails, and when csrf doesn't validate (60edacb_)
 - resolve field order error when disabled_utc missing from user form fields (0e2ae74_)
 - document known data migration issue (23ec6fe_)
-- pin python-ldap to version in package index (0b1d2b7_)
+- pin python-ldap to version 3.4.3 (0b1d2b7_)
 - apply workaround to support testing with flask-login 0.6.2 (d1446a9_)
 - drop deprecated OIDC code and any remaining python 2 references (10b1144_)
 
@@ -547,4 +558,3 @@ Changelog
 ------------------
 
 - Initial release
-

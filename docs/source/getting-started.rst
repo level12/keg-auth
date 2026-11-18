@@ -295,8 +295,8 @@ an existing database that already has user records, you may have some data issue
 as well. The following are known issues:
 
 - Email field is expected to have all lowercase data. The model type assumes that because email
-addresses are not case-sensitive, it can coerce input to lowercase for comparison, and expects
-that persisted data matches that assumption.
+  addresses are not case-sensitive, it can coerce input to lowercase for comparison, and expects
+  that persisted data matches that assumption.
 
 .. _gs-navigation:
 
@@ -617,13 +617,13 @@ Helpful links
 Message management
 ^^^^^^^^^^^^^^^^^^
 
-The ``setup.cfg`` file is configured to handle the standard message extraction commands. For ease of development
-and ensuring that all marked strings have translations, a tox environment is defined for testing i18n. This will
+The ``tool.babel`` sections in ``pyproject.toml`` are configured to handle the standard message extraction commands. For ease of development
+and ensuring that all marked strings have translations, a Nox session is defined for testing i18n. This will
 run commands to update and compile the catalogs, and specify any strings which need to be added.
 
-The desired workflow here is to run tox, update strings in the PO files as necessary, run tox again
+The desired workflow here is to run Nox, update strings in the PO files as necessary, run Nox again
 (until it passes), and then commit the changes to the catalog files.
 
 .. code::
 
-    tox -e i18n
+    mise exec -- nox -s pytest_i18n

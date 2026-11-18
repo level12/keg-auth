@@ -1,8 +1,6 @@
-version: '3.1'
-
 services:
   keg-auth-pg:
-    image: postgres:12-alpine
+    image: postgres:15-alpine
     container_name: keg-auth-pg
     environment:
       POSTGRES_DB: kegauth_tests
