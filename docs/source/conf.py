@@ -14,30 +14,20 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
-import keg_auth
 import datetime as dt
 
-import configparser
+import keg_auth
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'Keg-Auth'
-copyright = u"{year} Level 12".format(year=dt.datetime.utcnow().year)
+copyright = f'{dt.date.today().year} Level 12'
 
-
-cfg = configparser.SafeConfigParser()
-cfg.read('../../setup.cfg')
-
-tag = cfg.get('egg_info', 'tag_build')
-master_doc = "index"
-
-html_context = {
-    'prerelease': bool(tag),  # True if tag is not the empty string
-}
+master_doc = 'index'
 
 # The full version, including alpha/beta/rc tags.
-release = keg_auth.__version__ + tag
+release = keg_auth.__version__
 
 
 # -- General configuration ---------------------------------------------------
@@ -75,10 +65,10 @@ html_theme_options = {
         'Level 12': 'https://www.level12.io',
         'File an Issue': 'https://github.com/level12/keg-auth/issues/new',
     },
-    'show_powered_by': True
+    'show_powered_by': True,
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = []

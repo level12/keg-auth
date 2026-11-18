@@ -1,0 +1,118 @@
+line-length = 100
+output-format = 'concise'
+
+[format]
+line-ending = 'lf'
+quote-style = 'single'
+
+
+[lint]
+fixable = [
+    'C4',
+    'COM',
+    'I',
+    'ISC',
+    'PIE',
+    'Q',
+    'UP',
+
+    'E711',    # Comparison to `None` should be `cond is None`
+    'E712',    # Comparison to `True` should be `cond is True` or `if cond:`
+    'E713',    # Test for membership should be `not in`
+    'E714',    # Test for object identity should be `is not`
+    'F901',    # `raise NotImplemented` should be `raise NotImplementedError`
+    'RUF100',  # Unused blanket noqa directive
+    'W291',    # Trailing whitespace
+    'W293',    # Blank line contains whitespace
+]
+select = [
+    'E',   # ruff default: pycodestyle errors
+    'W',   # pycodestyle warnings
+    'F',   # ruff default: pyflakes
+    'I',   # isort
+    'Q',   # flake8-quotes
+    'UP',  # pyupgrade
+    'YTT', # flake8-2020
+    'B',   # flake8-bandit
+    'A',   # flake8-builtins
+    'C4',  # flake8-comprehensions
+    'T10', # flake8-debugger
+    'DJ',  # flake8-django
+    'EXE', # flake8-executable
+    'PIE', # flake8-pie
+    'COM', # flake-8 commas
+    'RUF', # ruff specific
+    'SIM', # flake8-simplify
+    'ISC',  # https://pypi.org/project/flake8-implicit-str-concat/
+    'PTH',  # flake8-use-pathlib
+    # 'DTZ',  # flake8-datetimez
+
+]
+ignore = [
+    'COM812',  # The formatter owns trailing commas.
+    'A003',    # Class attribute is shadowing a Python builtin
+    'E731',    # Do not assign a `lambda` expression, use a `def`
+
+    # Rules that conflict with the formatter.  See:
+    #
+    #  * https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
+    #  * https://github.com/level12/coppy/issues/13
+    #
+    # These are all redundant when the formatter is being used
+    'W191',    # tab-indentation
+    'E111',    # indentation-with-invalid-multiple
+    'E114',    # indentation-with-invalid-multiple-comment
+    'E117',    # over-indented
+    'D206',    # indent-with-spaces
+    'D300',    # triple-single-quotes
+    'Q000',    # bad-quotes-inline-string
+    'Q001',    # bad-quotes-multiline-string
+    'Q002',    # bad-quotes-docstring
+    'Q003',    # avoidable-escaped-quote
+]
+
+
+[lint.per-file-ignores]
+'tasks/*.py' = ['EXE003']
+
+# Preserve existing public APIs, declarative class attributes, and legacy style
+# during the packaging migration. New files use the full rule set.
+'docs/source/conf.py' = ['A001']
+'src/keg_auth/core.py' = ['C401', 'C408', 'RUF012', 'SIM118']
+'src/keg_auth/forms.py' = ['B006', 'RUF005']
+'src/keg_auth/grids.py' = ['A002']
+'src/keg_auth/libs/authenticators.py' = ['B018', 'B904', 'RUF012', 'SIM102', 'SIM105', 'SIM110']
+'src/keg_auth/libs/decorators.py' = ['B009', 'B904']
+'src/keg_auth/libs/navigation.py' = ['SIM103']
+'src/keg_auth/mail.py' = ['C417', 'SIM105']
+'src/keg_auth/model/entity_registry.py' = ['A002', 'B904']
+'src/keg_auth/model/utils.py' = ['SIM110']
+'src/keg_auth/testing.py' = ['A001', 'C408', 'RUF012']
+'src/keg_auth/views.py' = ['B008', 'RUF012']
+'src/keg_auth_ta/app.py' = ['RUF012']
+'src/keg_auth_ta/config.py' = ['C408', 'RUF012']
+'src/keg_auth_ta/model/entities.py' = ['RUF012']
+'src/keg_auth_ta/views.py' = ['RUF012']
+'tests/keg_auth_tests/test_auth_manager.py' = ['C408']
+'tests/keg_auth_tests/test_authenticators.py' = ['RUF012', 'RUF043', 'SIM117']
+'tests/keg_auth_tests/test_forms.py' = ['C416']
+'tests/keg_auth_tests/test_model.py' = ['RUF059']
+'tests/keg_auth_tests/test_navigation.py' = ['B018']
+'tests/keg_auth_tests/test_views.py' = ['RUF043', 'SIM117']
+
+
+
+[lint.flake8-builtins]
+ignorelist = ['id', 'help', 'compile']
+
+
+[lint.flake8-quotes]
+# Prefer using different quote to escaping strings
+avoid-escape = true
+inline-quotes = 'single'
+
+
+[lint.isort]
+lines-after-imports = 2
+force-sort-within-sections = true
+known-local-folder = ['src', 'tests']
