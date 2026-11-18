@@ -7,6 +7,7 @@ Unreleased
 - Modernize packaging and development tooling with Coppy, Hatch, uv, Nox, and GitHub Actions.
 - Support and test Python 3.12 through 3.14; use PostgreSQL 15 for testing.
 - Drop psycopg2 support; test only with psycopg 3.
+- Unpin python-ldap in the tests extra (previously pinned to 3.4.3).
 - Refresh dependencies and preserve optional integrations, translations, and package assets.
 - Add tag-triggered PyPI trusted publishing.
 

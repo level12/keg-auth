@@ -33,7 +33,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     environment:
-      name: pypi
+      name: pypi-publish
       url: https://pypi.org/p/keg-auth
     permissions:
       id-token: write
