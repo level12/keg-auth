@@ -7,9 +7,11 @@ from blazeutils import randchars
 from blazeutils.containers import LazyDict
 import flask
 import flask_webtest
+from flask_wtf.csrf import generate_csrf
 from keg import current_app
 from keg.db import db
 import pytest
+from werkzeug.datastructures import MultiDict
 import wrapt
 
 from keg_auth.libs.authenticators import AttemptLimitMixin
@@ -1431,11 +1433,25 @@ class AuthTestApp(flask_webtest.TestApp):
     def get(self, *args, **kwargs):
         return super().get(*args, **kwargs)
 
+    def _add_csrf_token(self, params):
+        params = MultiDict(params)
+        field_name = self.app.config.get('WTF_CSRF_FIELD_NAME', 'csrf_token')
+        if field_name not in params:
+            # Use a fresh app context so Flask-WTF's cached token belongs to this session.
+            with (
+                self.app.app_context(),
+                self.app.test_request_context(),
+                self.session_transaction() as session,
+            ):
+                flask.session.update(session)
+                params[field_name] = generate_csrf()
+                session[field_name] = flask.session[field_name]
+        return list(params.items(multi=True))
+
     @user_request
     def post(self, url, params=None, *args, pass_csrf=True, **kwargs):
-        if pass_csrf:
-            params = dict(params or {})
-            params['csrf_token'] = self.get('/login').form['csrf_token'].value
+        if pass_csrf and not isinstance(params, (str, bytes)):
+            params = self._add_csrf_token(params)
         return super().post(url, params, *args, **kwargs)
 
     @user_request
