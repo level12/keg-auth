@@ -1,4 +1,5 @@
 from unittest import mock
+from urllib.parse import urlsplit
 
 import arrow
 import flask
@@ -893,8 +894,9 @@ class TestUserCrud(ViewTestBase):
 
     def test_delete(self):
         user_delete_id = ents.User.fake().id
+        username = self.user_ent.get(user_delete_id).username
 
-        page = self.client.get('/users')
+        page = self.client.get('/users?op(username)=eq&v1(username)=' + username)
         form = next(
             form
             for form in page.forms.values()
@@ -903,7 +905,7 @@ class TestUserCrud(ViewTestBase):
         resp = form.submit()
 
         assert resp.status_code == 302
-        assert resp.location.endswith('/users')
+        assert urlsplit(resp.location).path == '/users'
         assert resp.flashes == [('success', 'Successfully removed User')]
 
         assert not self.user_ent.get(user_delete_id)
@@ -915,14 +917,14 @@ class TestUserCrud(ViewTestBase):
 
     def test_delete_invalid_csrf(self):
         user = ents.User.fake()
-        page = self.client.get('/users')
+        page = self.client.get('/users?op(username)=eq&v1(username)=' + user.username)
         form = next(
             form
             for form in page.forms.values()
             if form.action.split('?')[0].endswith(f'/users/{user.id}/delete')
         )
         form['csrf_token'] = 'invalid'
-        form.submit(status=400)
+        form.submit(status=400, pass_csrf=False)
         assert self.user_ent.get(user.id)
 
     def test_delete_custom_form_invalid(self):
@@ -1038,7 +1040,7 @@ class TestUserCrud(ViewTestBase):
 
     @mock.patch('keg_auth_ta.extensions.Grid.manager.args_loaders', [RequestArgsLoader])
     def test_list_post_no_form_loader(self):
-        self.client.post('/users', status=400)
+        self.client.post('/users', {}, status=400, pass_csrf=False)
 
     def test_list_export(self):
         ents.User.fake()
@@ -1140,7 +1142,7 @@ class TestGroupCrud(ViewTestBase):
         resp = form.submit()
 
         assert resp.status_code == 302
-        assert resp.location.endswith('/groups')
+        assert urlsplit(resp.location).path == '/groups'
         assert resp.flashes == [('success', 'Successfully removed Group')]
 
         assert not ents.Group.get(group_delete_id)
@@ -1265,7 +1267,7 @@ class TestBundleCrud(ViewTestBase):
         resp = form.submit()
 
         assert resp.status_code == 302
-        assert resp.location.endswith('/bundles')
+        assert urlsplit(resp.location).path == '/bundles'
         assert resp.flashes == [('success', 'Successfully removed Bundle')]
 
         assert not ents.Bundle.get(bundle_delete_id)
