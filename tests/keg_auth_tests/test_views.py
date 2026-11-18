@@ -692,16 +692,18 @@ class TestUserCrud(ViewTestBase):
         resp.form['permission_ids'] = [perm_approve.id]
         resp.form['group_ids'] = [group_approve.id]
         resp.form['bundle_ids'] = [bundle_approve.id]
-        with mail_ext.record_messages() as outbox:
-            resp = resp.form.submit()
-        assert resp.status_code == 302
-        assert resp.location.endswith('/users')
-        assert resp.flashes == [('success', 'Successfully created User')]
-        assert len(outbox) == 1
-        assert outbox[0].subject == '[KA Demo] User Welcome & Verification'
-        assert 'abc2@example.com' in outbox[0].recipients
-        user = self.user_ent.get_by(email='abc2@example.com')
-        assert user.token_generate() in outbox[0].as_string()
+        # Both JWTs must have the same issued-at and expiry timestamps.
+        with freezegun.freeze_time():
+            with mail_ext.record_messages() as outbox:
+                resp = resp.form.submit()
+            assert resp.status_code == 302
+            assert resp.location.endswith('/users')
+            assert resp.flashes == [('success', 'Successfully created User')]
+            assert len(outbox) == 1
+            assert outbox[0].subject == '[KA Demo] User Welcome & Verification'
+            assert 'abc2@example.com' in outbox[0].recipients
+            user = self.user_ent.get_by(email='abc2@example.com')
+            assert user.token_generate() in outbox[0].as_string()
         assert user.is_enabled is True
         assert user.is_superuser is False
         assert user.permissions == [perm_approve]
